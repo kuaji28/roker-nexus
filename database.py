@@ -1,0 +1,445 @@
+"""
+ROKER NEXUS — Base de Datos
+Soporte dual: Supabase (producción cloud) y SQLite (desarrollo local).
+Cambia automáticamente según si las credenciales están configuradas.
+"""
+import os
+import sqlite3
+import json
+from datetime import datetime, date
+from typing import Optional
+import pandas as pd
+
+try:
+    from supabase import create_client, Client
+    SUPABASE_AVAILABLE = True
+except ImportError:
+    SUPABASE_AVAILABLE = False
+
+from config import SUPABASE_URL, SUPABASE_KEY, DEBUG
+
+# ── Detección de backend ─────────────────────────────────────
+USE_SUPABASE = SUPABASE_AVAILABLE and bool(SUPABASE_URL) and bool(SUPABASE_KEY)
+SQLITE_PATH = "roker_nexus.db"
+
+_supabase: Optional[object] = None
+
+
+def get_supabase() -> Optional[object]:
+    global _supabase
+    if USE_SUPABASE and _supabase is None:
+        _supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    return _supabase
+
+
+def get_sqlite() -> sqlite3.Connection:
+    conn = sqlite3.connect(SQLITE_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+# ── Schema SQL ────────────────────────────────────────────────
+SCHEMA_SQL = """
+
+-- Catálogo maestro de artículos
+CREATE TABLE IF NOT EXISTS articulos (
+    codigo          TEXT PRIMARY KEY,
+    descripcion     TEXT NOT NULL,
+    marca           TEXT,
+    rubro           TEXT,
+    super_rubro     TEXT,
+    tipo_codigo     TEXT CHECK(tipo_codigo IN ('mecanico','con_marco','otro')),
+    activo          INTEGER DEFAULT 1,
+    en_lista_negra  INTEGER DEFAULT 0,
+    motivo_negra    TEXT,
+    fecha_negra     TEXT,
+    creado_en       TEXT DEFAULT (datetime('now')),
+    actualizado_en  TEXT DEFAULT (datetime('now'))
+);
+
+-- Snapshots de stock por depósito y fecha
+CREATE TABLE IF NOT EXISTS stock_snapshots (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo          TEXT NOT NULL,
+    deposito        TEXT NOT NULL,
+    stock           REAL DEFAULT 0,
+    stock_minimo    REAL DEFAULT 0,
+    stock_optimo    REAL DEFAULT 0,
+    stock_maximo    REAL DEFAULT 0,
+    fecha           TEXT NOT NULL,
+    importado_en    TEXT DEFAULT (datetime('now')),
+    UNIQUE(codigo, deposito, fecha)
+);
+
+-- Lista de precios (todas las listas)
+CREATE TABLE IF NOT EXISTS precios (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo          TEXT NOT NULL,
+    lista_1         REAL DEFAULT 0,
+    lista_2         REAL DEFAULT 0,
+    lista_3         REAL DEFAULT 0,
+    lista_4         REAL DEFAULT 0,
+    lista_5         REAL DEFAULT 0,
+    moneda          TEXT DEFAULT 'USD',
+    fecha           TEXT NOT NULL,
+    importado_en    TEXT DEFAULT (datetime('now')),
+    UNIQUE(codigo, fecha)
+);
+
+-- Datos de optimización de stock (de Flexxus)
+CREATE TABLE IF NOT EXISTS optimizacion (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo              TEXT NOT NULL,
+    descripcion         TEXT,
+    demanda_total       REAL DEFAULT 0,
+    demanda_promedio    REAL DEFAULT 0,
+    stock_actual        REAL DEFAULT 0,
+    stock_minimo        REAL DEFAULT 0,
+    stock_optimo        REAL DEFAULT 0,
+    stock_maximo        REAL DEFAULT 0,
+    costo_reposicion    REAL DEFAULT 0,
+    moneda              TEXT DEFAULT 'USD',
+    r_minimo            REAL DEFAULT 0,
+    r_optimo            REAL DEFAULT 0,
+    r_maximo            REAL DEFAULT 0,
+    periodo_desde       TEXT,
+    periodo_hasta       TEXT,
+    dias_promedio       INTEGER DEFAULT 30,
+    importado_en        TEXT DEFAULT (datetime('now')),
+    UNIQUE(codigo, importado_en)
+);
+
+-- Historial de ventas por artículo
+CREATE TABLE IF NOT EXISTS ventas (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo          TEXT NOT NULL,
+    descripcion     TEXT,
+    total_venta_ars REAL DEFAULT 0,
+    marca           TEXT,
+    super_rubro     TEXT,
+    fecha_desde     TEXT NOT NULL,
+    fecha_hasta     TEXT NOT NULL,
+    importado_en    TEXT DEFAULT (datetime('now')),
+    UNIQUE(codigo, fecha_desde, fecha_hasta)
+);
+
+-- Historial de compras por marca
+CREATE TABLE IF NOT EXISTS compras_historial (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo          TEXT NOT NULL,
+    descripcion     TEXT,
+    marca           TEXT,
+    rubro           TEXT,
+    cantidad        REAL DEFAULT 0,
+    fecha_desde     TEXT NOT NULL,
+    fecha_hasta     TEXT NOT NULL,
+    importado_en    TEXT DEFAULT (datetime('now')),
+    UNIQUE(codigo, fecha_desde, fecha_hasta)
+);
+
+-- Remitos internos entre depósitos
+CREATE TABLE IF NOT EXISTS remitos_internos (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    numero          TEXT,
+    fecha           TEXT,
+    deposito_origen TEXT,
+    deposito_destino TEXT,
+    cliente         TEXT,
+    monto           REAL DEFAULT 0,
+    facturado       TEXT,
+    responsable     TEXT,
+    importado_en    TEXT DEFAULT (datetime('now'))
+);
+
+-- Cotizaciones de proveedores
+CREATE TABLE IF NOT EXISTS cotizaciones (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    proveedor       TEXT NOT NULL,
+    invoice_id      TEXT,
+    fecha           TEXT NOT NULL,
+    total_usd       REAL DEFAULT 0,
+    estado          TEXT DEFAULT 'pendiente',
+    notas           TEXT,
+    importado_en    TEXT DEFAULT (datetime('now'))
+);
+
+-- Ítems de cada cotización
+CREATE TABLE IF NOT EXISTS cotizacion_items (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    cotizacion_id   INTEGER REFERENCES cotizaciones(id),
+    codigo          TEXT NOT NULL,
+    descripcion     TEXT,
+    precio_usd      REAL DEFAULT 0,
+    cantidad_caja   INTEGER DEFAULT 1,
+    cantidad_sugerida INTEGER DEFAULT 0,
+    en_lista_negra  INTEGER DEFAULT 0,
+    codigo_flexxus  TEXT,
+    notas           TEXT
+);
+
+-- Lotes de pedido (batches de compra)
+CREATE TABLE IF NOT EXISTS pedidos_lotes (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre          TEXT NOT NULL,
+    proveedor       TEXT NOT NULL,
+    tope_usd        REAL DEFAULT 0,
+    total_usd       REAL DEFAULT 0,
+    estado          TEXT DEFAULT 'borrador',
+    cotizacion_id   INTEGER REFERENCES cotizaciones(id),
+    fecha_creado    TEXT DEFAULT (datetime('now')),
+    fecha_enviado   TEXT,
+    notas           TEXT
+);
+
+-- Ítems de cada lote de pedido
+CREATE TABLE IF NOT EXISTS pedidos_items (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    lote_id         INTEGER REFERENCES pedidos_lotes(id),
+    codigo          TEXT NOT NULL,
+    descripcion     TEXT,
+    precio_usd      REAL DEFAULT 0,
+    cantidad        INTEGER DEFAULT 0,
+    subtotal_usd    REAL DEFAULT 0,
+    motivo_inclusion TEXT,
+    editado_manual  INTEGER DEFAULT 0
+);
+
+-- Pedidos en tránsito
+CREATE TABLE IF NOT EXISTS pedidos_transito (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    lote_id         INTEGER REFERENCES pedidos_lotes(id),
+    invoice_id      TEXT,
+    proveedor       TEXT,
+    fecha_pedido    TEXT,
+    fecha_estimada  TEXT,
+    fecha_ingreso   TEXT,
+    estado          TEXT DEFAULT 'en_transito',
+    total_usd       REAL DEFAULT 0,
+    notas           TEXT
+);
+
+-- Anomalías detectadas
+CREATE TABLE IF NOT EXISTS anomalias (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo          TEXT NOT NULL,
+    deposito        TEXT,
+    tipo            TEXT,
+    descripcion     TEXT,
+    severidad       TEXT DEFAULT 'media',
+    estado          TEXT DEFAULT 'abierta',
+    detectada_en    TEXT DEFAULT (datetime('now')),
+    resuelta_en     TEXT,
+    notas           TEXT
+);
+
+-- Tasa de cambio USD/ARS histórico
+CREATE TABLE IF NOT EXISTS tasas_cambio (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha           TEXT NOT NULL UNIQUE,
+    usd_ars         REAL NOT NULL,
+    fuente          TEXT DEFAULT 'manual'
+);
+
+-- Log de importaciones
+CREATE TABLE IF NOT EXISTS importaciones_log (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    tipo_archivo    TEXT NOT NULL,
+    nombre_archivo  TEXT,
+    filas_importadas INTEGER DEFAULT 0,
+    filas_error     INTEGER DEFAULT 0,
+    estado          TEXT DEFAULT 'ok',
+    mensaje         TEXT,
+    importado_en    TEXT DEFAULT (datetime('now'))
+);
+
+-- Índices para performance
+CREATE INDEX IF NOT EXISTS idx_stock_codigo ON stock_snapshots(codigo);
+CREATE INDEX IF NOT EXISTS idx_stock_fecha ON stock_snapshots(fecha);
+CREATE INDEX IF NOT EXISTS idx_stock_deposito ON stock_snapshots(deposito);
+CREATE INDEX IF NOT EXISTS idx_precios_codigo ON precios(codigo);
+CREATE INDEX IF NOT EXISTS idx_optimizacion_codigo ON optimizacion(codigo);
+CREATE INDEX IF NOT EXISTS idx_ventas_codigo ON ventas(codigo);
+CREATE INDEX IF NOT EXISTS idx_anomalias_estado ON anomalias(estado);
+"""
+
+
+def init_db():
+    """Inicializa la base de datos con el schema completo."""
+    if USE_SUPABASE:
+        # Con Supabase el schema se crea via Dashboard
+        # Aquí solo verificamos la conexión
+        try:
+            sb = get_supabase()
+            sb.table("articulos").select("count", count="exact").execute()
+            return True
+        except Exception as e:
+            if DEBUG:
+                print(f"Supabase error: {e}")
+            return False
+    else:
+        # SQLite local
+        conn = get_sqlite()
+        conn.executescript(SCHEMA_SQL)
+        conn.commit()
+        conn.close()
+        return True
+
+
+def execute_query(sql: str, params: tuple = (), fetch: bool = True):
+    """Ejecuta una query en SQLite."""
+    conn = get_sqlite()
+    try:
+        cur = conn.execute(sql, params)
+        if fetch:
+            rows = cur.fetchall()
+            conn.close()
+            return [dict(r) for r in rows]
+        else:
+            conn.commit()
+            rowcount = cur.rowcount
+            conn.close()
+            return rowcount
+    except Exception as e:
+        conn.close()
+        raise e
+
+
+def df_to_db(df: pd.DataFrame, table: str, if_exists: str = "append") -> int:
+    """Inserta un DataFrame en la base de datos."""
+    if USE_SUPABASE:
+        records = df.to_dict("records")
+        sb = get_supabase()
+        result = sb.table(table).upsert(records).execute()
+        return len(result.data)
+    else:
+        conn = sqlite3.connect(SQLITE_PATH)
+        rows = df.to_sql(table, conn, if_exists=if_exists, index=False, method="multi")
+        conn.commit()
+        conn.close()
+        return len(df)
+
+
+def query_to_df(sql: str, params: tuple = ()) -> pd.DataFrame:
+    """Ejecuta una query y retorna un DataFrame."""
+    if USE_SUPABASE:
+        # Para queries complejas usamos sqlite como cache
+        # En producción se traduciría a Supabase queries
+        pass
+    conn = get_sqlite()
+    df = pd.read_sql_query(sql, conn, params=params)
+    conn.close()
+    return df
+
+
+def log_importacion(tipo: str, nombre: str, filas_ok: int, filas_err: int = 0,
+                    estado: str = "ok", mensaje: str = ""):
+    """Registra una importación en el log."""
+    execute_query(
+        """INSERT INTO importaciones_log
+           (tipo_archivo, nombre_archivo, filas_importadas, filas_error, estado, mensaje)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (tipo, nombre, filas_ok, filas_err, estado, mensaje),
+        fetch=False
+    )
+
+
+def get_ultima_importacion(tipo: str) -> Optional[dict]:
+    """Retorna la última importación de un tipo dado."""
+    rows = execute_query(
+        "SELECT * FROM importaciones_log WHERE tipo_archivo=? ORDER BY importado_en DESC LIMIT 1",
+        (tipo,)
+    )
+    return rows[0] if rows else None
+
+
+def get_stock_actual(deposito: Optional[str] = None) -> pd.DataFrame:
+    """Retorna el stock más reciente por código y depósito."""
+    if deposito:
+        sql = """
+            SELECT s.*, a.descripcion, a.marca, a.rubro
+            FROM stock_snapshots s
+            JOIN (
+                SELECT codigo, deposito, MAX(fecha) as max_fecha
+                FROM stock_snapshots WHERE deposito=?
+                GROUP BY codigo, deposito
+            ) latest ON s.codigo=latest.codigo AND s.deposito=latest.deposito AND s.fecha=latest.max_fecha
+            LEFT JOIN articulos a ON s.codigo=a.codigo
+            ORDER BY s.stock ASC
+        """
+        return query_to_df(sql, (deposito,))
+    else:
+        sql = """
+            SELECT s.*, a.descripcion, a.marca, a.rubro
+            FROM stock_snapshots s
+            JOIN (
+                SELECT codigo, deposito, MAX(fecha) as max_fecha
+                FROM stock_snapshots
+                GROUP BY codigo, deposito
+            ) latest ON s.codigo=latest.codigo AND s.deposito=latest.deposito AND s.fecha=latest.max_fecha
+            LEFT JOIN articulos a ON s.codigo=a.codigo
+            ORDER BY s.deposito, s.stock ASC
+        """
+        return query_to_df(sql)
+
+
+def get_quiebres(deposito: Optional[str] = None, umbral: int = 10) -> pd.DataFrame:
+    """Retorna artículos con stock bajo o en cero."""
+    dep_filter = "AND s.deposito=?" if deposito else ""
+    params = (umbral, deposito) if deposito else (umbral,)
+    sql = f"""
+        SELECT s.codigo, s.deposito, s.stock, s.stock_minimo, s.fecha,
+               a.descripcion, a.marca, a.en_lista_negra,
+               p.lista_1 as precio_lista1, p.lista_4 as precio_ml
+        FROM stock_snapshots s
+        JOIN (
+            SELECT codigo, deposito, MAX(fecha) as max_fecha
+            FROM stock_snapshots GROUP BY codigo, deposito
+        ) latest ON s.codigo=latest.codigo AND s.deposito=latest.deposito AND s.fecha=latest.max_fecha
+        LEFT JOIN articulos a ON s.codigo=a.codigo
+        LEFT JOIN precios p ON s.codigo=p.codigo
+        WHERE s.stock <= ? AND a.en_lista_negra=0 {dep_filter}
+        ORDER BY s.stock ASC, a.marca
+    """
+    return query_to_df(sql, params)
+
+
+# Inicializar al importar
+init_db()
+
+
+def get_resumen_stats() -> dict:
+    """Retorna estadísticas resumidas para el dashboard."""
+    try:
+        conn = get_sqlite()
+        
+        def safe_count(sql):
+            try:
+                cur = conn.execute(sql)
+                return cur.fetchone()[0] or 0
+            except Exception:
+                return 0
+
+        total    = safe_count("SELECT COUNT(DISTINCT codigo) FROM stock_snapshots")
+        sin_stk  = safe_count("""
+            SELECT COUNT(*) FROM stock_snapshots s
+            JOIN (SELECT codigo,deposito,MAX(fecha) mf FROM stock_snapshots GROUP BY codigo,deposito) lx
+              ON s.codigo=lx.codigo AND s.deposito=lx.deposito AND s.fecha=lx.mf
+            WHERE s.stock=0""")
+        bajo_min = safe_count("""
+            SELECT COUNT(*) FROM stock_snapshots s
+            JOIN (SELECT codigo,deposito,MAX(fecha) mf FROM stock_snapshots GROUP BY codigo,deposito) lx
+              ON s.codigo=lx.codigo AND s.deposito=lx.deposito AND s.fecha=lx.mf
+            WHERE s.stock>0 AND s.stock<s.stock_minimo AND s.stock_minimo>0""")
+
+        try:
+            cur = conn.execute("SELECT importado_en FROM importaciones_log ORDER BY importado_en DESC LIMIT 1")
+            row = cur.fetchone()
+            ultima = str(row[0])[:16] if row else "—"
+        except Exception:
+            ultima = "—"
+        conn.close()
+        return {"total_articulos": total, "sin_stock": sin_stk,
+                "bajo_minimo": bajo_min, "depositos_activos": 3,
+                "ultima_importacion": ultima}
+    except Exception:
+        return {}

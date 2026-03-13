@@ -1,0 +1,44 @@
+# Claves y secretos — NUNCA subir
+.env
+*.env
+secrets.toml
+
+# Base de datos local
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+venv/
+env/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Streamlit cache
+.streamlit/secrets.toml
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Archivos temporales de importación
+imports/
+exports/
+backups/
+temp/
+
+# Excel temporales
+~$*.xlsx
+~$*.xls
