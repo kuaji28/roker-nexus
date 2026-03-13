@@ -11,63 +11,71 @@ from utils.matching import tipo_codigo
 
 
 class ImportadorAITECH(ImportadorBase):
-
+    """
+    Formato real AI-TECH (PI sheet):
+      Fila 0: Invoice header
+      Fila 1: Brand | codigo | MODELO UNIVERSAL | MODELO STICKER | Spec | ... | QTY | PRICE | Total
+      Fila 2: Categoría (LCD+TOUCH, etc.)
+      Fila 3+: Datos
+    """
     NOMBRE = "cotizacion_aitech"
     FLEXXUS_MODULO = "Proveedor AI-TECH"
-    ARCHIVO_DESCARGA = "cotizacion_[INVOICE]_YYYYMMDD.xlsx"
+    ARCHIVO_DESCARGA = "LA COTIZACION DE AI-TECH XXX-YYYYMMDD.xlsx"
     COLUMNAS_REQUERIDAS = []
 
+    def _leer(self, uploaded_file) -> pd.DataFrame:
+        """Lee sin header — el formato es fijo por posición de columna."""
+        import pandas as pd
+        nombre = getattr(uploaded_file, "name", "")
+        ext = nombre.split(".")[-1].lower()
+        engine = "xlrd" if ext == "xls" else "openpyxl"
+        try:
+            return pd.read_excel(uploaded_file, header=None, engine=engine)
+        except Exception:
+            return pd.read_excel(uploaded_file, header=None)
+
+    def _detectar_y_setear_headers(self, df):
+        return df  # No tocar — manejamos por posición
+
+    def _validar_columnas(self, df):
+        return True, ""
+
+    def _limpiar(self, df):
+        return df  # No limpiar aquí — lo hacemos en _transformar
+
     def _transformar(self, df: pd.DataFrame, uploaded_file=None) -> pd.DataFrame:
-        # Deduplicar columnas siempre
-        df = df.loc[:, ~df.columns.duplicated()].copy()
-        df.columns = [str(c).strip() for c in df.columns]
-
         nombre = getattr(uploaded_file, "name", "") if uploaded_file else ""
-        invoice_id = self._extraer_invoice(nombre)
-        col_map = self._mapear_columnas(df)
-
-        def safe_serie(key, default):
-            col = col_map.get(key)
-            if col and col in df.columns:
-                s = df[col]
-                if isinstance(s, pd.DataFrame):
-                    s = s.iloc[:, 0]
-                return s
-            return pd.Series([default] * len(df), index=df.index)
-
-        df_out = pd.DataFrame(index=df.index)
-        df_out["codigo"]        = safe_serie("codigo", "").astype(str).str.strip()
-        df_out["descripcion"]   = safe_serie("descripcion", "").astype(str).str.strip()
-        df_out["precio_usd"]    = pd.to_numeric(safe_serie("precio", 0),   errors="coerce").fillna(0)
-        df_out["cantidad_caja"] = pd.to_numeric(safe_serie("cantidad", 1), errors="coerce").fillna(1).astype(int)
-
-        # Todos los códigos numéricos en AI-TECH = mecánicos
-        df_out["tipo"] = df_out["codigo"].apply(tipo_codigo)
-
-        # Cotización parent
-        self._invoice_id = invoice_id
+        self._invoice_id = self._extraer_invoice(nombre)
         self._nombre = nombre
 
-        df_out = df_out[df_out["codigo"].str.len() > 1]
-        df_out = df_out[df_out["codigo"] != "nan"]
-        df_out = df_out[df_out["precio_usd"] > 0]
+        # Formato fijo por posición:
+        # col 0: brand prefix | col 1: codigo | col 2: descripcion
+        # col 8: QTY | col 9: PRICE | col 10: Total
+        registros = []
+        for i, row in df.iterrows():
+            # Saltar filas de header/categoria (sin precio numérico)
+            precio = pd.to_numeric(row.iloc[9] if len(row) > 9 else None, errors="coerce")
+            if pd.isna(precio) or precio <= 0:
+                continue
+            codigo_raw = row.iloc[1] if len(row) > 1 else None
+            if pd.isna(codigo_raw):
+                continue
+            codigo = str(int(float(codigo_raw))) if isinstance(codigo_raw, float) else str(codigo_raw).strip()
+            desc   = str(row.iloc[2]).strip() if len(row) > 2 and not pd.isna(row.iloc[2]) else ""
+            qty    = int(pd.to_numeric(row.iloc[8], errors="coerce") or 1) if len(row) > 8 else 1
+            registros.append({
+                "codigo":       codigo,
+                "descripcion":  desc,
+                "precio_usd":   float(precio),
+                "cantidad_caja": qty,
+            })
 
+        if not registros:
+            return pd.DataFrame(columns=["codigo","descripcion","precio_usd","cantidad_caja"])
+
+        df_out = pd.DataFrame(registros)
+        df_out["tipo"] = df_out["codigo"].apply(tipo_codigo)
         return df_out
-
-    def _mapear_columnas(self, df: pd.DataFrame) -> dict:
-        cols = {c.upper(): c for c in df.columns}
-        def find(*kws):
-            for kw in kws:
-                for cu, co in cols.items():
-                    if kw.upper() in cu:
-                        return co
-            return None
-        return {
-            "codigo":      find("CÓDIGO", "CODIGO", "SKU", "ITEM") or (df.columns[0] if len(df.columns) > 0 else None),
-            "descripcion": find("DESCRIPCIÓN", "DESCRIPCION", "ARTÍCULO", "NOMBRE"),
-            "precio":      find("PRECIO", "PRICE", "USD", "UNIT"),
-            "cantidad":    find("CANTIDAD", "QTY", "PCS", "CAJA"),
-        }
 
     def _extraer_invoice(self, nombre: str) -> str:
         match = re.search(r'0\d{2,}', nombre)

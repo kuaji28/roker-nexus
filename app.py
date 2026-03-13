@@ -201,24 +201,6 @@ for icono, nombre, key in paginas:
 dot_color  = "nx-dot-green" if sistema_ok else "nx-dot-red"
 dot_estado = "Sistema OK" if sistema_ok else "Sin conexión"
 
-st.markdown(f"""
-<div class="nx-topbar">
-  <div class="nx-logo">
-    <div class="nx-logo-icon">⚡</div>
-    <div>
-      <div class="nx-logo-text">ROKER NEXUS</div>
-      <div class="nx-logo-sub">EL CELU</div>
-    </div>
-    <span class="nx-version-tag">{APP_VERSION}</span>
-  </div>
-  <nav class="nx-nav">{nav_items}</nav>
-  <div class="nx-status">
-    <div class="nx-dot {dot_color}"></div>
-    <span style="font-size:11px;color:var(--text3)">{dot_estado}</span>
-  </div>
-</div>
-""", unsafe_allow_html=True)
-
 # ── Botones de navegación reales (invisibles, accionados por HTML) ──
 cols = st.columns(len(paginas))
 for i, (icono, nombre, key) in enumerate(paginas):

@@ -107,7 +107,18 @@ def render():
 
         if uploaded:
             st.markdown("---")
+            # Detectar archivos duplicados en la misma carga
+            nombres_vistos = {}
             for f in uploaded:
+                nombre_limpio = f.name.rsplit("_", 2)[0]  # ignorar timestamp al final
+                if nombre_limpio in nombres_vistos:
+                    st.warning(
+                        f"⚠️ **Posible duplicado detectado:** `{f.name}` parece ser el mismo "
+                        f"archivo que `{nombres_vistos[nombre_limpio]}`. "
+                        f"Solo se procesará una vez."
+                    )
+                    continue
+                nombres_vistos[nombre_limpio] = f.name
                 _procesar_archivo(f)
 
         # Checklist de archivos necesarios
