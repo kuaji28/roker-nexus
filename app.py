@@ -118,6 +118,53 @@ hr{border-color:var(--line)!important;margin:24px 0!important}
 </style>
 """, unsafe_allow_html=True)
 
+
+# ── Botón hamburguesa — sidebar toggle garantizado ───────────
+st.markdown("""
+<div id="nx-menu-btn" onclick="toggleSidebar()" title="Menú"
+  style="position:fixed;top:50%;left:0;transform:translateY(-50%);
+         width:36px;height:72px;background:#0A84FF;
+         border-radius:0 20px 20px 0;z-index:9999999;
+         display:flex;flex-direction:column;align-items:center;
+         justify-content:center;gap:5px;cursor:pointer;
+         box-shadow:4px 0 20px rgba(10,132,255,0.6);
+         transition:width .2s ease;">
+  <div style="width:14px;height:2px;background:#fff;border-radius:2px"></div>
+  <div style="width:14px;height:2px;background:#fff;border-radius:2px"></div>
+  <div style="width:14px;height:2px;background:#fff;border-radius:2px"></div>
+</div>
+<script>
+function toggleSidebar() {
+  // Método 1: botón nativo de Streamlit
+  var btn = window.parent.document.querySelector('[data-testid="collapsedControl"]');
+  if (btn) { btn.click(); return; }
+  // Método 2: botón colapsar dentro del sidebar
+  var btn2 = window.parent.document.querySelector('[data-testid="stSidebarCollapseButton"] button');
+  if (btn2) { btn2.click(); return; }
+  // Método 3: cualquier botón con ícono de sidebar
+  var btns = window.parent.document.querySelectorAll('button');
+  for (var b of btns) {
+    if (b.getAttribute('aria-label') && b.getAttribute('aria-label').toLowerCase().includes('sidebar')) {
+      b.click(); return;
+    }
+  }
+}
+// Auto-reposicionar si el sidebar se abre
+setInterval(function() {
+  var sidebar = window.parent.document.querySelector('[data-testid="stSidebar"]');
+  var menuBtn = document.getElementById('nx-menu-btn');
+  if (!menuBtn) return;
+  if (sidebar && sidebar.offsetWidth > 50) {
+    menuBtn.style.left = sidebar.offsetWidth + 'px';
+    menuBtn.style.background = '#FF375F';
+  } else {
+    menuBtn.style.left = '0';
+    menuBtn.style.background = '#0A84FF';
+  }
+}, 300);
+</script>
+""", unsafe_allow_html=True)
+
 # ── Imports internos ──────────────────────────────────────────
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
