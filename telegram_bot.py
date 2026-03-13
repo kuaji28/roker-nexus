@@ -570,14 +570,25 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "menu_dolar":
         _set_estado(user_id, "tasa_usd")
-        conn = sqlite3.connect("roker_nexus.db")
-        cur = conn.execute("SELECT usd_ars FROM tasas_cambio ORDER BY fecha DESC LIMIT 1")
-        row = cur.fetchone(); conn.close()
-        actual = f"${row[0]:,.0f}" if row else "no registrado"
-        await query.message.edit_text(
-            f"💵 *Tipo de cambio USD*\nValor actual: *{actual}*\n\nEscribí el nuevo valor:",
-            parse_mode="Markdown"
-        )
+        try:
+            import sqlite3 as _sq2
+            conn2 = _sq2.connect("roker_nexus.db")
+            cur2 = conn2.execute("SELECT usd_ars FROM tasas_cambio ORDER BY fecha DESC LIMIT 1")
+            row2 = cur2.fetchone(); conn2.close()
+            actual = f"${row2[0]:,.0f}" if row2 else "no registrado"
+        except Exception:
+            actual = "no registrado"
+        kb = [[InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")]]
+        try:
+            await query.message.edit_text(
+                f"💵 *Tipo de cambio USD*\nValor actual: *{actual}*\n\nEscribí el nuevo valor:",
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb)
+            )
+        except Exception:
+            await query.message.reply_text(
+                f"💵 *Tipo de cambio USD*\nValor actual: *{actual}*\n\nEscribí el nuevo valor:",
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb)
+            )
 
     elif data == "menu_rmb":
         _set_estado(user_id, "rmb")
@@ -605,15 +616,25 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "menu_negra":
         from database import get_lista_negra
         lista = get_lista_negra()
+        kb = [
+            [InlineKeyboardButton("➕ Agregar artículo", callback_data="negra_buscar")],
+            [InlineKeyboardButton("🔙 Menú", callback_data="menu_volver")],
+        ]
         if not lista:
-            await query.message.edit_text("⛔ *Lista negra* — Está vacía.", parse_mode="Markdown")
+            texto_n = "⛔ *Lista negra* — Está vacía.\n\n_Agregá artículos para excluirlos de compras._"
         else:
-            lineas = ["⛔ *Lista negra actual:*\n"]
+            lineas = [f"⛔ *Lista negra* — {len(lista)} artículos:\n"]
             for cod, desc in lista[:20]:
                 lineas.append(f"• `{cod}` — {desc or 'sin descripción'}")
             if len(lista) > 20:
                 lineas.append(f"\n_...y {len(lista)-20} más_")
-            await query.message.edit_text("\n".join(lineas), parse_mode="Markdown")
+            texto_n = "\n".join(lineas)
+        try:
+            await query.message.edit_text(texto_n, parse_mode="Markdown",
+                                          reply_markup=InlineKeyboardMarkup(kb))
+        except Exception:
+            await query.message.reply_text(texto_n, parse_mode="Markdown",
+                                           reply_markup=InlineKeyboardMarkup(kb))
 
     elif data == "menu_transito":
         await query.message.edit_text("🔄 Consultando tránsito...")
@@ -646,7 +667,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ── Opciones de un artículo específico (desde lista múltiple) ──
     elif data.startswith("art_opciones_"):
         cod = data.replace("art_opciones_", "")
-        resultados = _buscar_articulos(cod)
+        resultados = await _buscar_articulos(cod)
         desc = resultados[0][1] if resultados else cod
         keyboard = [
             [
@@ -798,27 +819,31 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ── Quiebres: por depósito ──
     elif data.startswith("quiebres_dep_"):
-        dep = data.replace("quiebres_dep_", "")
-        deposito = None if dep == "TODOS" else dep
-        keyboard = [[
-            InlineKeyboardButton("Top 10", callback_data=f"quiebres_dep_{dep}_10"),
-            InlineKeyboardButton("Top 20", callback_data=f"quiebres_dep_{dep}_20"),
-            InlineKeyboardButton("Top 30", callback_data=f"quiebres_dep_{dep}_30"),
-            InlineKeyboardButton("Top 50", callback_data=f"quiebres_dep_{dep}_50"),
-        ]]
-        dep_label = {"SAN_JOSE": "San José", "LARREA": "Larrea", "TODOS": "todos"}.get(dep, dep)
-        await query.message.edit_text(
-            f"📊 Depósito: *{dep_label}*\n¿Cuántos querés ver?",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-
-    elif data.startswith("quiebres_dep_") and data.count("_") >= 3:
-        parts = data.split("_")
-        dep = parts[2]
-        top = int(parts[3]) if len(parts) > 3 else 10
-        deposito = None if dep == "TODOS" else dep
-        await _mostrar_quiebres(query.message, top=top, deposito=deposito)
+        # Formato: quiebres_dep_DEPOSITO  o  quiebres_dep_DEPOSITO_NUM
+        resto = data.replace("quiebres_dep_", "")
+        # Detectar si termina en _NUM (ej: LARREA_20, SAN_JOSE_10)
+        partes = resto.rsplit("_", 1)
+        if len(partes) == 2 and partes[1].isdigit():
+            # Ya tiene top → mostrar quiebres directo
+            dep = partes[0]
+            top = int(partes[1])
+            deposito = None if dep == "TODOS" else dep
+            await _mostrar_quiebres(query.message, top=top, deposito=deposito)
+        else:
+            # Solo depósito → pedir cuántos
+            dep = resto
+            dep_label = {"SAN_JOSE": "San José", "LARREA": "Larrea", "TODOS": "Todos"}.get(dep, dep)
+            keyboard = [[
+                InlineKeyboardButton("Top 10", callback_data=f"quiebres_dep_{dep}_10"),
+                InlineKeyboardButton("Top 20", callback_data=f"quiebres_dep_{dep}_20"),
+                InlineKeyboardButton("Top 30", callback_data=f"quiebres_dep_{dep}_30"),
+                InlineKeyboardButton("Top 50", callback_data=f"quiebres_dep_{dep}_50"),
+            ], [InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")]]
+            await query.message.edit_text(
+                f"📊 Depósito: *{dep_label}*\n¿Cuántos querés ver?",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
 
     # ── IA quiebres ──
     elif data == "ia_quiebres":
@@ -827,6 +852,21 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         df = get_quiebres(umbral=0)
         resp = motor_ia.analizar_quiebres(df)
         await query.message.reply_text(resp[:4000])
+
+    # ── Lista negra: buscar artículo para agregar ──
+    elif data == "negra_buscar":
+        _set_estado(query.from_user.id, "buscar_negra")
+        kb = [[InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")]]
+        try:
+            await query.message.edit_text(
+                "⛔ *Agregar a lista negra*\n\nEscribí el nombre o código del artículo:",
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb)
+            )
+        except Exception:
+            await query.message.reply_text(
+                "⛔ *Agregar a lista negra*\n\nEscribí el nombre o código del artículo:",
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb)
+            )
 
     # ── Lista negra: confirmar ──
     elif data.startswith("negra_ok_"):
@@ -854,6 +894,14 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     estado = _get_estado(user_id)
 
+    # ── Escape universal: si escribe "hola" o similar, limpia estado y muestra menú ──
+    SALUDOS = {"hola", "hola!", "buenas", "buenos días", "buenas tardes",
+               "buenas noches", "hey", "hi", "menu", "menú", "inicio", "start"}
+    if texto_low in SALUDOS or texto_low.startswith("hola"):
+        _clear_estado(user_id)
+        await _enviar_menu_principal(update.message)
+        return
+
     # ── Estados de espera ──
     if estado.get("esperando") in ("tasa_usd", "umbral", "tope_lote1", "rmb"):
         clave = estado["esperando"]
@@ -874,20 +922,47 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if estado.get("esperando") == "buscar_stock":
         _clear_estado(user_id)
-        resultados = _buscar_articulos(texto)
+        resultados = await _buscar_articulos(texto)
         await _responder_busqueda_stock(update.message, resultados, texto)
         return
 
     if estado.get("esperando") == "buscar_precio":
         _clear_estado(user_id)
-        resultados = _buscar_articulos(texto)
+        resultados = await _buscar_articulos(texto)
         await _responder_busqueda_precio(update.message, resultados, texto)
         return
 
     if estado.get("esperando") == "buscar_articulo":
         _clear_estado(user_id)
-        resultados = _buscar_articulos(texto)
+        resultados = await _buscar_articulos(texto)
         await _responder_busqueda_opciones(update.message, resultados, texto)
+        return
+
+    if estado.get("esperando") == "buscar_negra":
+        _clear_estado(user_id)
+        resultados = await _buscar_articulos(texto)
+        if not resultados:
+            await update.message.reply_text(f"❓ No encontré *{texto}*.", parse_mode="Markdown")
+            return
+        if len(resultados) == 1:
+            cod, desc, *_ = resultados[0]
+            kb = [
+                [InlineKeyboardButton(f"⛔ Confirmar: {desc[:30]}", callback_data=f"negra_ok_{cod}")],
+                [InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")],
+            ]
+            await update.message.reply_text(
+                f"⛔ ¿Agregás `{cod}` a lista negra?\n_{desc}_",
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb)
+            )
+        else:
+            kb = [[InlineKeyboardButton(
+                f"{(d or c)[:35]} ({c})", callback_data=f"negra_add_{c}"
+            )] for c, d, *_ in resultados[:8]]
+            kb.append([InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")])
+            await update.message.reply_text(
+                f"🔍 *{len(resultados)}* artículos. ¿Cuál agregás a lista negra?",
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb)
+            )
         return
 
     if estado.get("esperando") == "buscar_pedido":
@@ -930,19 +1005,19 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for prefijo in ["stock ", "/stock "]:
         if texto_low.startswith(prefijo):
             termino = texto[len(prefijo):].strip()
-            resultados = _buscar_articulos(termino)
+            resultados = await _buscar_articulos(termino)
             await _responder_busqueda_stock(update.message, resultados, termino)
             return
 
     for prefijo in ["precio ", "/precio "]:
         if texto_low.startswith(prefijo):
             termino = texto[len(prefijo):].strip()
-            resultados = _buscar_articulos(termino)
+            resultados = await _buscar_articulos(termino)
             await _responder_busqueda_precio(update.message, resultados, termino)
             return
 
     # ── Cualquier otro texto → preguntar qué quiere hacer con ese artículo ──
-    resultados = _buscar_articulos(texto)
+    resultados = await _buscar_articulos(texto)
     if resultados:
         await _responder_busqueda_opciones(update.message, resultados, texto)
     else:
