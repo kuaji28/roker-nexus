@@ -75,25 +75,36 @@ class ImportadorAITECH(ImportadorBase):
 
     def _guardar(self, df: pd.DataFrame) -> int:
         conn = sqlite3.connect("roker_nexus.db")
-        now = datetime.now().isoformat()
+        invoice_id = getattr(self, "_invoice_id", "SIN_INVOICE")
+        fecha_hoy  = datetime.now().date().isoformat()
 
-        # Crear cotización parent
-        cur = conn.execute("""
-            INSERT INTO cotizaciones (proveedor, invoice_id, fecha, total_usd)
-            VALUES (?, ?, ?, ?)
-        """, ("AITECH", getattr(self, "_invoice_id", ""), datetime.now().date().isoformat(),
-              float(df["precio_usd"].sum())))
-        cotizacion_id = cur.lastrowid
+        # Si ya existe esta cotización, borrar items anteriores y reutilizar
+        cur_ex = conn.execute(
+            "SELECT id FROM cotizaciones WHERE invoice_id=? AND proveedor='AITECH'",
+            (invoice_id,)
+        )
+        row_ex = cur_ex.fetchone()
+        if row_ex:
+            cotizacion_id = row_ex[0]
+            conn.execute("DELETE FROM cotizacion_items WHERE cotizacion_id=?", (cotizacion_id,))
+            conn.execute(
+                "UPDATE cotizaciones SET total_usd=?, fecha=? WHERE id=?",
+                (float(df["precio_usd"].sum()), fecha_hoy, cotizacion_id)
+            )
+        else:
+            cur = conn.execute(
+                "INSERT INTO cotizaciones (proveedor, invoice_id, fecha, total_usd) VALUES (?,?,?,?)",
+                ("AITECH", invoice_id, fecha_hoy, float(df["precio_usd"].sum()))
+            )
+            cotizacion_id = cur.lastrowid
 
         # Insertar items
-        df["cotizacion_id"] = cotizacion_id
-        items_df = df.rename(columns={"codigo": "codigo", "descripcion": "descripcion",
-                                       "precio_usd": "precio_usd", "cantidad_caja": "cantidad_caja"})
-        cols = ["cotizacion_id", "codigo", "descripcion", "precio_usd", "cantidad_caja"]
-        items_df[cols].to_sql("cotizacion_items", conn, if_exists="append", index=False)
+        df2 = df[["codigo","descripcion","precio_usd","cantidad_caja"]].copy()
+        df2["cotizacion_id"] = cotizacion_id
+        df2.to_sql("cotizacion_items", conn, if_exists="append", index=False)
 
         conn.commit()
-        count = len(df)
+        count = len(df2)
         conn.close()
         return count
 

@@ -419,17 +419,25 @@ def get_resumen_stats() -> dict:
             except Exception:
                 return 0
 
-        total    = safe_count("SELECT COUNT(DISTINCT codigo) FROM stock_snapshots")
-        sin_stk  = safe_count("""
-            SELECT COUNT(*) FROM stock_snapshots s
-            JOIN (SELECT codigo,deposito,MAX(fecha) mf FROM stock_snapshots GROUP BY codigo,deposito) lx
-              ON s.codigo=lx.codigo AND s.deposito=lx.deposito AND s.fecha=lx.mf
-            WHERE s.stock=0""")
-        bajo_min = safe_count("""
-            SELECT COUNT(*) FROM stock_snapshots s
-            JOIN (SELECT codigo,deposito,MAX(fecha) mf FROM stock_snapshots GROUP BY codigo,deposito) lx
-              ON s.codigo=lx.codigo AND s.deposito=lx.deposito AND s.fecha=lx.mf
-            WHERE s.stock>0 AND s.stock<s.stock_minimo AND s.stock_minimo>0""")
+        # Si hay stock_snapshots usamos eso; si no, caemos a articulos/optimizacion
+        total_stock = safe_count("SELECT COUNT(DISTINCT codigo) FROM stock_snapshots")
+        if total_stock > 0:
+            total = total_stock
+            sin_stk  = safe_count("""
+                SELECT COUNT(*) FROM stock_snapshots s
+                JOIN (SELECT codigo,deposito,MAX(fecha) mf FROM stock_snapshots GROUP BY codigo,deposito) lx
+                  ON s.codigo=lx.codigo AND s.deposito=lx.deposito AND s.fecha=lx.mf
+                WHERE s.stock=0""")
+            bajo_min = safe_count("""
+                SELECT COUNT(*) FROM stock_snapshots s
+                JOIN (SELECT codigo,deposito,MAX(fecha) mf FROM stock_snapshots GROUP BY codigo,deposito) lx
+                  ON s.codigo=lx.codigo AND s.deposito=lx.deposito AND s.fecha=lx.mf
+                WHERE s.stock>0 AND s.stock<s.stock_minimo AND s.stock_minimo>0""")
+        else:
+            # Usar optimizacion como fuente alternativa
+            total    = safe_count("SELECT COUNT(DISTINCT codigo) FROM optimizacion")
+            sin_stk  = safe_count("SELECT COUNT(*) FROM optimizacion WHERE stock_actual=0")
+            bajo_min = safe_count("SELECT COUNT(*) FROM optimizacion WHERE stock_actual>0 AND stock_actual<stock_minimo AND stock_minimo>0")
 
         try:
             cur = conn.execute("SELECT importado_en FROM importaciones_log ORDER BY importado_en DESC LIMIT 1")
