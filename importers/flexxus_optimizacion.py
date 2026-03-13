@@ -20,25 +20,40 @@ class ImportadorOptimizacion(ImportadorBase):
     COLUMNAS_REQUERIDAS = ["Código", "Artículo"]
 
     def _transformar(self, df: pd.DataFrame, uploaded_file=None) -> pd.DataFrame:
-        # Mapeo flexible de columnas
+        # Deduplicar columnas (Flexxus a veces repite nombres)
+        df = df.loc[:, ~df.columns.duplicated()].copy()
+        df.columns = [str(c).strip() for c in df.columns]
+
         col_map = self._mapear_columnas(df)
-        df_out = pd.DataFrame()
 
-        df_out["codigo"]           = df[col_map["codigo"]].astype(str).str.strip()
-        df_out["descripcion"]      = df.get(col_map.get("descripcion"), pd.Series(dtype=str))
-        df_out["demanda_total"]    = pd.to_numeric(df.get(col_map.get("dem_total"), 0), errors="coerce").fillna(0)
-        df_out["demanda_promedio"] = pd.to_numeric(df.get(col_map.get("dem_prom"), 0), errors="coerce").fillna(0)
-        df_out["stock_actual"]     = pd.to_numeric(df.get(col_map.get("stock"), 0), errors="coerce").fillna(0)
-        df_out["stock_minimo"]     = pd.to_numeric(df.get(col_map.get("s_min"), 0), errors="coerce").fillna(0)
-        df_out["stock_optimo"]     = pd.to_numeric(df.get(col_map.get("s_opt"), 0), errors="coerce").fillna(0)
-        df_out["stock_maximo"]     = pd.to_numeric(df.get(col_map.get("s_max"), 0), errors="coerce").fillna(0)
-        df_out["costo_reposicion"] = pd.to_numeric(df.get(col_map.get("costo"), 0), errors="coerce").fillna(0)
-        df_out["moneda"]           = df.get(col_map.get("moneda"), "USD").fillna("USD")
-        df_out["r_minimo"]         = pd.to_numeric(df.get(col_map.get("r_min"), 0), errors="coerce").fillna(0)
-        df_out["r_optimo"]         = pd.to_numeric(df.get(col_map.get("r_opt"), 0), errors="coerce").fillna(0)
-        df_out["r_maximo"]         = pd.to_numeric(df.get(col_map.get("r_max"), 0), errors="coerce").fillna(0)
+        # Helper seguro: devuelve Serie aunque la columna no exista
+        def col_serie(key, default=0):
+            c = col_map.get(key)
+            if c and c in df.columns:
+                s = df[c]
+                # Si por alguna razón retorna DataFrame, tomar primera columna
+                if isinstance(s, pd.DataFrame):
+                    s = s.iloc[:, 0]
+                return s
+            return pd.Series([default] * len(df), index=df.index)
 
-        # Extraer período del contenido del archivo si está disponible
+        df_out = pd.DataFrame(index=df.index)
+        df_out["codigo"]           = col_serie("codigo", "").astype(str).str.strip()
+        df_out["descripcion"]      = col_serie("descripcion", "").astype(str).str.strip()
+        df_out["demanda_total"]    = pd.to_numeric(col_serie("dem_total"),  errors="coerce").fillna(0)
+        df_out["demanda_promedio"] = pd.to_numeric(col_serie("dem_prom"),   errors="coerce").fillna(0)
+        df_out["stock_actual"]     = pd.to_numeric(col_serie("stock"),      errors="coerce").fillna(0)
+        df_out["stock_minimo"]     = pd.to_numeric(col_serie("s_min"),      errors="coerce").fillna(0)
+        df_out["stock_optimo"]     = pd.to_numeric(col_serie("s_opt"),      errors="coerce").fillna(0)
+        df_out["stock_maximo"]     = pd.to_numeric(col_serie("s_max"),      errors="coerce").fillna(0)
+        df_out["costo_reposicion"] = pd.to_numeric(col_serie("costo"),      errors="coerce").fillna(0)
+        df_out["r_minimo"]         = pd.to_numeric(col_serie("r_min"),      errors="coerce").fillna(0)
+        df_out["r_optimo"]         = pd.to_numeric(col_serie("r_opt"),      errors="coerce").fillna(0)
+        df_out["r_maximo"]         = pd.to_numeric(col_serie("r_max"),      errors="coerce").fillna(0)
+
+        moneda_col = col_serie("moneda", "USD").astype(str)
+        df_out["moneda"] = moneda_col.where(moneda_col.str.strip() != "", "USD")
+
         df_out["periodo_desde"] = None
         df_out["periodo_hasta"] = None
         df_out["dias_promedio"] = 30
@@ -47,6 +62,7 @@ class ImportadorOptimizacion(ImportadorBase):
         # Filtrar filas sin código válido
         df_out = df_out[df_out["codigo"].str.len() > 2]
         df_out = df_out[df_out["codigo"] != "nan"]
+        df_out = df_out[df_out["codigo"].str.strip() != ""]
 
         return df_out
 
