@@ -20,6 +20,8 @@ class ImportadorListaPrecios(ImportadorBase):
     COLUMNAS_REQUERIDAS = ["Código", "Lista 1"]
 
     def _transformar(self, df: pd.DataFrame, uploaded_file=None) -> pd.DataFrame:
+        # Deduplicar columnas por si Flexxus repite nombres
+        df = df.loc[:, ~df.columns.duplicated()].copy()
         col_map = self._mapear_columnas(df)
 
         df_out = pd.DataFrame()

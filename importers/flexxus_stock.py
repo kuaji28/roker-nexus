@@ -20,6 +20,8 @@ class ImportadorStock(ImportadorBase):
     COLUMNAS_REQUERIDAS = ["Código", "Stock"]
 
     def _transformar(self, df: pd.DataFrame, uploaded_file=None) -> pd.DataFrame:
+        # Deduplicar columnas por si Flexxus repite nombres
+        df = df.loc[:, ~df.columns.duplicated()].copy()
         nombre = getattr(uploaded_file, "name", "") if uploaded_file else ""
         deposito = detectar_deposito_del_nombre(nombre) or "DESCONOCIDO"
 

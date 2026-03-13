@@ -105,7 +105,19 @@ class ImportadorBase(ABC):
             if fila > 0:
                 df.columns = df.iloc[fila]
                 df = df.iloc[fila + 1:].reset_index(drop=True)
-                df.columns = [str(c).strip() for c in df.columns]
+        # Normalizar nombres de columna
+        df.columns = [str(c).strip() for c in df.columns]
+        # CRÍTICO: deduplicar columnas SIEMPRE (Flexxus repite nombres)
+        seen = {}
+        new_cols = []
+        for c in df.columns:
+            if c in seen:
+                seen[c] += 1
+                new_cols.append(f"{c}_{seen[c]}")
+            else:
+                seen[c] = 0
+                new_cols.append(c)
+        df.columns = new_cols
         return df
 
     def _validar_columnas(self, df: pd.DataFrame) -> tuple:
@@ -123,9 +135,14 @@ class ImportadorBase(ABC):
         df = df.copy()
         # Quitar filas completamente vacías
         df = df.dropna(how="all")
-        # Convertir columnas de texto a string
+        # Convertir columnas de texto a string de forma defensiva
         for col in df.select_dtypes(include="object").columns:
-            df[col] = df[col].astype(str).str.strip()
+            serie = df[col]
+            # Si por columnas duplicadas devuelve DataFrame, tomar primera columna
+            if isinstance(serie, pd.DataFrame):
+                serie = serie.iloc[:, 0]
+                df[col] = serie
+            df[col] = serie.astype(str).str.strip()
             df[col] = df[col].replace({"nan": None, "None": None, "": None})
         return df
 
