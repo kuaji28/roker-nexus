@@ -179,7 +179,7 @@ def render():
         if df_log.empty:
             st.info("No hay importaciones registradas todavía.")
         else:
-            st.dataframe(df_log, use_container_width=True, hide_index=True)
+            st.dataframe(df_log, width="stretch", hide_index=True)
             st.caption(f"Últimas 50 importaciones. Total: {len(df_log)}")
 
 

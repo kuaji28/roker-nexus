@@ -88,7 +88,7 @@ def render():
                 ("⚠️ Anomalías", "¿Hay algo raro en los datos de stock que debería investigar?"),
             ]
             for label, pregunta in consultas:
-                if st.button(label, use_container_width=True, key=f"quick_{label[:8]}"):
+                if st.button(label, width="stretch", key=f"quick_{label[:8]}"):
                     if "chat_history" not in st.session_state:
                         st.session_state.chat_history = []
                     st.session_state.chat_history.append({"role": "user", "content": pregunta})
@@ -97,7 +97,7 @@ def render():
                     st.session_state.chat_history.append({"role": "assistant", "content": resp})
                     st.rerun()
 
-            if st.button("🗑️ Limpiar chat", use_container_width=True):
+            if st.button("🗑️ Limpiar chat", width="stretch"):
                 st.session_state.chat_history = []
                 st.rerun()
 
@@ -137,13 +137,13 @@ def render():
         col1, col2 = st.columns(2)
         with col1:
             nuevo_tasa = st.number_input("💱 Tipo de cambio USD/ARS", value=1200.0, step=50.0)
-            if st.button("Actualizar tasa", use_container_width=True):
+            if st.button("Actualizar tasa", width="stretch"):
                 _actualizar_config("tasa_usd", nuevo_tasa)
                 st.success(f"✅ Tasa actualizada a ${nuevo_tasa:,.0f}")
 
         with col2:
             nuevo_umbral = st.number_input("📦 Umbral quiebre (unidades)", value=10, step=1)
-            if st.button("Actualizar umbral", use_container_width=True):
+            if st.button("Actualizar umbral", width="stretch"):
                 _actualizar_config("umbral_quiebre", nuevo_umbral)
                 st.success(f"✅ Umbral actualizado a {nuevo_umbral} uds")
 

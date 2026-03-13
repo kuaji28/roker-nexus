@@ -340,7 +340,7 @@ with st.sidebar:
         if st.button(
             label,
             key=f"nav_{key}",
-            use_container_width=True,
+            width="stretch",
             type="primary" if activo else "secondary",
         ):
             st.session_state.pagina = key

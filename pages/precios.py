@@ -99,7 +99,7 @@ def render():
                     "codigo", "descripcion", "marca", "stock",
                     "lista_1", "lista_1_ars", "lista_4", "lista_4_ars", "dif_usd"
                 ]],
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
                 column_config={
                     "codigo": st.column_config.TextColumn("Código"),
@@ -188,7 +188,7 @@ def render():
 
             st.dataframe(
                 df_clavos,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
                 column_config={
                     "stock": st.column_config.NumberColumn("Stock", format="%d"),

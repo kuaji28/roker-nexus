@@ -69,10 +69,10 @@ def render():
             # Botones de acción rápida
             col_a, col_b, col_c = st.columns([2, 2, 4])
             with col_a:
-                if st.button("📤 Exportar Excel", use_container_width=True):
+                if st.button("📤 Exportar Excel", width="stretch"):
                     _exportar_excel(df_q, "quiebres")
             with col_b:
-                if st.button("🤖 Analizar con IA", use_container_width=True):
+                if st.button("🤖 Analizar con IA", width="stretch"):
                     st.session_state["analizar_quiebres"] = True
 
             # Tabla principal
@@ -87,7 +87,7 @@ def render():
 
             st.dataframe(
                 df_show,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
                 column_config={
                     "🚦": st.column_config.TextColumn("", width="small"),
@@ -180,7 +180,7 @@ def render():
                 motivo_neg = st.text_input("Motivo (opcional)", key="input_negro_mot")
             with col3:
                 st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("Agregar ⛔", use_container_width=True):
+                if st.button("Agregar ⛔", width="stretch"):
                     if codigo_neg:
                         if agregar_a_lista_negra(codigo_neg.strip(), motivo_neg):
                             st.success(f"✅ {codigo_neg} agregado a lista negra")
@@ -271,7 +271,7 @@ def _ficha_investigacion(codigo: str):
             height=200, margin=dict(l=0,r=0,t=10,b=30),
             legend=dict(orientation="h", y=-0.4, font_size=10),
         )
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     else:
         st.info("Sin historial de stock para este código.")
 

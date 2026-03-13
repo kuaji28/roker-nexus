@@ -57,7 +57,7 @@ def render():
                 index=0,
             )
 
-            if st.button("⚡ Generar sugerencias", use_container_width=True, type="primary"):
+            if st.button("⚡ Generar sugerencias", width="stretch", type="primary"):
                 st.session_state["generar_lote"] = {
                     "nombre": nombre_lote,
                     "proveedor": proveedor,
@@ -99,7 +99,7 @@ def render():
 
                     df_edit = st.data_editor(
                         df_sug[cols_show].copy(),
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                         column_config={
                             "codigo": st.column_config.TextColumn("Código"),
@@ -114,11 +114,11 @@ def render():
 
                     col_save, col_exp, _ = st.columns([2, 2, 4])
                     with col_save:
-                        if st.button("💾 Guardar lote", use_container_width=True):
+                        if st.button("💾 Guardar lote", width="stretch"):
                             _guardar_lote(config, df_edit)
                             st.success("✅ Lote guardado")
                     with col_exp:
-                        if st.button("📤 Exportar Excel", use_container_width=True):
+                        if st.button("📤 Exportar Excel", width="stretch"):
                             _exportar_lote_excel(df_edit, config["nombre"])
             else:
                 st.markdown("""
@@ -198,7 +198,7 @@ def render():
             df_op["venta_perdida_usd"] = df_op["demanda_promedio"] * df_op["costo_reposicion"]
             total_perdido = df_op["venta_perdida_usd"].sum()
             st.error(f"💸 Oportunidad perdida estimada: **{fmt_usd(total_perdido)}/mes** en {len(df_op)} artículos")
-            st.dataframe(df_op, use_container_width=True, hide_index=True)
+            st.dataframe(df_op, width="stretch", hide_index=True)
 
 
 def _card_lote(row):

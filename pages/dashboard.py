@@ -80,7 +80,7 @@ def render():
 
             st.dataframe(
                 df_show,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
                 column_config={
                     "🚦": st.column_config.TextColumn("", width="small"),
@@ -114,22 +114,22 @@ def render():
     if df_log.empty:
         st.info("No hay importaciones registradas. Cargá tu primer archivo en 📥 Cargar Archivos.")
     else:
-        st.dataframe(df_log, use_container_width=True, hide_index=True)
+        st.dataframe(df_log, width="stretch", hide_index=True)
 
 
 def _grafico_depositos():
     try:
         df = query_to_df("""
-            SELECT deposito,
+            SELECT s.deposito,
                    COUNT(*) as articulos,
-                   SUM(CASE WHEN stock=0 THEN 1 ELSE 0 END) as sin_stock,
-                   SUM(CASE WHEN stock>0 AND stock<stock_minimo THEN 1 ELSE 0 END) as bajo_min
+                   SUM(CASE WHEN s.stock=0 THEN 1 ELSE 0 END) as sin_stock,
+                   SUM(CASE WHEN s.stock>0 AND s.stock<s.stock_minimo THEN 1 ELSE 0 END) as bajo_min
             FROM stock_snapshots s
             JOIN (
                 SELECT codigo, deposito, MAX(fecha) as mf
                 FROM stock_snapshots GROUP BY codigo, deposito
             ) latest ON s.codigo=latest.codigo AND s.deposito=latest.deposito AND s.fecha=latest.mf
-            GROUP BY deposito
+            GROUP BY s.deposito
         """)
     except Exception:
         df = pd.DataFrame()
@@ -157,7 +157,7 @@ def _grafico_depositos():
         xaxis=dict(gridcolor="rgba(255,255,255,0.05)"),
         yaxis=dict(gridcolor="rgba(255,255,255,0.05)"),
     )
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
 
 
 def _panel_horarios():
