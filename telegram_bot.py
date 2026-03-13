@@ -48,20 +48,40 @@ def auth_required(func):
 # ── /start ────────────────────────────────────────────────────
 @auth_required
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _enviar_menu_principal(update.message)
+
+
+async def _enviar_menu_principal(msg, edit=False):
+    """Envía o edita el menú principal con botones."""
+    nombre = msg.chat.first_name if hasattr(msg.chat, 'first_name') and msg.chat.first_name else "Sergio"
     texto = (
-        "⚡ *ROKER NEXUS* — Bot activo\n\n"
-        "Comandos disponibles:\n"
-        "/stock `[código]` — Stock en todos los depósitos\n"
-        "/precio `[código]` — Precios Lista 1 y ML\n"
-        "/quiebres — Top 10 quiebres urgentes\n"
-        "/sinstock — Lista completa sin stock\n"
-        "/transito — Pedidos en tránsito\n"
-        "/negra `[código]` — Agregar a lista negra\n"
-        "/config `[clave] [valor]` — Actualizar configuración\n"
-        "/resumen — Estado ejecutivo del sistema\n"
-        "/ia `[consulta]` — Preguntarle a Claude\n"
+        f"⚡ *ROKER NEXUS*\n"
+        f"Hola {nombre}, ¿qué necesitás?\n\n"
+        f"_Podés tocar un botón o escribir directamente._"
     )
-    await update.message.reply_text(texto, parse_mode="Markdown")
+    keyboard = [
+        [
+            InlineKeyboardButton("📦 Stock",       callback_data="menu_stock"),
+            InlineKeyboardButton("💰 Precio",      callback_data="menu_precio"),
+        ],
+        [
+            InlineKeyboardButton("🔴 Quiebres",    callback_data="menu_quiebres"),
+            InlineKeyboardButton("🚚 Tránsito",    callback_data="menu_transito"),
+        ],
+        [
+            InlineKeyboardButton("⛔ Lista negra", callback_data="menu_negra"),
+            InlineKeyboardButton("📊 Resumen",     callback_data="menu_resumen"),
+        ],
+        [
+            InlineKeyboardButton("💵 Tipo de cambio", callback_data="menu_dolar"),
+            InlineKeyboardButton("🤖 Preguntarle a IA", callback_data="menu_ia"),
+        ],
+    ]
+    markup = InlineKeyboardMarkup(keyboard)
+    if edit:
+        await msg.edit_text(texto, parse_mode="Markdown", reply_markup=markup)
+    else:
+        await msg.reply_text(texto, parse_mode="Markdown", reply_markup=markup)
 
 
 # ── /stock ────────────────────────────────────────────────────
@@ -616,18 +636,69 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 lineas.append(f"• `{cod}` {desc or ''}\n  {int(cant)} uds | {prov or '?'} | eta {fecha or '?'}")
             await query.message.edit_text("\n".join(lineas), parse_mode="Markdown")
 
-    elif data == "menu_volver":
+    # ── Opciones de un artículo específico (desde lista múltiple) ──
+    elif data.startswith("art_opciones_"):
+        cod = data.replace("art_opciones_", "")
+        resultados = _buscar_articulos(cod)
+        desc = resultados[0][1] if resultados else cod
         keyboard = [
-            [InlineKeyboardButton("📊 Ver quiebres",      callback_data="menu_quiebres"),
-             InlineKeyboardButton("📦 Stock rápido",      callback_data="menu_stock")],
-            [InlineKeyboardButton("💵 Cambiar dólar",     callback_data="menu_dolar"),
-             InlineKeyboardButton("💱 Cambiar RMB",       callback_data="menu_rmb")],
-            [InlineKeyboardButton("⚡ Resumen del día",   callback_data="menu_resumen"),
-             InlineKeyboardButton("🔴 Lista negra",       callback_data="menu_negra")],
-            [InlineKeyboardButton("🛒 Pedidos en tránsito", callback_data="menu_transito")],
+            [
+                InlineKeyboardButton("📦 Ver stock",      callback_data=f"stock_cod_{cod}"),
+                InlineKeyboardButton("💰 Ver precio",     callback_data=f"precio_cod_{cod}"),
+            ],
+            [
+                InlineKeyboardButton("📦 Stock San José", callback_data=f"stock_dep_{cod}_SAN_JOSE"),
+                InlineKeyboardButton("📦 Stock Larrea",   callback_data=f"stock_dep_{cod}_LARREA"),
+            ],
+            [
+                InlineKeyboardButton("⛔ Lista negra",    callback_data=f"negra_add_{cod}"),
+                InlineKeyboardButton("🔙 Volver",         callback_data="menu_volver"),
+            ],
         ]
-        await query.message.edit_text("⚡ *Roker Nexus* — ¿Qué necesitás?", parse_mode="Markdown",
+        await query.message.edit_text(
+            f"📱 *{desc}*\n`{cod}`\n\n¿Qué querés saber?",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+    # ── Stock de un depósito específico ──
+    elif data.startswith("stock_dep_"):
+        partes = data.replace("stock_dep_", "").rsplit("_", 1)
+        if len(partes) == 2:
+            cod, dep = partes[0], partes[1]
+            dep_real = dep.replace("_", " ")
+        else:
+            cod, dep_real = partes[0], "TODOS"
+        texto_resp = _stock_texto(cod, dep_real if dep_real != "TODOS" else None)
+        keyboard = [
+            [
+                InlineKeyboardButton("💰 Ver precio", callback_data=f"precio_cod_{cod}"),
+                InlineKeyboardButton("🔙 Menú",       callback_data="menu_volver"),
+            ]
+        ]
+        await query.message.edit_text(texto_resp, parse_mode="Markdown",
                                        reply_markup=InlineKeyboardMarkup(keyboard))
+
+    # ── Menu precio ──
+    elif data == "menu_precio":
+        _set_estado(query.from_user.id, "buscar_precio")
+        await query.message.edit_text(
+            "💰 *Buscar precio*\n\nEscribí el nombre o código del artículo:",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")]])
+        )
+
+    # ── Menu IA ──
+    elif data == "menu_ia":
+        _set_estado(query.from_user.id, "ia_consulta")
+        await query.message.edit_text(
+            "🤖 *Asistente IA*\n\nEscribí tu consulta y Claude te responde:",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")]])
+        )
+
+    elif data == "menu_volver":
+        await _enviar_menu_principal(query.message, edit=True)
 
     # ── CONFIG desde botones ──
     elif data == "cfg_tasa_usd":
@@ -772,22 +843,21 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @auth_required
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto = update.message.text.strip()
+    texto_low = texto.lower()
     user_id = update.effective_user.id
     estado = _get_estado(user_id)
 
-    # ── Si el bot está esperando un valor de config ──
+    # ── Estados de espera ──
     if estado.get("esperando") in ("tasa_usd", "umbral", "tope_lote1", "rmb"):
         clave = estado["esperando"]
-        # Limpiar el texto: sacar $, puntos de miles, comas como separador de miles
         texto_limpio = texto.replace("$", "").replace(",", "").replace(" ", "")
-        # Si usan coma decimal (ej: 1200,50) → punto
         if texto_limpio.count(".") > 1:
             texto_limpio = texto_limpio.replace(".", "")
         try:
             valor = float(texto_limpio)
         except ValueError:
             await update.message.reply_text(
-                "⚠️ Eso no parece un número válido.\nEscribí solo el valor, por ejemplo: *1250* o *1250.50*",
+                "⚠️ Número inválido. Ejemplo: *1250* o *1250.50*",
                 parse_mode="Markdown"
             )
             return
@@ -795,7 +865,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _guardar_config(update.message, clave, valor)
         return
 
-    # ── Si está esperando un artículo para buscar ──
     if estado.get("esperando") == "buscar_stock":
         _clear_estado(user_id)
         resultados = _buscar_articulos(texto)
@@ -808,10 +877,103 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _responder_busqueda_precio(update.message, resultados, texto)
         return
 
-    # ── Texto libre → IA ──
-    from modules.ia_engine import motor_ia
-    respuesta = motor_ia.consultar(texto)
-    await update.message.reply_text(respuesta[:4000])
+    if estado.get("esperando") == "buscar_articulo":
+        _clear_estado(user_id)
+        resultados = _buscar_articulos(texto)
+        await _responder_busqueda_opciones(update.message, resultados, texto)
+        return
+
+    if estado.get("esperando") == "ia_consulta":
+        _clear_estado(user_id)
+        await update.message.reply_text("🤖 Consultando a Claude...")
+        from modules.ia_engine import motor_ia
+        respuesta = motor_ia.consultar(texto)
+        keyboard = [[InlineKeyboardButton("🔙 Menú principal", callback_data="menu_volver")]]
+        await update.message.reply_text(respuesta[:4000], reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    # ── Saludos → menú principal ──
+    SALUDOS = {"hola", "hola!", "buenas", "buen día", "buenos días", "buenas tardes",
+               "buenas noches", "hey", "hi", "menu", "menú", "start", "inicio", "ayuda", "help"}
+    if texto_low in SALUDOS or any(s in texto_low for s in ["hola", "buenas", "buen d"]):
+        await _enviar_menu_principal(update.message)
+        return
+
+    # ── Detectar "stock [término]" o "precio [término]" escritos directo ──
+    for prefijo in ["stock ", "/stock "]:
+        if texto_low.startswith(prefijo):
+            termino = texto[len(prefijo):].strip()
+            resultados = _buscar_articulos(termino)
+            await _responder_busqueda_stock(update.message, resultados, termino)
+            return
+
+    for prefijo in ["precio ", "/precio "]:
+        if texto_low.startswith(prefijo):
+            termino = texto[len(prefijo):].strip()
+            resultados = _buscar_articulos(termino)
+            await _responder_busqueda_precio(update.message, resultados, termino)
+            return
+
+    # ── Cualquier otro texto → preguntar qué quiere hacer con ese artículo ──
+    resultados = _buscar_articulos(texto)
+    if resultados:
+        await _responder_busqueda_opciones(update.message, resultados, texto)
+    else:
+        # No encontró nada → ofrecer menú o IA
+        keyboard = [
+            [InlineKeyboardButton("🤖 Preguntarle a la IA", callback_data="menu_ia")],
+            [InlineKeyboardButton("📋 Ver menú completo",   callback_data="menu_volver")],
+        ]
+        await update.message.reply_text(
+            f"🔍 No encontré *{texto}* en el sistema.\n\n¿Qué querés hacer?",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+
+async def _responder_busqueda_opciones(msg, resultados: list, termino: str):
+    """Cuando el usuario escribe un artículo sin comando — pregunta qué quiere saber."""
+    if not resultados:
+        await msg.reply_text(f"🔍 No encontré *{termino}*.", parse_mode="Markdown")
+        return
+
+    if len(resultados) == 1:
+        cod, desc = resultados[0]
+        # Ofrecer opciones para ese artículo específico
+        keyboard = [
+            [
+                InlineKeyboardButton("📦 Ver stock",      callback_data=f"stock_cod_{cod}"),
+                InlineKeyboardButton("💰 Ver precio",     callback_data=f"precio_cod_{cod}"),
+            ],
+            [
+                InlineKeyboardButton("📦 Stock San José", callback_data=f"stock_dep_{cod}_SAN_JOSE"),
+                InlineKeyboardButton("📦 Stock Larrea",   callback_data=f"stock_dep_{cod}_LARREA"),
+            ],
+            [
+                InlineKeyboardButton("⛔ Lista negra",    callback_data=f"negra_add_{cod}"),
+                InlineKeyboardButton("❌ Cancelar",       callback_data="cancelar"),
+            ],
+        ]
+        await msg.reply_text(
+            f"📱 *{desc}*\n`{cod}`\n\n¿Qué querés saber?",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    else:
+        # Múltiples resultados → elegir artículo primero
+        lineas = [f"🔍 Encontré *{len(resultados)}* artículos para _{termino}_:\n"]
+        keyboard = []
+        for cod, desc in resultados[:8]:
+            desc_corta = desc[:35] + "…" if len(desc) > 35 else desc
+            keyboard.append([InlineKeyboardButton(
+                f"{desc_corta} ({cod})", callback_data=f"art_opciones_{cod}"
+            )])
+        keyboard.append([InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")])
+        await msg.reply_text(
+            "\n".join(lineas) + "Seleccioná el artículo:",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
 
 
 
