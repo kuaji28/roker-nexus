@@ -636,6 +636,13 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 lineas.append(f"• `{cod}` {desc or ''}\n  {int(cant)} uds | {prov or '?'} | eta {fecha or '?'}")
             await query.message.edit_text("\n".join(lineas), parse_mode="Markdown")
 
+    # ── Rastrear pedido/tránsito ──
+    elif data.startswith("pedido_cod_"):
+        cod = data.replace("pedido_cod_", "")
+        resultados = await _buscar_articulos(cod)
+        desc = resultados[0][1] if resultados else cod
+        await _mostrar_pedido_codigo(query.message, cod, desc or "")
+
     # ── Opciones de un artículo específico (desde lista múltiple) ──
     elif data.startswith("art_opciones_"):
         cod = data.replace("art_opciones_", "")
@@ -883,6 +890,26 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _responder_busqueda_opciones(update.message, resultados, texto)
         return
 
+    if estado.get("esperando") == "buscar_pedido":
+        _clear_estado(user_id)
+        resultados = await _buscar_articulos(texto)
+        if not resultados:
+            await update.message.reply_text(f"❓ No encontré *{texto}*.", parse_mode="Markdown")
+            return
+        if len(resultados) == 1:
+            await _mostrar_pedido_codigo(update.message, resultados[0][0], resultados[0][1] or "")
+        else:
+            keyboard = [[InlineKeyboardButton(
+                f"{(d or c)[:35]} ({c})", callback_data=f"pedido_cod_{c}"
+            )] for c, d, *_ in resultados[:8]]
+            keyboard.append([InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")])
+            await update.message.reply_text(
+                f"🔍 *{len(resultados)}* artículos. ¿Cuál?",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        return
+
     if estado.get("esperando") == "ia_consulta":
         _clear_estado(user_id)
         await update.message.reply_text("🤖 Consultando a Claude...")
@@ -931,6 +958,118 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+
+async def _responder_busqueda_stock(msg, resultados: list, termino: str):
+    """Muestra stock del artículo encontrado o lista para elegir."""
+    if not resultados:
+        await msg.reply_text(f"❓ No encontré *{termino}*.", parse_mode="Markdown")
+        return
+    if len(resultados) == 1:
+        await _mostrar_stock_codigo(msg, resultados[0][0])
+        return
+    keyboard = []
+    for cod, desc, *_ in resultados[:8]:
+        desc_c = desc[:35] + "…" if len(desc) > 35 else desc
+        keyboard.append([InlineKeyboardButton(f"{desc_c} ({cod})", callback_data=f"stock_cod_{cod}")])
+    keyboard.append([InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")])
+    await msg.reply_text(
+        f"🔍 *{len(resultados)}* artículos encontrados. ¿Cuál?",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+async def _responder_busqueda_precio(msg, resultados: list, termino: str):
+    """Muestra precio del artículo encontrado o lista para elegir."""
+    if not resultados:
+        await msg.reply_text(f"❓ No encontré *{termino}*.", parse_mode="Markdown")
+        return
+    if len(resultados) == 1:
+        await _mostrar_precio_codigo(msg, resultados[0][0])
+        return
+    keyboard = []
+    for cod, desc, *_ in resultados[:8]:
+        desc_c = desc[:35] + "…" if len(desc) > 35 else desc
+        keyboard.append([InlineKeyboardButton(f"{desc_c} ({cod})", callback_data=f"precio_cod_{cod}")])
+    keyboard.append([InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")])
+    await msg.reply_text(
+        f"🔍 *{len(resultados)}* artículos. ¿Cuál querés ver?",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+async def _buscar_en_transito_pedido(codigo: str) -> str:
+    """
+    Busca si un artículo está en tránsito o pedido.
+    Retorna texto con archivo origen, hoja y renglón para ubicarlo rápido.
+    """
+    import sqlite3 as _sq
+    conn = _sq.connect("roker_nexus.db")
+
+    lineas = []
+
+    # ── Buscar en tránsito ──
+    cur = conn.execute("""
+        SELECT p.codigo, a.descripcion, p.cantidad, p.proveedor,
+               p.fecha_pedido, p.fecha_estimada, p.archivo_origen,
+               p.hoja_origen, p.renglon_origen, p.estado, p.notas
+        FROM pedidos_transito p
+        LEFT JOIN articulos a ON p.codigo = a.codigo
+        WHERE UPPER(p.codigo) = UPPER(?)
+        ORDER BY p.fecha_pedido DESC LIMIT 5
+    """, (codigo,))
+    rows_transito = cur.fetchall()
+
+    if rows_transito:
+        lineas.append("🚚 *EN TRÁNSITO:*")
+        for row in rows_transito:
+            cod, desc, cant, prov, f_ped, f_eta, archivo, hoja, renglon, estado, notas = row
+            estado_emoji = {"en_transito": "🚢", "en_aduana": "🛃", "entregado": "✅"}.get(estado, "📦")
+            lineas.append(
+                f"{estado_emoji} *{int(cant or 0)} uds* — {prov or '?'}"
+                f"   📅 Pedido: {f_ped or '?'} | ETA: {f_eta or '?'}"
+            )
+            if archivo:
+                lineas.append(f"   📄 Archivo: `{archivo}`")
+            if hoja:
+                lineas.append(f"   📋 Hoja: *{hoja}*" + (f" — Renglón *{renglon}*" if renglon else ""))
+            if notas:
+                lineas.append(f"   💬 {notas}")
+
+    # ── Buscar en cotizaciones/pedidos ──
+    cur2 = conn.execute("""
+        SELECT ci.codigo, ci.descripcion, ci.cantidad_caja, ci.precio_usd,
+               c.proveedor, c.invoice_id, c.fecha, c.archivo_origen, c.hoja_origen
+        FROM cotizacion_items ci
+        JOIN cotizaciones c ON ci.cotizacion_id = c.id
+        WHERE UPPER(ci.codigo) = UPPER(?)
+        ORDER BY c.fecha DESC LIMIT 3
+    """, (codigo,))
+    rows_cot = cur2.fetchall()
+
+    if rows_cot:
+        if lineas:
+            lineas.append("")
+        lineas.append("📋 *EN COTIZACIONES:*")
+        for row in rows_cot:
+            cod, desc, cant, precio, prov, invoice, fecha, archivo, hoja = row
+            lineas.append(
+                f"• {prov or '?'} — Invoice *{invoice or '?'}* ({fecha or '?'})"
+                f"   Cant: {int(cant or 0)} uds | USD {precio or 0:.2f}"
+            )
+            if archivo:
+                lineas.append(f"   📄 `{archivo}`")
+            if hoja:
+                lineas.append(f"   📋 Hoja: *{hoja}*")
+
+    conn.close()
+
+    if not lineas:
+        return None
+    return "\n".join(lineas)
+
+
 async def _responder_busqueda_opciones(msg, resultados: list, termino: str):
     """Cuando el usuario escribe un artículo sin comando — pregunta qué quiere saber."""
     if not resultados:
@@ -946,8 +1085,8 @@ async def _responder_busqueda_opciones(msg, resultados: list, termino: str):
                 InlineKeyboardButton("💰 Ver precio",     callback_data=f"precio_cod_{cod}"),
             ],
             [
-                InlineKeyboardButton("📦 Stock San José", callback_data=f"stock_dep_{cod}_SAN_JOSE"),
-                InlineKeyboardButton("📦 Stock Larrea",   callback_data=f"stock_dep_{cod}_LARREA"),
+                InlineKeyboardButton("🚚 Tránsito/Pedido", callback_data=f"pedido_cod_{cod}"),
+                InlineKeyboardButton("📦 Stock San José",  callback_data=f"stock_dep_{cod}_SAN_JOSE"),
             ],
             [
                 InlineKeyboardButton("⛔ Lista negra",    callback_data=f"negra_add_{cod}"),
@@ -1006,6 +1145,61 @@ def _get_tasa() -> float:
         return MONEDA_USD_ARS
 
 # ── Main ──────────────────────────────────────────────────────
+
+# ── /pedido — buscar si está en tránsito o pedido ─────────────
+@auth_required
+async def cmd_pedido(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    args = context.args
+    if not args:
+        _set_estado(update.effective_user.id, "buscar_pedido")
+        await update.message.reply_text(
+            "🚚 *¿Qué artículo querés rastrear?*\n\nEscribí el nombre o código:",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")]])
+        )
+        return
+    query = " ".join(args).strip()
+    resultados = await _buscar_articulos(query)
+    if not resultados:
+        await update.message.reply_text(f"❓ No encontré *{query}*.", parse_mode="Markdown")
+        return
+    if len(resultados) == 1:
+        await _mostrar_pedido_codigo(update.message, resultados[0][0], resultados[0][1])
+    else:
+        keyboard = []
+        for cod, desc, *_ in resultados[:8]:
+            desc_c = desc[:35] + "…" if len(desc) > 35 else desc
+            keyboard.append([InlineKeyboardButton(f"{desc_c} ({cod})", callback_data=f"pedido_cod_{cod}")])
+        keyboard.append([InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")])
+        await update.message.reply_text(
+            f"🔍 *{len(resultados)}* artículos. ¿Cuál rastreamos?",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+
+async def _mostrar_pedido_codigo(message, codigo: str, desc: str = ""):
+    await message.reply_text("🔍 Buscando...")
+    resultado = await _buscar_en_transito_pedido(codigo)
+    keyboard = [
+        [
+            InlineKeyboardButton("📦 Ver stock",  callback_data=f"stock_cod_{codigo}"),
+            InlineKeyboardButton("💰 Ver precio", callback_data=f"precio_cod_{codigo}"),
+        ],
+        [InlineKeyboardButton("🔙 Menú", callback_data="menu_volver")]
+    ]
+    if resultado:
+        texto = f"📱 *{desc or codigo}* — `{codigo}`\n\n{resultado}"
+    else:
+        texto = (
+            f"📱 *{desc or codigo}* — `{codigo}`\n\n"
+            f"⚪ Sin registros de tránsito ni cotizaciones.\n"
+            f"_No hay pedidos activos para este artículo._"
+        )
+    await message.reply_text(texto, parse_mode="Markdown",
+                              reply_markup=InlineKeyboardMarkup(keyboard))
+
+
 def main():
     if not TELEGRAM_TOKEN:
         print("⚠️  TELEGRAM_TOKEN no configurado en .env")
@@ -1021,6 +1215,7 @@ def main():
     app.add_handler(CommandHandler("quiebres",  cmd_quiebres))
     app.add_handler(CommandHandler("sinstock",  cmd_sinstock))
     app.add_handler(CommandHandler("transito",  cmd_transito))
+    app.add_handler(CommandHandler("pedido",    cmd_pedido))
     app.add_handler(CommandHandler("negra",     cmd_negra))
     app.add_handler(CommandHandler("config",    cmd_config))
     app.add_handler(CommandHandler("resumen",   cmd_resumen))
