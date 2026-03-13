@@ -21,10 +21,10 @@ st.markdown("""
 
 /* ── One UI 8 — Variables ── */
 :root {
-    --bg:        #0C0C0E;
-    --surface:   #1C1C1E;
-    --surface2:  #2C2C2E;
-    --surface3:  #3A3A3C;
+    --bg:        #1C1C1E;
+    --surface:   #2C2C2E;
+    --surface2:  #3A3A3C;
+    --surface3:  #48484A;
     --border:    rgba(255,255,255,0.06);
     --border2:   rgba(255,255,255,0.10);
     --text:      #F5F5F7;
@@ -44,6 +44,29 @@ st.markdown("""
     --r-md:  18px;
     --r-lg:  22px;
     --r-xl:  28px;
+}
+
+/* ── Botón abrir/cerrar sidebar — MUY VISIBLE ── */
+[data-testid="collapsedControl"] {
+    background: var(--blue2) !important;
+    border-radius: 0 12px 12px 0 !important;
+    width: 24px !important;
+    top: 50% !important;
+    box-shadow: 2px 0 12px rgba(10,132,255,0.4) !important;
+}
+[data-testid="collapsedControl"]:hover {
+    background: var(--blue) !important;
+    width: 28px !important;
+}
+[data-testid="collapsedControl"] svg {
+    fill: white !important;
+}
+
+/* ── Botón colapsar dentro del sidebar ── */
+[data-testid="stSidebarCollapseButton"] button {
+    background: var(--surface2) !important;
+    border-radius: 10px !important;
+    color: var(--text) !important;
 }
 
 /* ── Base ── */
