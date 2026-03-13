@@ -443,3 +443,50 @@ def get_resumen_stats() -> dict:
                 "ultima_importacion": ultima}
     except Exception:
         return {}
+
+
+def get_lista_negra() -> pd.DataFrame:
+    """Retorna todos los artículos en lista negra."""
+    try:
+        conn = get_sqlite()
+        df = pd.read_sql_query(
+            "SELECT codigo, descripcion, motivo, agregado_en FROM articulos WHERE en_lista_negra=1 ORDER BY agregado_en DESC",
+            conn
+        )
+        conn.close()
+        return df
+    except Exception:
+        return pd.DataFrame(columns=["codigo", "descripcion", "motivo", "agregado_en"])
+
+
+def agregar_a_lista_negra(codigo: str, motivo: str = "") -> bool:
+    """Agrega un artículo a lista negra."""
+    try:
+        conn = get_sqlite()
+        from datetime import datetime
+        conn.execute("""
+            INSERT INTO articulos (codigo, en_lista_negra, motivo, agregado_en)
+            VALUES (?, 1, ?, ?)
+            ON CONFLICT(codigo) DO UPDATE SET
+                en_lista_negra=1, motivo=excluded.motivo, agregado_en=excluded.agregado_en
+        """, (codigo.strip().upper(), motivo, datetime.now().isoformat()))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception:
+        return False
+
+
+def quitar_de_lista_negra(codigo: str) -> bool:
+    """Quita un artículo de lista negra."""
+    try:
+        conn = get_sqlite()
+        conn.execute(
+            "UPDATE articulos SET en_lista_negra=0 WHERE codigo=?",
+            (codigo.strip().upper(),)
+        )
+        conn.commit()
+        conn.close()
+        return True
+    except Exception:
+        return False
