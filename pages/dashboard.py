@@ -118,18 +118,21 @@ def render():
 
 
 def _grafico_depositos():
-    df = query_to_df("""
-        SELECT deposito,
-               COUNT(*) as articulos,
-               SUM(CASE WHEN stock=0 THEN 1 ELSE 0 END) as sin_stock,
-               SUM(CASE WHEN stock>0 AND stock<stock_minimo THEN 1 ELSE 0 END) as bajo_min
-        FROM stock_snapshots s
-        JOIN (
-            SELECT codigo, deposito, MAX(fecha) as mf
-            FROM stock_snapshots GROUP BY codigo, deposito
-        ) latest ON s.codigo=latest.codigo AND s.deposito=latest.deposito AND s.fecha=latest.mf
-        GROUP BY deposito
-    """)
+    try:
+        df = query_to_df("""
+            SELECT deposito,
+                   COUNT(*) as articulos,
+                   SUM(CASE WHEN stock=0 THEN 1 ELSE 0 END) as sin_stock,
+                   SUM(CASE WHEN stock>0 AND stock<stock_minimo THEN 1 ELSE 0 END) as bajo_min
+            FROM stock_snapshots s
+            JOIN (
+                SELECT codigo, deposito, MAX(fecha) as mf
+                FROM stock_snapshots GROUP BY codigo, deposito
+            ) latest ON s.codigo=latest.codigo AND s.deposito=latest.deposito AND s.fecha=latest.mf
+            GROUP BY deposito
+        """)
+    except Exception:
+        df = pd.DataFrame()
     if df.empty:
         st.caption("Sin datos de stock. Cargá archivos primero.")
         return
