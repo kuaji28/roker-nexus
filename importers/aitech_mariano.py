@@ -18,18 +18,28 @@ class ImportadorAITECH(ImportadorBase):
     COLUMNAS_REQUERIDAS = []
 
     def _transformar(self, df: pd.DataFrame, uploaded_file=None) -> pd.DataFrame:
+        # Deduplicar columnas siempre
+        df = df.loc[:, ~df.columns.duplicated()].copy()
+        df.columns = [str(c).strip() for c in df.columns]
+
         nombre = getattr(uploaded_file, "name", "") if uploaded_file else ""
         invoice_id = self._extraer_invoice(nombre)
-
         col_map = self._mapear_columnas(df)
 
-        df_out = pd.DataFrame()
-        df_out["codigo"]      = df[col_map["codigo"]].astype(str).str.strip() if col_map.get("codigo") else ""
-        df_out["descripcion"] = df.get(col_map.get("descripcion"), pd.Series(dtype=str))
-        precio_raw = df[col_map["precio"]] if col_map.get("precio") and col_map["precio"] in df.columns else pd.Series([0]*len(df), index=df.index)
-        cant_raw   = df[col_map["cantidad"]] if col_map.get("cantidad") and col_map["cantidad"] in df.columns else pd.Series([1]*len(df), index=df.index)
-        df_out["precio_usd"]    = pd.to_numeric(precio_raw, errors="coerce").fillna(0)
-        df_out["cantidad_caja"] = pd.to_numeric(cant_raw,   errors="coerce").fillna(1).astype(int)
+        def safe_serie(key, default):
+            col = col_map.get(key)
+            if col and col in df.columns:
+                s = df[col]
+                if isinstance(s, pd.DataFrame):
+                    s = s.iloc[:, 0]
+                return s
+            return pd.Series([default] * len(df), index=df.index)
+
+        df_out = pd.DataFrame(index=df.index)
+        df_out["codigo"]        = safe_serie("codigo", "").astype(str).str.strip()
+        df_out["descripcion"]   = safe_serie("descripcion", "").astype(str).str.strip()
+        df_out["precio_usd"]    = pd.to_numeric(safe_serie("precio", 0),   errors="coerce").fillna(0)
+        df_out["cantidad_caja"] = pd.to_numeric(safe_serie("cantidad", 1), errors="coerce").fillna(1).astype(int)
 
         # Todos los códigos numéricos en AI-TECH = mecánicos
         df_out["tipo"] = df_out["codigo"].apply(tipo_codigo)

@@ -93,6 +93,7 @@ class ImportadorOptimizacion(ImportadorBase):
         }
 
     def _guardar(self, df: pd.DataFrame) -> int:
+        import sqlite3
         conn = sqlite3.connect("roker_nexus.db")
         # Borrar todos los codigos que vienen en el archivo (evita UNIQUE constraint)
         codigos = df["codigo"].unique().tolist()
