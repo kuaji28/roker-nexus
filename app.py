@@ -46,20 +46,36 @@ st.markdown("""
     --r-xl:  28px;
 }
 
-/* ── Botón abrir/cerrar sidebar — MUY VISIBLE ── */
+/* ── Botón abrir sidebar — centro izquierda, siempre visible ── */
 [data-testid="collapsedControl"] {
     background: var(--blue2) !important;
-    border-radius: 0 12px 12px 0 !important;
-    width: 24px !important;
-    top: 50% !important;
-    box-shadow: 2px 0 12px rgba(10,132,255,0.4) !important;
+    border-radius: 0 16px 16px 0 !important;
+    width: 28px !important;
+    min-height: 56px !important;
+    top: 45% !important;
+    position: fixed !important;
+    left: 0 !important;
+    z-index: 999999 !important;
+    box-shadow: 3px 0 16px rgba(10,132,255,0.5) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transition: width 0.2s !important;
 }
 [data-testid="collapsedControl"]:hover {
+    width: 36px !important;
     background: var(--blue) !important;
-    width: 28px !important;
 }
 [data-testid="collapsedControl"] svg {
     fill: white !important;
+    opacity: 1 !important;
+}
+/* Forzar que nunca se oculte */
+[data-testid="collapsedControl"] * {
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
 /* ── Botón colapsar dentro del sidebar ── */

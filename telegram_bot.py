@@ -28,6 +28,7 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+import functools
 
 # ── Seguridad: solo responde al chat autorizado ───────────────
 def autorizado(update: Update) -> bool:
@@ -35,6 +36,7 @@ def autorizado(update: Update) -> bool:
 
 
 def auth_required(func):
+    @functools.wraps(func)
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not autorizado(update):
             await update.message.reply_text("⛔ No autorizado.")
