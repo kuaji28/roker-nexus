@@ -57,7 +57,13 @@ class ImportadorOptimizacion(ImportadorBase):
         df_out["periodo_desde"] = None
         df_out["periodo_hasta"] = None
         df_out["dias_promedio"] = 30
-        df_out["importado_en"]  = datetime.now().isoformat()
+        # Timestamp único por fila para evitar UNIQUE constraint
+        from datetime import timedelta
+        base_ts = datetime.now()
+        df_out["importado_en"] = [
+            (base_ts + timedelta(microseconds=i)).isoformat()
+            for i in range(len(df_out))
+        ]
 
         # Filtrar filas sin código válido
         df_out = df_out[df_out["codigo"].str.len() > 2]

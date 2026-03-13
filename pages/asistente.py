@@ -53,9 +53,19 @@ def render():
                     with st.chat_message(role):
                         st.markdown(content)
 
-            # Input
-            prompt = st.chat_input("Preguntale al sistema... (Ej: ¿qué artículos necesito reponer urgente?)")
-            if prompt:
+            # Input — usamos text_input dentro de form para evitar que
+            # aparezca en el footer de otras páginas (bug de st.chat_input)
+            with st.form(key="chat_form", clear_on_submit=True):
+                col_inp, col_btn = st.columns([5, 1])
+                with col_inp:
+                    prompt = st.text_input(
+                        "Mensaje",
+                        placeholder="Preguntale al sistema... (Ej: ¿qué artículos necesito reponer?)",
+                        label_visibility="collapsed",
+                    )
+                with col_btn:
+                    enviado = st.form_submit_button("Enviar", use_container_width=True)
+            if enviado and prompt:
                 # Mostrar mensaje del usuario
                 with st.chat_message("user"):
                     st.markdown(prompt)
