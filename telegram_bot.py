@@ -623,7 +623,6 @@ def _get_tasa() -> float:
     except Exception:
         return MONEDA_USD_ARS
 
-
 # ── Main ──────────────────────────────────────────────────────
 def main():
     if not TELEGRAM_TOKEN:
@@ -646,7 +645,7 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
-    # Alerta automática 13:00 todos los días
+    # Alerta automática 13:00 Lun-Vie
     from telegram.ext import JobQueue
     job_queue = app.job_queue
     if job_queue:
@@ -655,11 +654,27 @@ def main():
         job_queue.run_daily(
             alerta_quiebres,
             time=datetime.time(13, 0, tzinfo=tz),
-            days=(0, 1, 2, 3, 4),  # Lun-Vie
+            days=(0, 1, 2, 3, 4),
         )
+        # Notificación de deploy al arrancar (3 segundos después)
+        job_queue.run_once(_notificar_deploy, when=3)
 
     print("🤖 Roker Nexus Bot iniciado. Ctrl+C para detener.")
     app.run_polling(drop_pending_updates=True)
+
+
+async def _notificar_deploy(context):
+    """Manda mensaje de Telegram cuando el bot arranca (nuevo deploy)."""
+    try:
+        from version import get_nota_deploy
+        texto = get_nota_deploy()
+        await context.bot.send_message(
+            chat_id=TELEGRAM_CHAT_ID,
+            text=texto,
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        print(f"⚠️ No se pudo notificar deploy: {e}")
 
 
 if __name__ == "__main__":
