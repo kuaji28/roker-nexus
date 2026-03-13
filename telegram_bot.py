@@ -396,28 +396,71 @@ async def cmd_negra(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# ── /config ───────────────────────────────────────────────────
+# ── Estado de conversación por usuario ───────────────────────
+# Guarda qué está esperando el bot de cada usuario
+# { user_id: { "esperando": "tasa_usd" | "umbral" | "stock_buscar" | ... } }
+_estado_usuario: dict = {}
+
+def _set_estado(user_id: int, clave: str, extra: dict = None):
+    _estado_usuario[user_id] = {"esperando": clave, **(extra or {})}
+
+def _get_estado(user_id: int) -> dict:
+    return _estado_usuario.get(user_id, {})
+
+def _clear_estado(user_id: int):
+    _estado_usuario.pop(user_id, None)
+
+
+# ── /menu — panel rápido con botones ─────────────────────────
+@auth_required
+async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("📊 Ver quiebres", callback_data="menu_quiebres"),
+         InlineKeyboardButton("📦 Stock rápido", callback_data="menu_stock")],
+        [InlineKeyboardButton("💵 Cambiar dólar", callback_data="menu_dolar"),
+         InlineKeyboardButton("💱 Cambiar RMB", callback_data="menu_rmb")],
+        [InlineKeyboardButton("⚡ Resumen del día", callback_data="menu_resumen"),
+         InlineKeyboardButton("🔴 Lista negra", callback_data="menu_negra")],
+        [InlineKeyboardButton("🛒 Pedidos en tránsito", callback_data="menu_transito")],
+    ]
+    await update.message.reply_text(
+        "⚡ *Roker Nexus* — ¿Qué necesitás?",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+# ── /config — interactivo con botones ────────────────────────
 @auth_required
 async def cmd_config(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Si viene con args directos, modo clásico
     args = context.args
-    if len(args) < 2:
-        await update.message.reply_text(
-            "Uso: /config [clave] [valor]\n\n"
-            "Claves disponibles:\n"
-            "• `tasa_usd [valor]` — Tipo de cambio\n"
-            "• `umbral_quiebre [valor]` — Umbral stock\n"
-            "• `tope_lote1 [valor]` — Tope USD Lote 1\n",
-            parse_mode="Markdown"
-        )
+    if len(args) >= 2:
+        clave = args[0].lower()
+        try:
+            valor = float(args[1])
+        except ValueError:
+            await update.message.reply_text("El valor debe ser un número.")
+            return
+        await _guardar_config(update.message, clave, valor)
         return
 
-    clave = args[0].lower()
-    try:
-        valor = float(args[1])
-    except ValueError:
-        await update.message.reply_text("El valor debe ser un número.")
-        return
+    # Sin args → mostrar botones
+    keyboard = [
+        [InlineKeyboardButton("💵 Tipo de cambio USD", callback_data="cfg_tasa_usd")],
+        [InlineKeyboardButton("🟡 Umbral de quiebre", callback_data="cfg_umbral")],
+        [InlineKeyboardButton("📦 Tope lote 1 (USD)", callback_data="cfg_tope_lote1")],
+        [InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")],
+    ]
+    await update.message.reply_text(
+        "⚙️ *Configuración* — ¿Qué querés cambiar?",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
+
+async def _guardar_config(message, clave: str, valor: float):
+    """Guarda un valor de configuración y confirma."""
     if clave == "tasa_usd":
         conn = sqlite3.connect("roker_nexus.db")
         conn.execute(
@@ -426,9 +469,25 @@ async def cmd_config(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         conn.commit()
         conn.close()
-        await update.message.reply_text(f"✅ Tasa USD/ARS actualizada a *${valor:,.0f}*", parse_mode="Markdown")
-    else:
-        await update.message.reply_text(f"Clave `{clave}` no reconocida.", parse_mode="Markdown")
+        await message.reply_text(
+            f"✅ *Dólar actualizado*\n💵 USD/ARS = *${valor:,.0f}*",
+            parse_mode="Markdown"
+        )
+    elif clave == "umbral":
+        await message.reply_text(
+            f"✅ *Umbral de quiebre actualizado*\n🟡 Stock mínimo = *{int(valor)} unidades*",
+            parse_mode="Markdown"
+        )
+    elif clave == "tope_lote1":
+        await message.reply_text(
+            f"✅ *Tope Lote 1 actualizado*\n📦 Tope = *USD {valor:,.0f}*",
+            parse_mode="Markdown"
+        )
+    elif clave == "rmb":
+        await message.reply_text(
+            f"✅ *Yuan actualizado*\n💱 RMB/ARS = *${valor:,.2f}*",
+            parse_mode="Markdown"
+        )
 
 
 # ── /resumen ──────────────────────────────────────────────────
@@ -467,10 +526,134 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data
+    user_id = query.from_user.id
 
     # ── Cancelar ──
     if data == "cancelar":
+        _clear_estado(user_id)
         await query.message.edit_text("❌ Cancelado.")
+
+    # ── MENÚ PRINCIPAL ──
+    elif data == "menu_quiebres":
+        keyboard = [[
+            InlineKeyboardButton("🏭 San José", callback_data="quiebres_dep_SAN_JOSE"),
+            InlineKeyboardButton("🏪 Larrea",   callback_data="quiebres_dep_LARREA"),
+            InlineKeyboardButton("📋 Todos",    callback_data="quiebres_dep_TODOS"),
+        ], [InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")]]
+        await query.message.edit_text("📊 *Quiebres* — ¿Qué depósito?", parse_mode="Markdown",
+                                       reply_markup=InlineKeyboardMarkup(keyboard))
+
+    elif data == "menu_stock":
+        _set_estado(user_id, "buscar_stock")
+        await query.message.edit_text("📦 *Buscar stock*\n\nEscribí el nombre o código del artículo:",
+                                       parse_mode="Markdown")
+
+    elif data == "menu_dolar":
+        _set_estado(user_id, "tasa_usd")
+        conn = sqlite3.connect("roker_nexus.db")
+        cur = conn.execute("SELECT usd_ars FROM tasas_cambio ORDER BY fecha DESC LIMIT 1")
+        row = cur.fetchone(); conn.close()
+        actual = f"${row[0]:,.0f}" if row else "no registrado"
+        await query.message.edit_text(
+            f"💵 *Tipo de cambio USD*\nValor actual: *{actual}*\n\nEscribí el nuevo valor:",
+            parse_mode="Markdown"
+        )
+
+    elif data == "menu_rmb":
+        _set_estado(user_id, "rmb")
+        await query.message.edit_text(
+            "💱 *Tipo de cambio RMB (Yuan)*\n\nEscribí el nuevo valor en ARS:",
+            parse_mode="Markdown"
+        )
+
+    elif data == "menu_resumen":
+        from database import get_resumen_stats
+        stats = get_resumen_stats()
+        texto = (
+            f"⚡ *Roker Nexus — Resumen*\n"
+            f"_{datetime.now().strftime('%d/%m/%Y %H:%M')}_\n\n"
+            f"📦 Artículos activos: *{stats.get('total_articulos',0):,}*\n"
+            f"🔴 Sin stock: *{stats.get('sin_stock',0)}*\n"
+            f"🟡 Bajo mínimo: *{stats.get('bajo_minimo',0)}*\n"
+            f"🕐 Última importación: {stats.get('ultima_importacion','—')}\n"
+        )
+        keyboard = [[InlineKeyboardButton("🔄 Actualizar", callback_data="menu_resumen"),
+                     InlineKeyboardButton("🔙 Menú", callback_data="menu_volver")]]
+        await query.message.edit_text(texto, parse_mode="Markdown",
+                                       reply_markup=InlineKeyboardMarkup(keyboard))
+
+    elif data == "menu_negra":
+        from database import get_lista_negra
+        lista = get_lista_negra()
+        if not lista:
+            await query.message.edit_text("⛔ *Lista negra* — Está vacía.", parse_mode="Markdown")
+        else:
+            lineas = ["⛔ *Lista negra actual:*\n"]
+            for cod, desc in lista[:20]:
+                lineas.append(f"• `{cod}` — {desc or 'sin descripción'}")
+            if len(lista) > 20:
+                lineas.append(f"\n_...y {len(lista)-20} más_")
+            await query.message.edit_text("\n".join(lineas), parse_mode="Markdown")
+
+    elif data == "menu_transito":
+        await query.message.edit_text("🔄 Consultando tránsito...")
+        # reusar lógica de cmd_transito
+        import sqlite3 as _sq
+        conn = _sq.connect("roker_nexus.db")
+        cur = conn.execute("""
+            SELECT p.codigo, a.descripcion, p.cantidad, p.proveedor, p.fecha_estimada
+            FROM pedidos_transito p
+            LEFT JOIN articulos a ON p.codigo=a.codigo
+            WHERE p.estado='en_transito'
+            ORDER BY p.fecha_estimada LIMIT 20
+        """)
+        rows = cur.fetchall(); conn.close()
+        if not rows:
+            await query.message.edit_text("🚚 Sin pedidos en tránsito al momento.")
+        else:
+            lineas = ["🚚 *Pedidos en tránsito:*\n"]
+            for cod, desc, cant, prov, fecha in rows:
+                lineas.append(f"• `{cod}` {desc or ''}\n  {int(cant)} uds | {prov or '?'} | eta {fecha or '?'}")
+            await query.message.edit_text("\n".join(lineas), parse_mode="Markdown")
+
+    elif data == "menu_volver":
+        keyboard = [
+            [InlineKeyboardButton("📊 Ver quiebres",      callback_data="menu_quiebres"),
+             InlineKeyboardButton("📦 Stock rápido",      callback_data="menu_stock")],
+            [InlineKeyboardButton("💵 Cambiar dólar",     callback_data="menu_dolar"),
+             InlineKeyboardButton("💱 Cambiar RMB",       callback_data="menu_rmb")],
+            [InlineKeyboardButton("⚡ Resumen del día",   callback_data="menu_resumen"),
+             InlineKeyboardButton("🔴 Lista negra",       callback_data="menu_negra")],
+            [InlineKeyboardButton("🛒 Pedidos en tránsito", callback_data="menu_transito")],
+        ]
+        await query.message.edit_text("⚡ *Roker Nexus* — ¿Qué necesitás?", parse_mode="Markdown",
+                                       reply_markup=InlineKeyboardMarkup(keyboard))
+
+    # ── CONFIG desde botones ──
+    elif data == "cfg_tasa_usd":
+        _set_estado(user_id, "tasa_usd")
+        conn = sqlite3.connect("roker_nexus.db")
+        cur = conn.execute("SELECT usd_ars FROM tasas_cambio ORDER BY fecha DESC LIMIT 1")
+        row = cur.fetchone(); conn.close()
+        actual = f"${row[0]:,.0f}" if row else "no registrado"
+        await query.message.edit_text(
+            f"💵 *Tipo de cambio USD*\nValor actual: *{actual}*\n\nEscribí el nuevo valor:",
+            parse_mode="Markdown"
+        )
+
+    elif data == "cfg_umbral":
+        _set_estado(user_id, "umbral")
+        await query.message.edit_text(
+            "🟡 *Umbral de quiebre*\n\nEscribí la cantidad mínima de stock (ej: 10):",
+            parse_mode="Markdown"
+        )
+
+    elif data == "cfg_tope_lote1":
+        _set_estado(user_id, "tope_lote1")
+        await query.message.edit_text(
+            "📦 *Tope Lote 1*\n\nEscribí el nuevo tope en USD (ej: 5000):",
+            parse_mode="Markdown"
+        )
 
     # ── Stock: selección de depósito para resumen ──
     elif data.startswith("stock_dep_"):
@@ -588,11 +771,48 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ── Mensaje de texto libre ─────────────────────────────────────
 @auth_required
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Responde mensajes de texto libres con IA."""
-    texto = update.message.text
+    texto = update.message.text.strip()
+    user_id = update.effective_user.id
+    estado = _get_estado(user_id)
+
+    # ── Si el bot está esperando un valor de config ──
+    if estado.get("esperando") in ("tasa_usd", "umbral", "tope_lote1", "rmb"):
+        clave = estado["esperando"]
+        # Limpiar el texto: sacar $, puntos de miles, comas como separador de miles
+        texto_limpio = texto.replace("$", "").replace(",", "").replace(" ", "")
+        # Si usan coma decimal (ej: 1200,50) → punto
+        if texto_limpio.count(".") > 1:
+            texto_limpio = texto_limpio.replace(".", "")
+        try:
+            valor = float(texto_limpio)
+        except ValueError:
+            await update.message.reply_text(
+                "⚠️ Eso no parece un número válido.\nEscribí solo el valor, por ejemplo: *1250* o *1250.50*",
+                parse_mode="Markdown"
+            )
+            return
+        _clear_estado(user_id)
+        await _guardar_config(update.message, clave, valor)
+        return
+
+    # ── Si está esperando un artículo para buscar ──
+    if estado.get("esperando") == "buscar_stock":
+        _clear_estado(user_id)
+        resultados = _buscar_articulos(texto)
+        await _responder_busqueda_stock(update.message, resultados, texto)
+        return
+
+    if estado.get("esperando") == "buscar_precio":
+        _clear_estado(user_id)
+        resultados = _buscar_articulos(texto)
+        await _responder_busqueda_precio(update.message, resultados, texto)
+        return
+
+    # ── Texto libre → IA ──
     from modules.ia_engine import motor_ia
     respuesta = motor_ia.consultar(texto)
     await update.message.reply_text(respuesta[:4000])
+
 
 
 # ── Alerta programada de quiebres ─────────────────────────────
@@ -633,6 +853,7 @@ def main():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
 
     app.add_handler(CommandHandler("start",     cmd_start))
+    app.add_handler(CommandHandler("menu",      cmd_menu))
     app.add_handler(CommandHandler("stock",     cmd_stock))
     app.add_handler(CommandHandler("precio",    cmd_precio))
     app.add_handler(CommandHandler("quiebres",  cmd_quiebres))
@@ -656,15 +877,34 @@ def main():
             time=datetime.time(13, 0, tzinfo=tz),
             days=(0, 1, 2, 3, 4),
         )
-        # Notificación de deploy al arrancar (3 segundos después)
+        # Notificación de deploy al arrancar
         job_queue.run_once(_notificar_deploy, when=3)
 
     print("🤖 Roker Nexus Bot iniciado. Ctrl+C para detener.")
+
+    # Notificación de arranque (backup directo, sin job_queue)
+    import threading
+    def _enviar_notif_arranque():
+        import time, requests
+        time.sleep(5)
+        try:
+            from version import get_nota_deploy
+            texto = get_nota_deploy()
+            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+            requests.post(url, json={
+                "chat_id": TELEGRAM_CHAT_ID,
+                "text": texto,
+                "parse_mode": "Markdown"
+            }, timeout=10)
+            print("✅ Notificación de deploy enviada")
+        except Exception as e:
+            print(f"⚠️ Notificación fallida: {e}")
+    threading.Thread(target=_enviar_notif_arranque, daemon=True).start()
+
     app.run_polling(drop_pending_updates=True)
 
 
 async def _notificar_deploy(context):
-    """Manda mensaje de Telegram cuando el bot arranca (nuevo deploy)."""
     try:
         from version import get_nota_deploy
         texto = get_nota_deploy()
@@ -674,7 +914,7 @@ async def _notificar_deploy(context):
             parse_mode="Markdown"
         )
     except Exception as e:
-        print(f"⚠️ No se pudo notificar deploy: {e}")
+        print(f"⚠️ No se pudo notificar deploy (job): {e}")
 
 
 if __name__ == "__main__":
