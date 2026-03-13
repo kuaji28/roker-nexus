@@ -1,12 +1,13 @@
 """
-ROKER NEXUS — App Principal
-Sistema de gestión comercial para El Celu
+ROKER NEXUS — App Principal v1.4.0
+Samsung One UI 8 Design System
 """
 import streamlit as st
-import pandas as pd
 from datetime import datetime
 
-# ── Configuración de página (debe ir primero) ─────────────────
+APP_VERSION = "v1.4.0"
+APP_BUILD   = "2026-03-13"
+
 st.set_page_config(
     page_title="Roker Nexus",
     page_icon="⚡",
@@ -14,305 +15,106 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── CSS Global — dark/light mode adaptativo ───────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Samsung+Sans:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
-
-/* ── One UI 8 — Variables ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 :root {
-    --bg:        #1C1C1E;
-    --surface:   #2C2C2E;
-    --surface2:  #3A3A3C;
-    --surface3:  #48484A;
-    --border:    rgba(255,255,255,0.06);
-    --border2:   rgba(255,255,255,0.10);
-    --text:      #F5F5F7;
-    --text2:     #98989E;
-    --text3:     #636366;
-    --blue:      #4EADFF;
-    --blue2:     #0A84FF;
-    --blue-soft: rgba(78,173,255,0.12);
-    --green:     #34C759;
-    --green-soft:rgba(52,199,89,0.12);
-    --amber:     #FF9F0A;
-    --amber-soft:rgba(255,159,10,0.12);
-    --red:       #FF453A;
-    --red-soft:  rgba(255,69,58,0.12);
-    --purple:    #BF5AF2;
-    --r-sm:  14px;
-    --r-md:  18px;
-    --r-lg:  22px;
-    --r-xl:  28px;
+    --bg:#1C1C1E; --bg2:#161618; --card:#2C2C2E; --card2:#3A3A3C; --card3:#48484A;
+    --line:rgba(255,255,255,0.07); --line2:rgba(255,255,255,0.12);
+    --text:#F2F2F7; --text2:#8E8E93; --text3:#545458;
+    --blue:#0A84FF; --blue-l:#64B5FF; --blue-bg:rgba(10,132,255,0.14); --blue-bg2:rgba(10,132,255,0.08);
+    --green:#32D74B; --green-bg:rgba(50,215,75,0.12);
+    --amber:#FF9F0A; --amber-bg:rgba(255,159,10,0.12);
+    --red:#FF375F; --red-bg:rgba(255,55,95,0.12);
+    --purple:#BF5AF2; --purple-bg:rgba(191,90,242,0.12);
+    --r-xs:10px; --r-sm:14px; --r-md:18px; --r-lg:22px; --r-xl:28px; --r-pill:100px;
+    --shadow:0 4px 24px rgba(0,0,0,0.28); --shadow-sm:0 2px 10px rgba(0,0,0,0.18);
 }
+*,*::before,*::after{font-family:'Inter',-apple-system,'SF Pro Display',sans-serif!important;-webkit-font-smoothing:antialiased!important;box-sizing:border-box}
+html,body,.stApp{background:var(--bg)!important}
+.main .block-container{padding:20px 28px!important;max-width:100%!important}
+#MainMenu,footer,header,[data-testid="stToolbar"],.stDeployButton{display:none!important}
 
-/* ── Botón abrir sidebar — centro izquierda, siempre visible ── */
-[data-testid="collapsedControl"] {
-    background: var(--blue2) !important;
-    border-radius: 0 16px 16px 0 !important;
-    width: 28px !important;
-    min-height: 56px !important;
-    top: 45% !important;
-    position: fixed !important;
-    left: 0 !important;
-    z-index: 999999 !important;
-    box-shadow: 3px 0 16px rgba(10,132,255,0.5) !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    transition: width 0.2s !important;
-}
-[data-testid="collapsedControl"]:hover {
-    width: 36px !important;
-    background: var(--blue) !important;
-}
-[data-testid="collapsedControl"] svg {
-    fill: white !important;
-    opacity: 1 !important;
-}
-/* Forzar que nunca se oculte */
-[data-testid="collapsedControl"] * {
-    opacity: 1 !important;
-    visibility: visible !important;
-}
+/* SIDEBAR */
+[data-testid="stSidebar"]{background:var(--bg2)!important;border-right:0.5px solid var(--line2)!important;box-shadow:2px 0 20px rgba(0,0,0,0.3)!important}
+[data-testid="stSidebar"]>div:first-child{padding:0 0 24px 0!important}
 
-/* ── Botón colapsar dentro del sidebar ── */
-[data-testid="stSidebarCollapseButton"] button {
-    background: var(--surface2) !important;
-    border-radius: 10px !important;
-    color: var(--text) !important;
-}
+/* BOTON SIDEBAR - SIEMPRE VISIBLE */
+[data-testid="collapsedControl"]{background:var(--blue)!important;width:26px!important;min-height:52px!important;border-radius:0 16px 16px 0!important;top:42%!important;left:0!important;position:fixed!important;z-index:9999999!important;box-shadow:3px 0 18px rgba(10,132,255,0.55)!important;border:none!important;opacity:1!important;display:flex!important;align-items:center!important;justify-content:center!important;cursor:pointer!important;transition:width 0.2s ease!important}
+[data-testid="collapsedControl"]:hover{width:34px!important;background:var(--blue-l)!important}
+[data-testid="collapsedControl"] svg,[data-testid="collapsedControl"] *{fill:white!important;color:white!important;opacity:1!important;visibility:visible!important}
+[data-testid="stSidebarCollapseButton"]{display:block!important}
+[data-testid="stSidebarCollapseButton"] button{background:var(--card)!important;border-radius:var(--r-sm)!important;border:0.5px solid var(--line2)!important;color:var(--text2)!important;margin:12px 16px!important}
 
-/* ── Base ── */
-html, body, [class*="css"], * {
-    font-family: 'Inter', -apple-system, 'SF Pro Display', sans-serif !important;
-    -webkit-font-smoothing: antialiased !important;
-}
+/* TIPOGRAFIA */
+h1{font-size:28px!important;font-weight:700!important;letter-spacing:-0.5px!important;color:var(--text)!important}
+h2{font-size:20px!important;font-weight:600!important;color:var(--text)!important}
+h3{font-size:16px!important;font-weight:600!important;color:var(--text)!important}
+p,li{color:var(--text2)!important;font-size:14px!important}
+label{color:var(--text2)!important;font-size:12px!important;font-weight:500!important}
 
-/* ── Fondo ── */
-.stApp, .main {
-    background: var(--bg) !important;
-}
+/* METRICAS */
+[data-testid="metric-container"]{background:var(--card)!important;border:0.5px solid var(--line2)!important;border-radius:var(--r-lg)!important;padding:20px 22px!important;box-shadow:var(--shadow-sm)!important;transition:transform 0.15s,box-shadow 0.15s!important}
+[data-testid="metric-container"]:hover{transform:translateY(-2px)!important;box-shadow:var(--shadow)!important}
+[data-testid="metric-container"] label{color:var(--text2)!important;font-size:11px!important;font-weight:500!important;text-transform:uppercase!important;letter-spacing:0.6px!important}
+[data-testid="metric-container"] [data-testid="stMetricValue"]{color:var(--text)!important;font-size:28px!important;font-weight:700!important;letter-spacing:-0.8px!important}
 
-/* ── Sidebar — One UI drawer style ── */
-[data-testid="stSidebar"] {
-    background: var(--surface) !important;
-    border-right: 0.5px solid var(--border2) !important;
-    box-shadow: 4px 0 24px rgba(0,0,0,0.3) !important;
-}
-[data-testid="stSidebar"] > div {
-    padding: 0 !important;
-}
+/* BOTONES */
+.stButton>button{background:var(--blue-bg)!important;color:var(--blue-l)!important;border:1px solid rgba(10,132,255,0.22)!important;border-radius:var(--r-pill)!important;font-weight:600!important;font-size:13px!important;padding:9px 22px!important;transition:all 0.18s!important}
+.stButton>button:hover{background:var(--blue)!important;color:#fff!important;border-color:var(--blue)!important;transform:scale(1.02)!important;box-shadow:0 4px 18px rgba(10,132,255,0.35)!important}
+.stButton>button[kind="primary"]{background:var(--blue)!important;color:#fff!important;border-color:var(--blue)!important;box-shadow:0 2px 12px rgba(10,132,255,0.3)!important}
 
-/* ── Ocultar chrome de Streamlit ── */
-#MainMenu, footer, header { visibility: hidden; }
-.stDeployButton { display: none; }
-[data-testid="stToolbar"] { display: none; }
+/* TABS */
+.stTabs [data-baseweb="tab-list"]{background:var(--card)!important;border-radius:var(--r-xl)!important;padding:5px!important;gap:3px!important;border:none!important;box-shadow:var(--shadow-sm)!important}
+.stTabs [data-baseweb="tab"]{background:transparent!important;border-radius:var(--r-lg)!important;color:var(--text2)!important;font-size:13px!important;font-weight:500!important;padding:8px 18px!important;transition:all 0.18s!important;border:none!important}
+.stTabs [aria-selected="true"]{background:var(--blue)!important;color:#fff!important;box-shadow:0 2px 10px rgba(10,132,255,0.3)!important;font-weight:600!important}
 
-/* ── Títulos ── */
-h1, h2, h3 {
-    color: var(--text) !important;
-    font-weight: 600 !important;
-    letter-spacing: -0.3px !important;
-}
+/* INPUTS */
+.stTextInput>div>div>input,.stNumberInput>div>div>input,.stTextArea textarea{background:var(--card)!important;border:0.5px solid var(--line2)!important;border-radius:var(--r-md)!important;color:var(--text)!important;font-size:14px!important;padding:11px 15px!important;transition:border-color 0.15s,box-shadow 0.15s!important}
+.stTextInput>div>div>input:focus,.stNumberInput>div>div>input:focus,.stTextArea textarea:focus{border-color:var(--blue)!important;box-shadow:0 0 0 3px rgba(10,132,255,0.18)!important;outline:none!important}
+.stSelectbox>div>div,.stMultiSelect>div>div{background:var(--card)!important;border:0.5px solid var(--line2)!important;border-radius:var(--r-md)!important;color:var(--text)!important}
 
-/* ── Métricas — One UI card style ── */
-[data-testid="metric-container"] {
-    background: var(--surface) !important;
-    border: 0.5px solid var(--border2) !important;
-    border-radius: var(--r-lg) !important;
-    padding: 18px 20px !important;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.2) !important;
-    transition: transform 0.15s ease !important;
-}
-[data-testid="metric-container"]:hover {
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
-}
-[data-testid="metric-container"] label {
-    color: var(--text2) !important;
-    font-size: 12px !important;
-    font-weight: 500 !important;
-    letter-spacing: 0.2px !important;
-}
-[data-testid="metric-container"] [data-testid="stMetricValue"] {
-    color: var(--text) !important;
-    font-size: 26px !important;
-    font-weight: 700 !important;
-    letter-spacing: -0.5px !important;
-}
+/* UPLOAD */
+[data-testid="stFileUploader"]{background:var(--card)!important;border:1.5px dashed var(--line2)!important;border-radius:var(--r-xl)!important;transition:all 0.2s!important;padding:12px!important}
+[data-testid="stFileUploader"]:hover{border-color:var(--blue)!important;background:var(--blue-bg2)!important}
 
-/* ── Botones — One UI pill style ── */
-.stButton > button {
-    background: var(--blue-soft) !important;
-    color: var(--blue) !important;
-    border: 1px solid rgba(78,173,255,0.25) !important;
-    border-radius: var(--r-xl) !important;
-    font-weight: 600 !important;
-    font-size: 13px !important;
-    padding: 9px 20px !important;
-    transition: all 0.18s ease !important;
-    letter-spacing: 0.1px !important;
-}
-.stButton > button:hover {
-    background: var(--blue2) !important;
-    color: #fff !important;
-    border-color: var(--blue2) !important;
-    transform: scale(1.02) !important;
-    box-shadow: 0 4px 16px rgba(10,132,255,0.3) !important;
-}
-.stButton > button[kind="primary"] {
-    background: var(--blue2) !important;
-    color: #fff !important;
-    border-color: var(--blue2) !important;
-}
+/* DATAFRAME */
+[data-testid="stDataFrame"]{border:0.5px solid var(--line2)!important;border-radius:var(--r-lg)!important;overflow:hidden!important;box-shadow:var(--shadow-sm)!important}
 
-/* ── Tabs — One UI segmented control ── */
-.stTabs [data-baseweb="tab-list"] {
-    background: var(--surface2) !important;
-    border-radius: var(--r-xl) !important;
-    padding: 4px !important;
-    gap: 2px !important;
-    border: none !important;
-}
-.stTabs [data-baseweb="tab"] {
-    background: transparent !important;
-    border-radius: 20px !important;
-    color: var(--text2) !important;
-    font-size: 13px !important;
-    font-weight: 500 !important;
-    padding: 7px 16px !important;
-    transition: all 0.18s !important;
-}
-.stTabs [aria-selected="true"] {
-    background: var(--surface) !important;
-    color: var(--text) !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.25) !important;
-    font-weight: 600 !important;
-}
+/* EXPANDER */
+[data-testid="stExpander"]{background:var(--card)!important;border:0.5px solid var(--line)!important;border-radius:var(--r-lg)!important;overflow:hidden!important}
 
-/* ── Inputs ── */
-.stTextInput > div > div > input,
-.stNumberInput > div > div > input,
-.stTextArea textarea {
-    background: var(--surface2) !important;
-    border: 0.5px solid var(--border2) !important;
-    border-radius: var(--r-md) !important;
-    color: var(--text) !important;
-    font-size: 14px !important;
-    padding: 10px 14px !important;
-    transition: border-color 0.15s !important;
-}
-.stTextInput > div > div > input:focus,
-.stNumberInput > div > div > input:focus {
-    border-color: var(--blue) !important;
-    box-shadow: 0 0 0 3px rgba(78,173,255,0.15) !important;
-}
-.stSelectbox > div > div {
-    background: var(--surface2) !important;
-    border: 0.5px solid var(--border2) !important;
-    border-radius: var(--r-md) !important;
-    color: var(--text) !important;
-}
+/* ALERTS */
+.stSuccess{background:var(--green-bg)!important;border:0.5px solid rgba(50,215,75,0.3)!important;border-radius:var(--r-md)!important;color:var(--green)!important}
+.stWarning{background:var(--amber-bg)!important;border:0.5px solid rgba(255,159,10,0.3)!important;border-radius:var(--r-md)!important}
+.stError{background:var(--red-bg)!important;border:0.5px solid rgba(255,55,95,0.3)!important;border-radius:var(--r-md)!important}
+.stInfo{background:var(--blue-bg2)!important;border:0.5px solid rgba(10,132,255,0.3)!important;border-radius:var(--r-md)!important}
 
-/* ── Upload ── */
-[data-testid="stFileUploader"] {
-    background: var(--surface) !important;
-    border: 1.5px dashed var(--border2) !important;
-    border-radius: var(--r-lg) !important;
-    transition: all 0.2s !important;
-}
-[data-testid="stFileUploader"]:hover {
-    border-color: var(--blue) !important;
-    background: var(--blue-soft) !important;
-}
+/* CHAT */
+[data-testid="stChatMessage"]{background:var(--card)!important;border-radius:var(--r-xl)!important;border:0.5px solid var(--line)!important;margin-bottom:10px!important;padding:14px 18px!important}
 
-/* ── Dataframes ── */
-[data-testid="stDataFrame"] {
-    border: 0.5px solid var(--border2) !important;
-    border-radius: var(--r-lg) !important;
-    overflow: hidden !important;
-}
+/* MISC */
+.stSpinner>div{border-top-color:var(--blue)!important}
+hr{border-color:var(--line)!important;margin:24px 0!important}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:10px}
 
-/* ── Expander ── */
-[data-testid="stExpander"] {
-    background: var(--surface) !important;
-    border: 0.5px solid var(--border) !important;
-    border-radius: var(--r-lg) !important;
-}
-
-/* ── Alerts — suaves ── */
-.stSuccess {
-    background: var(--green-soft) !important;
-    border: 0.5px solid rgba(52,199,89,0.3) !important;
-    border-radius: var(--r-md) !important;
-    color: var(--green) !important;
-}
-.stWarning {
-    background: var(--amber-soft) !important;
-    border: 0.5px solid rgba(255,159,10,0.3) !important;
-    border-radius: var(--r-md) !important;
-}
-.stError {
-    background: var(--red-soft) !important;
-    border: 0.5px solid rgba(255,69,58,0.3) !important;
-    border-radius: var(--r-md) !important;
-}
-.stInfo {
-    background: var(--blue-soft) !important;
-    border: 0.5px solid rgba(78,173,255,0.3) !important;
-    border-radius: var(--r-md) !important;
-}
-
-/* ── Divider ── */
-hr { border-color: var(--border) !important; margin: 20px 0 !important; }
-
-/* ── Scrollbar minimalista ── */
-::-webkit-scrollbar { width: 3px; height: 3px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 10px; }
-
-/* ── Cards custom ── */
-.nx-card {
-    background: var(--surface);
-    border: 0.5px solid var(--border2);
-    border-radius: var(--r-lg);
-    padding: 16px 20px;
-    margin-bottom: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-}
-.nx-stat-red   { border-left: 3px solid var(--red)   !important; }
-.nx-stat-amber { border-left: 3px solid var(--amber) !important; }
-.nx-stat-green { border-left: 3px solid var(--green) !important; }
-.nx-stat-blue  { border-left: 3px solid var(--blue)  !important; }
-
-/* ── Badges ── */
-.nx-badge {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.2px;
-}
-.nx-badge-red    { background: var(--red-soft);   color: var(--red);    }
-.nx-badge-amber  { background: var(--amber-soft); color: var(--amber);  }
-.nx-badge-green  { background: var(--green-soft); color: var(--green);  }
-.nx-badge-blue   { background: var(--blue-soft);  color: var(--blue);   }
-.nx-badge-purple { background: rgba(191,90,242,.12); color: var(--purple); }
-
-/* ── Chat messages ── */
-[data-testid="stChatMessage"] {
-    background: var(--surface) !important;
-    border-radius: var(--r-lg) !important;
-    border: 0.5px solid var(--border) !important;
-    margin-bottom: 8px !important;
-}
-
-/* ── Spinner ── */
-.stSpinner > div { border-top-color: var(--blue) !important; }
+/* CARDS CUSTOM */
+.nx-card{background:var(--card);border:0.5px solid var(--line2);border-radius:var(--r-lg);padding:18px 22px;margin-bottom:12px;box-shadow:var(--shadow-sm);transition:transform 0.15s,box-shadow 0.15s}
+.nx-card:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+.nx-card-blue{border-left:3px solid var(--blue)!important}
+.nx-card-green{border-left:3px solid var(--green)!important}
+.nx-card-amber{border-left:3px solid var(--amber)!important}
+.nx-card-red{border-left:3px solid var(--red)!important}
+.nx-card-purple{border-left:3px solid var(--purple)!important}
+.nx-badge{display:inline-block;padding:3px 11px;border-radius:var(--r-pill);font-size:11px;font-weight:600;letter-spacing:0.2px}
+.nx-badge-blue{background:var(--blue-bg);color:var(--blue-l)}
+.nx-badge-green{background:var(--green-bg);color:var(--green)}
+.nx-badge-amber{background:var(--amber-bg);color:var(--amber)}
+.nx-badge-red{background:var(--red-bg);color:var(--red)}
+.nx-badge-purple{background:var(--purple-bg);color:var(--purple)}
+.nx-version{display:inline-block;background:var(--blue-bg);color:var(--blue-l);border:0.5px solid rgba(10,132,255,0.25);border-radius:var(--r-pill);font-size:10px;font-weight:700;padding:2px 9px;letter-spacing:0.3px}
 </style>
 """, unsafe_allow_html=True)
 
@@ -323,17 +125,15 @@ sys.path.insert(0, os.path.dirname(__file__))
 from database import init_db, get_resumen_stats
 from utils.horarios import label_horario, ahora
 from utils.helpers import check_apis, fmt_usd, fmt_ars, fmt_num
-import pages.importar as pg_importar
-import pages.compras as pg_compras
+import pages.importar   as pg_importar
+import pages.compras    as pg_compras
 import pages.inventario as pg_inventario
-import pages.precios as pg_precios
-import pages.dashboard as pg_dashboard
-import pages.asistente as pg_asistente
+import pages.precios    as pg_precios
+import pages.dashboard  as pg_dashboard
+import pages.asistente  as pg_asistente
 
-# ── Inicializar DB ────────────────────────────────────────────
 init_db()
 
-# ── Session state ─────────────────────────────────────────────
 if "pagina" not in st.session_state:
     st.session_state.pagina = "Dashboard"
 if "chat_history" not in st.session_state:
@@ -341,83 +141,73 @@ if "chat_history" not in st.session_state:
 
 # ── Sidebar ───────────────────────────────────────────────────
 with st.sidebar:
-    # Logo
-    st.markdown("""
-    <div style="padding: 8px 0 20px; border-bottom: 1px solid var(--nx-border); margin-bottom: 20px;">
-        <div style="font-size: 22px; font-weight: 700; color: var(--nx-accent); letter-spacing: -0.5px;">
-            ⚡ ROKER NEXUS
+    st.markdown(f"""
+    <div style="padding:20px 16px 16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,#0A84FF 0%,#5AC8FA 100%);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 14px rgba(10,132,255,0.4)">⚡</div>
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#F2F2F7;letter-spacing:-0.3px">ROKER NEXUS</div>
+          <div style="font-size:10px;color:#545458;letter-spacing:0.5px">EL CELU · COMERCIAL</div>
         </div>
-        <div style="font-size: 11px; color: var(--nx-text2); margin-top: 2px; letter-spacing: .5px;">
-            EL CELU · SISTEMA COMERCIAL
-        </div>
+      </div>
+      <span class="nx-version">{APP_VERSION}</span>
+      <span style="font-size:10px;color:#48484A;margin-left:6px">{APP_BUILD}</span>
     </div>
+    <div style="height:0.5px;background:rgba(255,255,255,0.07);margin:0 16px 14px"></div>
     """, unsafe_allow_html=True)
 
-    # Estado del negocio
     horario = label_horario()
     st.markdown(f"""
-    <div style="background: var(--nx-surface2); border-radius: 8px; padding: 8px 12px;
-                margin-bottom: 16px; font-size: 12px; color: var(--nx-text2);">
-        {horario}
+    <div style="margin:0 12px 16px;background:#2C2C2E;border-radius:14px;padding:10px 14px;border:0.5px solid rgba(255,255,255,0.12)">
+      <div style="font-size:12px;color:#8E8E93">{horario}</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Navegación
-    st.markdown('<div style="font-size:10px;font-weight:600;color:var(--nx-text3);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">NAVEGACIÓN</div>', unsafe_allow_html=True)
+    st.markdown('<div style="padding:0 16px;font-size:10px;font-weight:600;color:#545458;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:6px">NAVEGACIÓN</div>', unsafe_allow_html=True)
 
     paginas = {
-        "📊 Dashboard":         "Dashboard",
-        "📥 Cargar Archivos":   "Importar",
-        "🛒 Gestión de Compras":"Compras",
-        "📦 Inventario":        "Inventario",
-        "💰 Precios & ML":      "Precios",
-        "🤖 Asistente IA":      "Asistente",
+        "📊 Dashboard":          "Dashboard",
+        "📥 Cargar Archivos":    "Importar",
+        "🛒 Gestión de Compras": "Compras",
+        "📦 Inventario":         "Inventario",
+        "💰 Precios & ML":       "Precios",
+        "🤖 Asistente IA":       "Asistente",
     }
 
     for label, key in paginas.items():
         activo = st.session_state.pagina == key
-        if st.button(
-            label,
-            key=f"nav_{key}",
-            width="stretch",
-            type="primary" if activo else "secondary",
-        ):
+        if st.button(label, key=f"nav_{key}", width="stretch",
+                     type="primary" if activo else "secondary"):
             st.session_state.pagina = key
             st.rerun()
 
-    # Estado APIs
-    st.markdown('<div style="font-size:10px;font-weight:600;color:var(--nx-text3);letter-spacing:.8px;text-transform:uppercase;margin:20px 0 8px">ESTADO DEL SISTEMA</div>', unsafe_allow_html=True)
-
-    apis = check_apis()
-    for nombre, activo in [
-        ("Claude API", apis["claude"]),
-        ("Supabase",   apis["supabase"]),
-        ("Telegram",   apis["telegram"]),
-        ("Gemini",     apis.get("gemini", False)),
-    ]:
-        dot = "🟢" if activo else "🔴"
-        st.markdown(f'<div style="font-size:11px;color:var(--nx-text2);padding:3px 0">{dot} {nombre}</div>', unsafe_allow_html=True)
-
-    # Última actualización
-    st.markdown(f"""
-    <div style="position:absolute;bottom:16px;left:16px;right:16px;
-                font-size:10px;color:var(--nx-text3);text-align:center;">
-        {ahora().strftime('%d/%m/%Y %H:%M')}
-    </div>
+    st.markdown("""
+    <div style="height:0.5px;background:rgba(255,255,255,0.07);margin:16px 16px 14px"></div>
+    <div style="padding:0 16px;font-size:10px;font-weight:600;color:#545458;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:8px">SISTEMA</div>
     """, unsafe_allow_html=True)
 
-# ── Ruteo de páginas ──────────────────────────────────────────
-pagina = st.session_state.pagina
+    apis = check_apis()
+    for nombre, ok in [("Claude AI", apis["claude"]), ("Supabase", apis["supabase"]), ("Telegram", apis["telegram"])]:
+        color  = "#32D74B" if ok else "#FF375F"
+        bg     = "rgba(50,215,75,0.1)" if ok else "rgba(255,55,95,0.1)"
+        estado = "Activo" if ok else "Offline"
+        st.markdown(f"""
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 16px">
+          <span style="font-size:12px;color:#8E8E93">{nombre}</span>
+          <span style="font-size:10px;font-weight:600;color:{color};background:{bg};padding:2px 9px;border-radius:20px">{estado}</span>
+        </div>""", unsafe_allow_html=True)
 
-if pagina == "Dashboard":
-    pg_dashboard.render()
-elif pagina == "Importar":
-    pg_importar.render()
-elif pagina == "Compras":
-    pg_compras.render()
-elif pagina == "Inventario":
-    pg_inventario.render()
-elif pagina == "Precios":
-    pg_precios.render()
-elif pagina == "Asistente":
-    pg_asistente.render()
+    st.markdown(f"""
+    <div style="height:0.5px;background:rgba(255,255,255,0.07);margin:14px 16px 10px"></div>
+    <div style="padding:0 16px 8px;font-size:10px;color:#48484A;text-align:center">
+      {ahora().strftime('%d/%m/%Y %H:%M')} · Buenos Aires
+    </div>""", unsafe_allow_html=True)
+
+# ── Ruteo ─────────────────────────────────────────────────────
+p = st.session_state.pagina
+if   p == "Dashboard":  pg_dashboard.render()
+elif p == "Importar":   pg_importar.render()
+elif p == "Compras":    pg_compras.render()
+elif p == "Inventario": pg_inventario.render()
+elif p == "Precios":    pg_precios.render()
+elif p == "Asistente":  pg_asistente.render()
