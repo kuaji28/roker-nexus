@@ -101,10 +101,8 @@ class ImportadorOptimizacion(ImportadorBase):
     def _guardar(self, df: pd.DataFrame) -> int:
         import sqlite3
         conn = sqlite3.connect("roker_nexus.db")
-        # Borrar todos los codigos que vienen en el archivo (evita UNIQUE constraint)
-        codigos = df["codigo"].unique().tolist()
-        placeholders = ",".join("?" * len(codigos))
-        conn.execute(f"DELETE FROM optimizacion WHERE codigo IN ({placeholders})", codigos)
+        # Reemplazar tabla completa — es un snapshot, siempre es la versión más reciente
+        conn.execute("DELETE FROM optimizacion")
         conn.commit()
         df.to_sql("optimizacion", conn, if_exists="append", index=False, method="multi")
         conn.commit()
