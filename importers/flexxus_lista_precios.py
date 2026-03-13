@@ -85,9 +85,12 @@ class ImportadorListaPrecios(ImportadorBase):
         conn = sqlite3.connect("roker_nexus.db")
         hoy = datetime.now().date().isoformat()
         conn.execute("DELETE FROM precios WHERE fecha=?", (hoy,))
-        df.to_sql("precios", conn, if_exists="append", index=False, method="multi")
+        # La tabla precios NO tiene columna descripcion — se guarda solo en articulos
+        cols_validas = ["codigo", "lista_1", "lista_2", "lista_3", "lista_4", "lista_5", "moneda", "fecha"]
+        df_save = df[[c for c in cols_validas if c in df.columns]]
+        df_save.to_sql("precios", conn, if_exists="append", index=False, method="multi")
         conn.commit()
-        count = len(df)
+        count = len(df_save)
         conn.close()
         return count
 

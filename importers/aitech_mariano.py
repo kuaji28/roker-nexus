@@ -26,8 +26,10 @@ class ImportadorAITECH(ImportadorBase):
         df_out = pd.DataFrame()
         df_out["codigo"]      = df[col_map["codigo"]].astype(str).str.strip() if col_map.get("codigo") else ""
         df_out["descripcion"] = df.get(col_map.get("descripcion"), pd.Series(dtype=str))
-        df_out["precio_usd"]  = pd.to_numeric(df.get(col_map.get("precio"), 0), errors="coerce").fillna(0)
-        df_out["cantidad_caja"] = pd.to_numeric(df.get(col_map.get("cantidad"), 1), errors="coerce").fillna(1).astype(int)
+        precio_raw = df[col_map["precio"]] if col_map.get("precio") and col_map["precio"] in df.columns else pd.Series([0]*len(df), index=df.index)
+        cant_raw   = df[col_map["cantidad"]] if col_map.get("cantidad") and col_map["cantidad"] in df.columns else pd.Series([1]*len(df), index=df.index)
+        df_out["precio_usd"]    = pd.to_numeric(precio_raw, errors="coerce").fillna(0)
+        df_out["cantidad_caja"] = pd.to_numeric(cant_raw,   errors="coerce").fillna(1).astype(int)
 
         # Todos los códigos numéricos en AI-TECH = mecánicos
         df_out["tipo"] = df_out["codigo"].apply(tipo_codigo)
