@@ -20,44 +20,47 @@ class ImportadorOptimizacion(ImportadorBase):
     COLUMNAS_REQUERIDAS = ["Código", "Artículo"]
 
     def _transformar(self, df: pd.DataFrame, uploaded_file=None) -> pd.DataFrame:
-        # Deduplicar columnas (Flexxus a veces repite nombres)
-        df = df.loc[:, ~df.columns.duplicated()].copy()
-        df.columns = [str(c).strip() for c in df.columns]
+        """
+        Formato real Flexxus Optimización de Stock:
+        Fila 11: headers = Código | Artículo | _ | _ | _ | Demanda Total | _ | Demanda Prom. | S.Actual | S.Mín | S.Opt | S.Máx
+        Col:       0          1      2   3   4       5         6               7            8        9      10      11
+        NO tiene columna de costo — se cruza con lista de precios después
+        """
+        # Encontrar fila de headers
+        header_row = None
+        for i, row in df.iterrows():
+            if str(row.iloc[0]).strip() == "Código":
+                header_row = i
+                break
 
-        col_map = self._mapear_columnas(df)
+        if header_row is None:
+            return pd.DataFrame()
 
-        # Helper seguro: devuelve Serie aunque la columna no exista
-        def col_serie(key, default=0):
-            c = col_map.get(key)
-            if c and c in df.columns:
-                s = df[c]
-                # Si por alguna razón retorna DataFrame, tomar primera columna
-                if isinstance(s, pd.DataFrame):
-                    s = s.iloc[:, 0]
-                return s
-            return pd.Series([default] * len(df), index=df.index)
+        df_data = df.iloc[header_row + 1:].copy()
+        df_data.columns = range(len(df_data.columns))
+        df_data = df_data.dropna(subset=[0])
 
-        df_out = pd.DataFrame(index=df.index)
-        df_out["codigo"]           = col_serie("codigo", "").astype(str).str.strip()
-        df_out["descripcion"]      = col_serie("descripcion", "").astype(str).str.strip()
-        df_out["demanda_total"]    = pd.to_numeric(col_serie("dem_total"),  errors="coerce").fillna(0)
-        df_out["demanda_promedio"] = pd.to_numeric(col_serie("dem_prom"),   errors="coerce").fillna(0)
-        df_out["stock_actual"]     = pd.to_numeric(col_serie("stock"),      errors="coerce").fillna(0)
-        df_out["stock_minimo"]     = pd.to_numeric(col_serie("s_min"),      errors="coerce").fillna(0)
-        df_out["stock_optimo"]     = pd.to_numeric(col_serie("s_opt"),      errors="coerce").fillna(0)
-        df_out["stock_maximo"]     = pd.to_numeric(col_serie("s_max"),      errors="coerce").fillna(0)
-        df_out["costo_reposicion"] = pd.to_numeric(col_serie("costo"),      errors="coerce").fillna(0)
-        df_out["r_minimo"]         = pd.to_numeric(col_serie("r_min"),      errors="coerce").fillna(0)
-        df_out["r_optimo"]         = pd.to_numeric(col_serie("r_opt"),      errors="coerce").fillna(0)
-        df_out["r_maximo"]         = pd.to_numeric(col_serie("r_max"),      errors="coerce").fillna(0)
+        def safe_num(col_idx, default=0):
+            if col_idx >= len(df_data.columns):
+                return pd.Series([default] * len(df_data))
+            return pd.to_numeric(df_data[col_idx], errors="coerce").fillna(default)
 
-        moneda_col = col_serie("moneda", "USD").astype(str)
-        df_out["moneda"] = moneda_col.where(moneda_col.str.strip() != "", "USD")
+        df_out = pd.DataFrame()
+        df_out["codigo"]           = df_data[0].astype(str).str.strip()
+        df_out["descripcion"]      = df_data[1].astype(str).str.strip() if 1 < len(df_data.columns) else ""
+        df_out["demanda_total"]    = safe_num(5)
+        df_out["demanda_promedio"] = safe_num(7)
+        df_out["stock_actual"]     = safe_num(8)
+        df_out["stock_minimo"]     = safe_num(9)
+        df_out["stock_optimo"]     = safe_num(10)
+        df_out["stock_maximo"]     = safe_num(11)
+        df_out["costo_reposicion"] = 0.0  # Se cruza con Lista de Precios
+        df_out["moneda"]           = "USD"
+        df_out["periodo_desde"]    = None
+        df_out["periodo_hasta"]    = None
+        df_out["dias_promedio"]    = 30
 
-        df_out["periodo_desde"] = None
-        df_out["periodo_hasta"] = None
-        df_out["dias_promedio"] = 30
-        # Timestamp único por fila para evitar UNIQUE constraint
+        # Timestamp único por fila
         from datetime import timedelta
         base_ts = datetime.now()
         df_out["importado_en"] = [
@@ -65,12 +68,30 @@ class ImportadorOptimizacion(ImportadorBase):
             for i in range(len(df_out))
         ]
 
-        # Filtrar filas sin código válido
+        # Filtrar filas inválidas
         df_out = df_out[df_out["codigo"].str.len() > 2]
         df_out = df_out[df_out["codigo"] != "nan"]
-        df_out = df_out[df_out["codigo"].str.strip() != ""]
+        df_out = df_out[~df_out["codigo"].str.startswith("nan")]
+
+        # Cruzar costo con Lista de Precios si existe
+        try:
+            from database import execute_query
+            rows = execute_query("SELECT codigo, lista_1 FROM precios WHERE lista_1 > 0")
+            if rows:
+                import pandas as _pd
+                df_precios = _pd.DataFrame(rows)
+                df_out = df_out.merge(
+                    df_precios.rename(columns={"lista_1": "costo_ref"}),
+                    on="codigo", how="left"
+                )
+                mask = df_out["costo_ref"].notna() & (df_out["costo_ref"] > 0)
+                df_out.loc[mask, "costo_reposicion"] = df_out.loc[mask, "costo_ref"]
+                df_out = df_out.drop(columns=["costo_ref"])
+        except Exception:
+            pass
 
         return df_out
+
 
     def _mapear_columnas(self, df: pd.DataFrame) -> dict:
         """Mapea columnas del archivo a campos internos de forma flexible."""
@@ -99,16 +120,10 @@ class ImportadorOptimizacion(ImportadorBase):
         }
 
     def _guardar(self, df: pd.DataFrame) -> int:
-        import sqlite3
-        conn = sqlite3.connect("roker_nexus.db")
-        # Reemplazar tabla completa — es un snapshot, siempre es la versión más reciente
-        conn.execute("DELETE FROM optimizacion")
-        conn.commit()
-        df.to_sql("optimizacion", conn, if_exists="append", index=False, method="multi")
-        conn.commit()
-        count = len(df)
-        conn.close()
-        return count
+        from database import df_to_db, execute_query
+        # Limpiar tabla completa antes de insertar (es un snapshot)
+        execute_query("DELETE FROM optimizacion", fetch=False)
+        return df_to_db(df, "optimizacion")
 
     def _metadata(self, df: pd.DataFrame) -> dict:
         return {

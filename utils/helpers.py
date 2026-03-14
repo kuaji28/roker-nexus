@@ -57,17 +57,20 @@ def detectar_tipo_flexxus(nombre_archivo: str) -> Optional[str]:
     nombre = nombre_archivo.strip()
 
     # Orden importante: "Resumida" debe ir antes que solo "Ventas por Marca"
-    checks = [
-        ("remitos",       "Remitos Internos"),
-        ("stock",         "Planilla_de_Stock"),
-        ("ventas",        "Resumida"),           # tiene "Resumida" en el nombre
-        ("compras",       "Ventas por Marca"),   # sin "Resumida" = compras
-        ("lista_precios", "Lista de Precios"),
-        ("optimizacion",  "Optimizacin"),        # typo de Flexxus
-    ]
-    for tipo, patron in checks:
-        if patron.lower() in nombre.lower():
-            return tipo
+    nombre_up = nombre.upper()
+    # Orden importa: más específico primero
+    if "REMITOS INTERNOS" in nombre_up:
+        return "remitos"
+    if "RESUMIDA" in nombre_up:
+        return "ventas"          # Planilla de Ventas por Marca Resumida
+    if "VENTAS POR MARCA" in nombre_up:
+        return "compras"         # Planilla de Ventas por Marca (sin Resumida)
+    if "LISTA DE PRECIOS" in nombre_up or "LISTA_DE_PRECIOS" in nombre_up:
+        return "lista_precios"
+    if "OPTIMIZACIN" in nombre_up or "OPTIMIZACION" in nombre_up:
+        return "optimizacion"
+    if ("PLANILLA" in nombre_up and "STOCK" in nombre_up) or "PLANILLA_DE_STOCK" in nombre_up:
+        return "stock"           # Planilla de Stock (no Ventas)
 
     # Archivos de proveedores
     if "cotizacion" in nombre.lower() or "ai-tech" in nombre.lower() or "ai_tech" in nombre.lower():
