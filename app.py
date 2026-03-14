@@ -1,12 +1,12 @@
 """
-ROKER NEXUS v1.6.3 — El Celu
+ROKER NEXUS v1.6.4 — El Celu
 Navegación horizontal — sin depender del sidebar
 """
 import streamlit as st
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 
-APP_VERSION = "v1.6.3"
+APP_VERSION = "v1.6.4"
 APP_BUILD   = "2026-03-13"
 
 st.set_page_config(

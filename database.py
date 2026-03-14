@@ -394,8 +394,13 @@ def execute_query(sql: str, params: tuple = (), fetch: bool = True):
             conn.close()
             return rowcount
     except Exception as e:
-        conn.close()
-        raise e
+        try:
+            conn.close()
+        except Exception:
+            pass
+        if fetch:
+            return []
+        return 0
 
 
 def df_to_db(df: pd.DataFrame, table: str, if_exists: str = "append") -> int:
@@ -448,13 +453,16 @@ def query_to_df(sql: str, params: tuple = ()) -> pd.DataFrame:
 def log_importacion(tipo: str, nombre: str, filas_ok: int, filas_err: int = 0,
                     estado: str = "ok", mensaje: str = ""):
     """Registra una importación en el log."""
-    execute_query(
-        """INSERT INTO importaciones_log
-           (tipo_archivo, nombre_archivo, filas_importadas, filas_error, estado, mensaje)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (tipo, nombre, filas_ok, filas_err, estado, mensaje),
-        fetch=False
-    )
+    try:
+        execute_query(
+            """INSERT INTO importaciones_log
+               (tipo_archivo, nombre_archivo, filas_importadas, filas_error, estado, mensaje)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (tipo, nombre, filas_ok, filas_err, estado, mensaje),
+            fetch=False
+        )
+    except Exception:
+        pass  # Log no es critico
 
 
 def get_ultima_importacion(tipo: str) -> Optional[dict]:
