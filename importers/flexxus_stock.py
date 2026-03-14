@@ -21,39 +21,44 @@ class ImportadorStock(ImportadorBase):
 
     def _transformar(self, df: pd.DataFrame, uploaded_file=None) -> pd.DataFrame:
         """
-        Formato real Flexxus Planilla de Stock:
-        Filas 0-7: cabecera con filtros aplicados
-        Fila 8 (y repetida cada ~54 filas): headers = Código,,Artículo,,,Rubro,,,Stock,S. Mínimo,S. Máximo,S. Optimo
-        Fila N+: datos  col0=código, col2=artículo, col5=rubro, col8=stock, col9=s.min, col10=s.max, col11=s.opt
+        Formato confirmado Flexxus Planilla de Stock:
+        - Header real: fila 8 (contiene "Código", "Artículo", etc.)
+        - Datos desde: fila 9
+        - col 0: Código
+        - col 2: Artículo/Descripción
+        - col 5: Rubro
+        - col 7: Stock (⚠️ no col 8)
+        - col 9: S.Mínimo
+        - col 10: S.Máximo
+        - col 11: S.Óptimo
+        - Sin columna de depósito — se infiere del nombre del archivo
         """
         nombre = getattr(uploaded_file, "name", "") if uploaded_file else ""
         deposito = detectar_deposito_del_nombre(nombre) or "GENERAL"
 
-        HEADER_MARKER = "Código"
         registros = []
         en_datos = False
 
         for i, row in df.iterrows():
             val0 = str(row.iloc[0]).strip() if len(row) > 0 else ""
 
-            # Detectar fila de headers
-            if val0 == HEADER_MARKER:
+            # Detectar fila de headers (fila 8)
+            if val0 == "Código":
                 en_datos = True
                 continue
 
             if not en_datos:
                 continue
 
-            # Saltar filas de fecha/totales/vacías
-            if not val0 or val0.startswith("13/") or val0.startswith("Cantidad"):
+            # Saltar filas vacías, totales o fechas
+            if not val0 or val0 in ("nan", "") or val0.startswith("Cantidad") or val0.startswith("13/") or val0.startswith("14/"):
                 continue
 
-            # Extraer campos por posición
             try:
-                codigo = val0
-                articulo = str(row.iloc[2]).strip() if len(row) > 2 else ""
-                rubro    = str(row.iloc[5]).strip() if len(row) > 5 else ""
-                stock    = pd.to_numeric(row.iloc[8],  errors="coerce") if len(row) > 8  else 0
+                codigo   = val0
+                articulo = str(row.iloc[2]).strip()  if len(row) > 2  else ""
+                rubro    = str(row.iloc[5]).strip()  if len(row) > 5  else ""
+                stock    = pd.to_numeric(row.iloc[7],  errors="coerce") if len(row) > 7  else 0
                 s_min    = pd.to_numeric(row.iloc[9],  errors="coerce") if len(row) > 9  else 0
                 s_max    = pd.to_numeric(row.iloc[10], errors="coerce") if len(row) > 10 else 0
                 s_opt    = pd.to_numeric(row.iloc[11], errors="coerce") if len(row) > 11 else 0
@@ -65,17 +70,20 @@ class ImportadorStock(ImportadorBase):
 
                 if not codigo or codigo == "nan":
                     continue
+                # Saltar si parece una fila de página (contiene "/" tipo fecha)
+                if "/" in codigo and len(codigo) < 12:
+                    continue
 
                 registros.append({
-                    "codigo":        codigo,
-                    "deposito":      deposito,
-                    "descripcion":   articulo,
-                    "rubro":         rubro,
-                    "stock":         float(stock),
-                    "stock_minimo":  float(s_min),
-                    "stock_maximo":  float(s_max),
-                    "stock_optimo":  float(s_opt),
-                    "fecha":         datetime.now().date().isoformat(),
+                    "codigo":         codigo,
+                    "deposito":       deposito,
+                    "descripcion":    articulo,
+                    "rubro":          rubro,
+                    "stock":          float(stock),
+                    "stock_minimo":   float(s_min),
+                    "stock_maximo":   float(s_max),
+                    "stock_optimo":   float(s_opt),
+                    "fecha":          datetime.now().date().isoformat(),
                     "fecha_snapshot": datetime.now().isoformat(),
                 })
             except Exception:
@@ -85,10 +93,8 @@ class ImportadorStock(ImportadorBase):
             return pd.DataFrame()
 
         df_out = pd.DataFrame(registros)
-        # Actualizar catálogo de artículos
         self._upsert_articulos(df_out)
         return df_out
-
     def _upsert_articulos(self, df: pd.DataFrame):
         from utils.matching import tipo_codigo
         try:
