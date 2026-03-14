@@ -64,16 +64,21 @@ class ImportadorVentas(ImportadorBase):
         return "2026-01-01"  # Valor por defecto
 
     def _guardar(self, df: pd.DataFrame) -> int:
-        conn = sqlite3.connect("roker_nexus.db")
-        hoy = datetime.now().date().isoformat()
-        conn.execute(
-            "DELETE FROM ventas WHERE fecha_hasta=?", (hoy,)
-        )
-        df.to_sql("ventas", conn, if_exists="append", index=False, method="multi")
-        conn.commit()
-        count = len(df)
-        conn.close()
-        return count
+        from database import df_to_db, execute_query
+        try:
+            if "fecha_desde" in df.columns and "fecha_hasta" in df.columns and len(df):
+                fd = str(df["fecha_desde"].iloc[0])
+                fh = str(df["fecha_hasta"].iloc[0])
+                if fd and fh and fd != "None":
+                    execute_query("DELETE FROM ventas WHERE fecha_desde=? AND fecha_hasta=?",
+                                  (fd, fh), fetch=False)
+                else:
+                    execute_query("DELETE FROM ventas", fetch=False)
+            else:
+                execute_query("DELETE FROM ventas", fetch=False)
+        except Exception:
+            pass
+        return df_to_db(df, "ventas")
 
     def _metadata(self, df: pd.DataFrame) -> dict:
         total = df["total_venta_ars"].sum() if "total_venta_ars" in df.columns else 0
@@ -128,16 +133,17 @@ class ImportadorCompras(ImportadorBase):
         }
 
     def _guardar(self, df: pd.DataFrame) -> int:
-        conn = sqlite3.connect("roker_nexus.db")
-        hoy = datetime.now().date().isoformat()
-        conn.execute(
-            "DELETE FROM compras_historial WHERE fecha_hasta=?", (hoy,)
-        )
-        df.to_sql("compras_historial", conn, if_exists="append", index=False, method="multi")
-        conn.commit()
-        count = len(df)
-        conn.close()
-        return count
+        from database import df_to_db, execute_query
+        if "fecha_desde" in df.columns and "fecha_hasta" in df.columns and len(df):
+            fd, fh = df["fecha_desde"].iloc[0], df["fecha_hasta"].iloc[0]
+            if fd and fh:
+                execute_query("DELETE FROM compras_historial WHERE fecha_desde=? AND fecha_hasta=?",
+                              (str(fd), str(fh)), fetch=False)
+            else:
+                execute_query("DELETE FROM compras_historial", fetch=False)
+        else:
+            execute_query("DELETE FROM compras_historial", fetch=False)
+        return df_to_db(df, "compras_historial")
 
     def _metadata(self, df: pd.DataFrame) -> dict:
         return {

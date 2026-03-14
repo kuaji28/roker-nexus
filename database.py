@@ -374,18 +374,38 @@ def execute_query(sql: str, params: tuple = (), fetch: bool = True):
 
 
 def df_to_db(df: pd.DataFrame, table: str, if_exists: str = "append") -> int:
-    """Inserta un DataFrame en la base de datos."""
+    """Inserta un DataFrame en la base de datos. Usa OR IGNORE para evitar UNIQUE errors."""
     if USE_SUPABASE:
-        records = df.to_dict("records")
-        sb = get_supabase()
-        result = sb.table(table).upsert(records).execute()
-        return len(result.data)
-    else:
-        conn = sqlite3.connect(SQLITE_PATH)
-        rows = df.to_sql(table, conn, if_exists=if_exists, index=False, method="multi")
+        try:
+            records = df.to_dict("records")
+            sb = get_supabase()
+            result = sb.table(table).upsert(records).execute()
+            return len(result.data)
+        except Exception as e:
+            print(f"Supabase df_to_db error: {e}, cayendo a SQLite")
+
+    conn = sqlite3.connect(SQLITE_PATH)
+    try:
+        # Usar INSERT OR IGNORE via método chunk para evitar UNIQUE constraint
+        cols = ", ".join(df.columns)
+        placeholders = ", ".join(["?" for _ in df.columns])
+        sql = f"INSERT OR IGNORE INTO {table} ({cols}) VALUES ({placeholders})"
+        data = [tuple(row) for row in df.itertuples(index=False, name=None)]
+        conn.executemany(sql, data)
         conn.commit()
-        conn.close()
-        return len(df)
+        count = len(data)
+    except Exception as e:
+        print(f"df_to_db fallback error: {e}")
+        # Último recurso: to_sql normal
+        try:
+            df.to_sql(table, conn, if_exists=if_exists, index=False, method="multi")
+            conn.commit()
+            count = len(df)
+        except Exception as e2:
+            print(f"df_to_db to_sql error: {e2}")
+            count = 0
+    conn.close()
+    return count
 
 
 def query_to_df(sql: str, params: tuple = ()) -> pd.DataFrame:
