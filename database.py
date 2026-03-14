@@ -454,6 +454,9 @@ def _migrar_db():
             fecha_carga TEXT DEFAULT (date('now')),
             UNIQUE(descripcion, competidor)
         )""",
+        # Columnas faltantes en cotizacion_items
+        """ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS codigo TEXT""",
+        """ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS codigo_flexxus TEXT""",
         # Borrador de pedido
         """CREATE TABLE IF NOT EXISTS borrador_pedido (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
