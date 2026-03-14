@@ -186,16 +186,32 @@ def render():
             ak_tg_chat = st.text_input("📱 Telegram Chat ID",
                                         placeholder="5427210648")
         if st.form_submit_button("💾 Guardar API Keys", type="primary"):
-            from database import set_config
+            import sqlite3 as _sq, os as _os
+            _db = _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "roker_nexus.db")
             saved = []
-            if ak_claude:  set_config("ANTHROPIC_API_KEY", ak_claude);  saved.append("Claude")
-            if ak_gemini:  set_config("GEMINI_API_KEY",    ak_gemini);  saved.append("Gemini")
-            if ak_tg_tok:  set_config("TELEGRAM_TOKEN",    ak_tg_tok);  saved.append("Telegram Token")
-            if ak_tg_chat: set_config("TELEGRAM_CHAT_ID",  ak_tg_chat); saved.append("Telegram Chat ID")
-            if saved:
-                st.success(f"✅ Guardado: {', '.join(saved)} — Recargá la página para aplicar")
-            else:
-                st.warning("No ingresaste ningún valor")
+            try:
+                _conn = _sq.connect(_db)
+                for k, v in [
+                    ("ANTHROPIC_API_KEY", ak_claude),
+                    ("GEMINI_API_KEY",    ak_gemini),
+                    ("TELEGRAM_TOKEN",    ak_tg_tok),
+                    ("TELEGRAM_CHAT_ID",  ak_tg_chat),
+                ]:
+                    if v:
+                        _conn.execute(
+                            "INSERT OR REPLACE INTO configuracion (clave,valor,descripcion) VALUES(?,?,?)",
+                            (k, v, k)
+                        )
+                        saved.append(k.replace("_API_KEY","").replace("_TOKEN","").replace("_"," ").title())
+                _conn.commit()
+                _conn.close()
+                if saved:
+                    st.success(f"✅ Guardado: {', '.join(saved)} — **Reiniciá la app** desde Streamlit Cloud (Manage app → Reboot)")
+                else:
+                    st.warning("No ingresaste ningún valor")
+            except Exception as e:
+                st.error(f"Error guardando: {e}")
+                st.info("Alternativa: cargá las keys en **Streamlit Cloud → App Settings → Secrets**")
 
     # ── Última importación ──
     st.markdown("---")
