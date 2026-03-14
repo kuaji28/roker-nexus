@@ -55,22 +55,25 @@ def detectar_tipo_flexxus(nombre_archivo: str) -> Optional[str]:
     Retorna la clave del tipo o None si no reconoce.
     """
     nombre = nombre_archivo.strip()
-
-    # Orden importante: "Resumida" debe ir antes que solo "Ventas por Marca"
     nombre_up = nombre.upper()
-    # Orden importa: más específico primero
-    if "REMITOS INTERNOS" in nombre_up:
+    # Normalizar: reemplazar espacios y guiones por nada para comparar
+    nombre_norm = nombre_up.replace(" ", "").replace("_", "").replace("-", "")
+
+    if "REMITOS" in nombre_up and "INTERNOS" in nombre_up:
         return "remitos"
     if "RESUMIDA" in nombre_up:
-        return "ventas"          # Planilla de Ventas por Marca Resumida
-    if "VENTAS POR MARCA" in nombre_up:
-        return "compras"         # Planilla de Ventas por Marca (sin Resumida)
-    if "LISTA DE PRECIOS" in nombre_up or "LISTA_DE_PRECIOS" in nombre_up:
+        return "ventas"
+    if "VENTASPORMARCA" in nombre_norm:
+        return "compras"
+    if "LISTADEPRECIOS" in nombre_norm:
         return "lista_precios"
-    if "OPTIMIZACIN" in nombre_up or "OPTIMIZACION" in nombre_up:
+    if "OPTIMIZACIN" in nombre_norm or "OPTIMIZACION" in nombre_norm:
         return "optimizacion"
-    if ("PLANILLA" in nombre_up and "STOCK" in nombre_up) or "PLANILLA_DE_STOCK" in nombre_up:
-        return "stock"           # Planilla de Stock (no Ventas)
+    # Stock: "Planilla de Stock" o "Planilla_de_Stock" — NO es ventas
+    if "PLANILLA" in nombre_norm and "STOCK" in nombre_norm and "VENTAS" not in nombre_norm:
+        return "stock"
+    if "PLANILLADESTOCK" in nombre_norm or "PLANILLA_DE_STOCK" in nombre_up:
+        return "stock"
 
     # Archivos de proveedores
     if "cotizacion" in nombre.lower() or "ai-tech" in nombre.lower() or "ai_tech" in nombre.lower():

@@ -3,14 +3,16 @@ ROKER NEXUS — Control de versiones
 Cada entrada = un deploy con cambios reales.
 """
 
-APP_VERSION = "v1.5.0"
+APP_VERSION = "v1.5.1"
 APP_BUILD   = "2026-03-13"
 
 CHANGELOG = [
     {
-        "version": "v1.5.0",
+        "version": "v1.5.1",
         "fecha": "2026-03-13",
         "cambios": [
+            "🔍 Detector archivos Flexxus — Planilla de Stock corregido",
+            "🔒 INSERT OR IGNORE — UNIQUE constraint resuelto definitivamente",
             "🗄️ Dashboard ahora muestra datos de Optimización de Stock",
             "📦 Importador Stock por Depósito — formato real Flexxus",
             "⚙️ Sistema de configuración: márgenes, RMB, comisiones ML",
