@@ -83,6 +83,12 @@ class ImportadorAITECH(ImportadorBase):
         return match.group(0) if match else "SIN_INVOICE"
 
     def _guardar(self, df: pd.DataFrame) -> int:
+        # Asegurar tablas antes de guardar
+        try:
+            from database import init_db as _init
+            _init()
+        except Exception:
+            pass
         conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "roker_nexus.db"))
         invoice_id = getattr(self, "_invoice_id", "SIN_INVOICE")
         fecha_hoy  = datetime.now().date().isoformat()

@@ -67,6 +67,12 @@ class ImportadorListaPrecios(ImportadorBase):
         """Inserta artículos nuevos en el catálogo maestro."""
         import os as _os_lp
         _db_path = _os_lp.path.join(_os_lp.path.dirname(_os_lp.path.abspath(__file__)), "..", "roker_nexus.db")
+        # Asegurar que la tabla existe antes de insertar
+        try:
+            from database import init_db as _init
+            _init()
+        except Exception:
+            pass
         conn = sqlite3.connect(_db_path)
         for _, row in df.iterrows():
             codigo = str(row.get("codigo", "")).strip()

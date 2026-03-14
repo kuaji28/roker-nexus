@@ -168,6 +168,17 @@ hr{border-color:var(--line)!important;margin:24px 0!important}
 from database import init_db, get_resumen_stats
 from utils.horarios import label_horario, ahora
 from utils.helpers import check_apis, fmt_usd, fmt_ars, fmt_num
+
+# ══════════════════════════════════════════════════════════════════
+# CRÍTICO: Inicializar DB ANTES de importar cualquier página
+# En Streamlit Cloud el filesystem es efímero - las tablas deben
+# crearse en cada arranque
+# ══════════════════════════════════════════════════════════════════
+try:
+    init_db()
+except Exception as _init_err:
+    pass  # Tablas ya existen o Supabase activo
+
 import pages.importar     as pg_importar
 import pages.compras      as pg_compras
 import pages.cotizaciones    as pg_cotizaciones
@@ -177,13 +188,6 @@ import pages.precios    as pg_precios
 import pages.dashboard  as pg_dashboard
 import pages.asistente  as pg_asistente
 import pages.sistema    as pg_sistema
-
-# ── Inicializar DB en CADA arranque (crítico en Streamlit Cloud) ──
-from database import init_db
-try:
-    init_db()
-except Exception as _e:
-    pass  # Si ya existe, no importa
 
 init_db()
 
