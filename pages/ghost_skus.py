@@ -19,7 +19,7 @@ def render():
     Módulos pedidos antes de tener código asignado en Flexxus.</p>
     """, unsafe_allow_html=True)
 
-    with st.expander("➕ Agregar Ghost SKU", expanded=False):
+    if st.toggle("➕ Agregar Ghost SKU", key="gs_toggle"):
         c1, c2, c3 = st.columns([3,1.5,1])
         with c1: modelo = st.text_input("Descripción *", placeholder="Ej: Samsung A06 módulo OLED", key="gs_mod")
         with c2: prov   = st.selectbox("Proveedor", ["MECÁNICO","FR"], key="gs_prov")
@@ -46,7 +46,8 @@ def render():
         est  = str(row["estado"]); vinc = str(row.get("codigo_vinculado","") or "")
         notas = str(row.get("notas","") or "")
         emoji = {"PENDIENTE":"🟡","VINCULADO":"🟢","CANCELADO":"⛔"}.get(est,"⚪")
-        with st.expander(f"{emoji} ID {gid} — {mod[:60]} | {prov} | {qty} u", expanded=(est=="PENDIENTE")):
+        with st.container():
+            st.markdown(f"**{emoji} ID {gid}** — {mod[:60]} | {prov} | {qty} u")
             c1, c2 = st.columns([3,2])
             with c1:
                 st.write(f"**Estado:** {est} | **Prov:** {prov}")

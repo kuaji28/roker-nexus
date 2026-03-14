@@ -76,13 +76,13 @@ def render():
 
     with tabs[0]:
         _tab_calculadora()
-    with tabs[5]:
+    with tabs[1]:
         _tab_comparador()
-    with tabs[5]:
+    with tabs[2]:
         _tab_editor_masivo()
-    with tabs[5]:
+    with tabs[3]:
         _tab_competencia()
-    with tabs[5]:
+    with tabs[4]:
         _tab_importar_mla()
     with tabs[5]:
         _tab_reporte()

@@ -41,17 +41,53 @@ class MotorIA:
 
     @property
     def claude_disponible(self) -> bool:
-        return bool(ANTHROPIC_API_KEY)
+        if ANTHROPIC_API_KEY:
+            return True
+        # Intentar leer de la DB (configurada desde el sidebar)
+        try:
+            from database import get_config
+            k = get_config("claude_api_key") or get_config("anthropic_api_key")
+            return bool(k)
+        except Exception:
+            return False
+
+    def _get_api_key_claude(self) -> str:
+        """Lee la API key de Claude — config.py primero, luego DB."""
+        if ANTHROPIC_API_KEY:
+            return ANTHROPIC_API_KEY
+        try:
+            from database import get_config
+            return get_config("claude_api_key") or get_config("anthropic_api_key") or ""
+        except Exception:
+            return ""
 
     @property
     def gemini_disponible(self) -> bool:
-        return bool(GEMINI_API_KEY)
+        if GEMINI_API_KEY:
+            return True
+        try:
+            from database import get_config
+            k = get_config("gemini_api_key")
+            return bool(k)
+        except Exception:
+            return False
+
+    def _get_api_key_gemini(self) -> str:
+        if GEMINI_API_KEY:
+            return GEMINI_API_KEY
+        try:
+            from database import get_config
+            return get_config("gemini_api_key") or ""
+        except Exception:
+            return ""
 
     def _get_claude(self):
         if self._claude_client is None and self.claude_disponible:
             try:
                 import anthropic
-                self._claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+                api_key = self._get_api_key_claude()
+                if api_key:
+                    self._claude_client = anthropic.Anthropic(api_key=api_key)
             except Exception:
                 pass
         return self._claude_client
@@ -60,11 +96,13 @@ class MotorIA:
         if self._gemini_model is None and self.gemini_disponible:
             try:
                 import google.generativeai as genai
-                genai.configure(api_key=GEMINI_API_KEY)
-                self._gemini_model = genai.GenerativeModel(
-                    model_name=MODELO_GEMINI,
-                    system_instruction=SYSTEM_PROMPT
-                )
+                api_key = self._get_api_key_gemini()
+                if api_key:
+                    genai.configure(api_key=api_key)
+                    self._gemini_model = genai.GenerativeModel(
+                        model_name=MODELO_GEMINI,
+                        system_instruction=SYSTEM_PROMPT
+                    )
             except Exception:
                 pass
         return self._gemini_model

@@ -18,6 +18,15 @@ st.set_page_config(
 
 st.markdown("""
 <style>
+/* FIX Streamlit 1.55: elimina "arröw_right/down" en expanders */
+[data-testid="stExpander"] details>summary>span:nth-child(1){display:none!important}
+[data-testid="stExpander"] details>summary>span:nth-child(2){display:none!important}
+[data-testid="stExpander"] details>summary{padding-left:0!important}
+[data-testid="stExpander"] details>summary::before{
+    font-size:10px;opacity:.6;margin-right:6px;
+    content:"▶";transition:transform .2s
+}
+[data-testid="stExpander"] details[open]>summary::before{content:"▼"}
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 :root {
     --bg:#1C1C1E;--bg2:#161618;--card:#2C2C2E;--card2:#3A3A3C;--card3:#48484A;

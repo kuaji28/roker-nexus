@@ -36,19 +36,29 @@ def _get_kpis_modulos() -> dict:
     try:
         tasa = float(get_config("tasa_usd_ars", float) or 1420)
 
+        # Query segura - en_transito puede no existir, lo intentamos separado
         df = query_to_df("""
             SELECT o.codigo,
                    COALESCE(a.descripcion, o.descripcion) as descripcion,
                    o.demanda_promedio, o.stock_actual,
                    o.stock_optimo, o.costo_reposicion,
                    p.lista_1, p.lista_4,
-                   COALESCE(a.en_lista_negra, 0) as en_lista_negra,
-                   COALESCE(a.en_transito, 0) as en_transito
+                   COALESCE(a.en_lista_negra, 0) as en_lista_negra
             FROM optimizacion o
             LEFT JOIN articulos a ON o.codigo=a.codigo
             LEFT JOIN precios p ON o.codigo=p.codigo
             WHERE COALESCE(a.en_lista_negra, 0) = 0
         """)
+        # en_transito: intentar separado para no romper si no existe
+        try:
+            df_tr = query_to_df("SELECT codigo, en_transito FROM articulos WHERE en_transito > 0")
+            if not df_tr.empty:
+                tr_map = df_tr.set_index("codigo")["en_transito"].to_dict()
+                df["en_transito"] = df["codigo"].map(tr_map).fillna(0)
+            else:
+                df["en_transito"] = 0
+        except Exception:
+            df["en_transito"] = 0
 
         if df.empty:
             return {"ok": False}
@@ -60,7 +70,6 @@ def _get_kpis_modulos() -> dict:
         df["demanda_promedio"] = df["demanda_promedio"].fillna(0).clip(lower=0)
         df["costo_reposicion"] = df["costo_reposicion"].fillna(0)
         df["lista_4"] = df["lista_4"].fillna(0)
-        df["en_transito"] = df["en_transito"].fillna(0) if "en_transito" in df.columns else 0
         df["stock_real"] = df["stock_actual"] + df["en_transito"]
 
         total_mods = len(df)
@@ -400,7 +409,8 @@ def render():
     # BLOQUE 5 — ÚLTIMAS IMPORTACIONES
     # ════════════════════════════════════════════════════════
     st.markdown("---")
-    with st.expander("📥 Últimas importaciones", expanded=False):
+    st.markdown("**📥 Últimas importaciones**")
+    with st.container():
         df_log = query_to_df("""
             SELECT tipo_archivo, nombre_archivo, filas_importadas, estado, importado_en
             FROM importaciones_log ORDER BY importado_en DESC LIMIT 8
