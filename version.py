@@ -1,24 +1,37 @@
 """
 ROKER NEXUS — Control de versiones
-Cada entrada = un deploy con cambios reales.
 """
 
-APP_VERSION = "v1.8.0"
+APP_VERSION = "v1.9.0"
 APP_BUILD   = "2026-03-14"
 
 CHANGELOG = [
     {
-        "version": "v1.8.0",
+        "version": "v1.9.0",
         "fecha": "2026-03-14",
         "cambios": [
-            "✈️ Módulo Cotizaciones/Tránsito — pedidos a China AI-TECH",
-            "📥 Importador Order List — detecta AI-TECH por nombre de archivo",
-            "🔍 Fuzzy matching automático contra artículos Flexxus",
-            "✅ Estados PENDIENTE → EN TRÁNSITO → INGRESADO con fechas",
-            "📦 Ingreso parcial por ítems",
-            "📤 Exportar para Diego con C/MARCO → W/F automático",
-            "🗄️ Schema DB extendido — cotizacion_items con todos los campos",
-            "🧭 Navegación: nueva tab ✈️ Cotizaciones en barra principal",
+            "🛒 Módulo MercadoLibre — comparador, editor masivo, MLA IDs, reporte",
+            "🔍 Búsqueda ML por tienda FR (aitech) y Mecánico con fallback web",
+            "⚓ Términos de búsqueda anclados por código",
+            "📥 Importar MLA IDs desde Excel (FR y Mecánico separados)",
+            "✏️ Editor masivo de precios con cálculo de margen neto en vivo",
+            "📈 Reporte acumulativo de comparaciones exportable a Excel",
+            "🔧 BUG: tabla 'configuracion' agregada al SCHEMA_SQL (no such table)",
+            "🔧 BUG: 'no such table: articulos' en Lista Precios — path absoluto",
+            "🔧 BUG: filtro proveedor FR/Mecánico en sugerencias corregido",
+            "🔧 BUG: cotizaciones AI-TECH ahora guardan estado='pendiente'",
+            "🔧 BUG: tab Tránsito ahora muestra cotizaciones correctamente",
+            "🔧 BUG: archivos duplicados en raíz eliminados",
+        ]
+    },
+    {
+        "version": "v1.8.1",
+        "fecha": "2026-03-14",
+        "cambios": [
+            "✈️ Módulo Cotizaciones/Tránsito completo",
+            "📥 Importador Order List AI-TECH con fuzzy matching",
+            "🤖 Fix Telegram: 4 callbacks sin handler corregidos",
+            "🧭 Navegación: tabs Cotizaciones en barra principal",
         ]
     },
     {
@@ -26,44 +39,8 @@ CHANGELOG = [
         "fecha": "2026-03-13",
         "cambios": [
             "🔍 Detector archivos Flexxus — Planilla de Stock corregido",
-            "🤖 Fix Claude IA — ahora lee API Key de Streamlit Secrets",
             "📦 Planilla de Stock — columnas corregidas (stock en col 7)",
-            "🏪 Stock con 1.931 artículos se carga correctamente",
-            "🔌 Nueva página Sistema — estado de todas las conexiones",
-            "⚙️ Configuración editable — USD/ARS, RMB, márgenes, comisiones ML",
-            "🔒 INSERT OR IGNORE — UNIQUE constraint resuelto definitivamente",
-            "🗄️ Dashboard ahora muestra datos de Optimización de Stock",
-            "📦 Importador Stock por Depósito — formato real Flexxus",
-            "⚙️ Sistema de configuración: márgenes, RMB, comisiones ML",
-            "🔧 query_to_df corregido — datos persisten entre deploys",
-            "🔕 Notificación Telegram solo cuando cambia versión",
-            "📊 Página Precios — error DatabaseError corregido",
-            "📥 Ventas y Compras — error UNIQUE corregido",
-        ]
-    },
-    {
-        "version": "v1.6.0",
-        "fecha": "2026-03-13",
-        "cambios": [
-            "🎨 Diseño One UI 8 completo — paleta Samsung auténtica",
-            "🤖 Bot interactivo con menú de botones",
-            "🔍 /stock y /precio búsqueda por nombre o código",
-            "📊 /quiebres con selector de depósito y Top",
-            "⛔ /negra muestra nombre completo antes de confirmar",
-            "🚚 /pedido — rastrear tránsito con archivo y renglón",
-            "✅ Notificaciones de deploy por Telegram",
-            "⚙️ AutoPush — sube cambios solo cada 30 segundos",
-        ]
-    },
-    {
-        "version": "v1.0.0",
-        "fecha": "2026-03-13",
-        "cambios": [
-            "🚀 Sistema Roker Nexus lanzado",
-            "📊 Dashboard con métricas en tiempo real",
-            "📥 Importador Flexxus multi-archivo",
-            "💰 Gestión de precios y ML",
-            "🛒 Gestión de compras y tránsito",
+            "🔒 INSERT OR IGNORE — UNIQUE constraint resuelto",
         ]
     },
 ]

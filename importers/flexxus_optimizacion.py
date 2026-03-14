@@ -149,7 +149,7 @@ class ImportadorOptimizacion(ImportadorBase):
             LEFT JOIN articulos a ON o.codigo = a.codigo
             WHERE o.stock_actual < o.stock_optimo
               AND COALESCE(a.en_lista_negra, 0) = 0
-              AND o.a_pedir > 0
+              AND (o.stock_optimo - o.stock_actual) > 0
             ORDER BY (o.stock_optimo - o.stock_actual) * o.costo_reposicion DESC
         """
         df = query_to_df(sql)

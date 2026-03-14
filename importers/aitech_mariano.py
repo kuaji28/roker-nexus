@@ -102,7 +102,7 @@ class ImportadorAITECH(ImportadorBase):
             )
         else:
             cur = conn.execute(
-                "INSERT INTO cotizaciones (proveedor, invoice_id, fecha, total_usd) VALUES (?,?,?,?)",
+                "INSERT INTO cotizaciones (proveedor, invoice_id, fecha, total_usd, estado, fecha_pendiente) VALUES (?,?,?,?,'pendiente',datetime('now'))",
                 ("AITECH", invoice_id, fecha_hoy, float(df["precio_usd"].sum()))
             )
             cotizacion_id = cur.lastrowid

@@ -297,6 +297,16 @@ CREATE TABLE IF NOT EXISTS importaciones_log (
     importado_en    TEXT DEFAULT (datetime('now'))
 );
 
+
+-- Configuración del sistema
+CREATE TABLE IF NOT EXISTS configuracion (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    clave       TEXT UNIQUE NOT NULL,
+    valor       TEXT NOT NULL,
+    descripcion TEXT,
+    actualizado_en TEXT DEFAULT (datetime('now'))
+);
+
 -- Indices para performance
 CREATE INDEX IF NOT EXISTS idx_stock_codigo ON stock_snapshots(codigo);
 CREATE INDEX IF NOT EXISTS idx_stock_fecha ON stock_snapshots(fecha);

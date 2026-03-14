@@ -170,7 +170,8 @@ from utils.horarios import label_horario, ahora
 from utils.helpers import check_apis, fmt_usd, fmt_ars, fmt_num
 import pages.importar     as pg_importar
 import pages.compras      as pg_compras
-import pages.cotizaciones as pg_cotizaciones
+import pages.cotizaciones    as pg_cotizaciones
+import pages.mercadolibre   as pg_mercadolibre
 import pages.inventario   as pg_inventario
 import pages.precios    as pg_precios
 import pages.dashboard  as pg_dashboard
@@ -194,6 +195,7 @@ paginas = [
     ("📥", "Cargar",       "Importar"),
     ("🛒", "Compras",      "Compras"),
     ("✈️", "Cotizaciones", "Cotizaciones"),
+    ("🛒", "ML",           "MercadoLibre"),
     ("📦", "Inventario",   "Inventario"),
     ("💰", "Precios",      "Precios"),
     ("🤖", "IA",           "Asistente"),

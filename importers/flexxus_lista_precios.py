@@ -65,7 +65,9 @@ class ImportadorListaPrecios(ImportadorBase):
 
     def _upsert_articulos(self, df: pd.DataFrame):
         """Inserta artículos nuevos en el catálogo maestro."""
-        conn = sqlite3.connect("roker_nexus.db")
+        import os as _os_lp
+        _db_path = _os_lp.path.join(_os_lp.path.dirname(_os_lp.path.abspath(__file__)), "..", "roker_nexus.db")
+        conn = sqlite3.connect(_db_path)
         for _, row in df.iterrows():
             codigo = str(row.get("codigo", "")).strip()
             desc   = str(row.get("descripcion", "")).strip()
