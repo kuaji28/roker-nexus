@@ -16,7 +16,21 @@ try:
 except ImportError:
     SUPABASE_AVAILABLE = False
 
-from config import SUPABASE_URL, SUPABASE_KEY, DEBUG
+# Leer directamente sin importar config (evita circular import)
+def _env(key, default=""):
+    val = os.getenv(key, "")
+    if val: return val
+    try:
+        import streamlit as st
+        val = st.secrets.get(key, "")
+        if val: return str(val)
+    except Exception:
+        pass
+    return default
+
+SUPABASE_URL = _env("SUPABASE_URL")
+SUPABASE_KEY = _env("SUPABASE_KEY")
+DEBUG = _env("DEBUG", "False").lower() == "true"
 
 # ── Detección de backend ─────────────────────────────────────
 USE_SUPABASE = SUPABASE_AVAILABLE and bool(SUPABASE_URL) and bool(SUPABASE_KEY)
@@ -265,7 +279,7 @@ CREATE INDEX IF NOT EXISTS idx_anomalias_estado ON anomalias(estado);
 
 CONFIG_DEFAULTS = [
     ("tasa_usd_ars",          "1420",  "USD → ARS tipo de cambio"),
-    ("tasa_rmb_usd",          "0.138", "RMB (Yuan) → USD"),
+    ("tasa_rmb_usd",          "6.9",   "RMB (Yuan) → ARS (precio directo)"),
     ("margen_venta_pct",      "120",   "Margen venta sobre costo (%)"),
     ("comision_ml_fr",        "14.0",  "Comisión ML Tienda FR (%)"),
     ("comision_ml_mecanico",  "13.0",  "Comisión ML Tienda Mecánico (%)"),
