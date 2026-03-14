@@ -443,16 +443,16 @@ def _migrar_db():
 def init_db():
     """Inicializa la base de datos con el schema completo."""
     if USE_SUPABASE:
-        # Con Supabase el schema se crea via Dashboard
-        # Aquí solo verificamos la conexión
+        # Con Supabase: verificar conexión y crear tablas si no existen
         try:
             sb = get_supabase()
             sb.table("articulos").select("count", count="exact").execute()
             return True
         except Exception as e:
+            # Supabase falló → caer a SQLite como fallback
             if DEBUG:
-                print(f"Supabase error: {e}")
-            return False
+                print(f"Supabase error, usando SQLite: {e}")
+            # Continuar con SQLite (no return False)
     else:
         # SQLite local
         conn = get_sqlite()
@@ -480,7 +480,10 @@ def init_db():
         except Exception as e:
             print(f"Config defaults warning: {e}")
         conn.close()
-        _migrar_db()
+        try:
+            _migrar_db()
+        except Exception:
+            pass
         return True
 
 

@@ -197,3 +197,67 @@ INSERT INTO configuracion (clave, valor, descripcion) VALUES
     ('umbral_quiebre_stock', '10', 'Stock minimo alerta'),
     ('lead_time_dias', '45', 'Dias transito China')
 ON CONFLICT (clave) DO NOTHING;
+
+-- TABLAS NUEVAS v1.8+ (agregar si no existen)
+
+CREATE TABLE IF NOT EXISTS remitos_internos (
+    id SERIAL PRIMARY KEY,
+    numero TEXT,
+    fecha TEXT,
+    origen TEXT,
+    destino TEXT,
+    articulos_count INTEGER DEFAULT 0,
+    importado_en TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS filename TEXT;
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS fecha_pendiente TEXT;
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS fecha_transito TEXT;
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS fecha_ingresado TEXT;
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS fecha_estimada_llegada TEXT;
+
+ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS brand TEXT;
+ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS codigo_proveedor TEXT;
+ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS modelo_universal TEXT;
+ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS modelo_sticker TEXT;
+ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS specification TEXT;
+ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS type_lcd TEXT;
+ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS quality TEXT;
+ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS colour TEXT;
+ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS seccion TEXT;
+ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS cantidad_pedida INTEGER DEFAULT 0;
+ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS cantidad_recibida INTEGER DEFAULT 0;
+ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS subtotal_usd REAL DEFAULT 0;
+ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS descripcion_flexxus TEXT;
+ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS match_score INTEGER DEFAULT 0;
+ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS match_confirmado INTEGER DEFAULT 0;
+ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS estado_item TEXT DEFAULT 'pendiente';
+
+ALTER TABLE articulos ADD COLUMN IF NOT EXISTS mla_id_fr TEXT;
+ALTER TABLE articulos ADD COLUMN IF NOT EXISTS mla_id_mec TEXT;
+ALTER TABLE articulos ADD COLUMN IF NOT EXISTS ml_termino_busqueda TEXT;
+ALTER TABLE articulos ADD COLUMN IF NOT EXISTS ml_termino_anclado INTEGER DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS ml_reporte_comparaciones (
+    id SERIAL PRIMARY KEY,
+    codigo TEXT,
+    descripcion TEXT,
+    tipo_tienda TEXT,
+    termino_busqueda TEXT,
+    nuestro_precio REAL,
+    mejor_competidor_precio REAL,
+    diferencia_pct REAL,
+    link_competidor TEXT,
+    fecha_comparacion TIMESTAMPTZ DEFAULT NOW(),
+    observaciones TEXT
+);
+
+CREATE TABLE IF NOT EXISTS ml_precios_competencia (
+    id SERIAL PRIMARY KEY,
+    descripcion TEXT NOT NULL,
+    precio_ars REAL DEFAULT 0,
+    competidor TEXT,
+    link TEXT,
+    fecha_carga DATE DEFAULT CURRENT_DATE,
+    UNIQUE(descripcion, competidor)
+);

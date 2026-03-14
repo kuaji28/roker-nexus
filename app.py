@@ -6,8 +6,8 @@ import streamlit as st
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 
-APP_VERSION = "v1.7.1"
-APP_BUILD   = "2026-03-13"
+APP_VERSION = "v2.1.0"
+APP_BUILD   = "2026-03-14"
 
 st.set_page_config(
     page_title="Roker Nexus",
@@ -177,6 +177,13 @@ import pages.precios    as pg_precios
 import pages.dashboard  as pg_dashboard
 import pages.asistente  as pg_asistente
 import pages.sistema    as pg_sistema
+
+# ── Inicializar DB en CADA arranque (crítico en Streamlit Cloud) ──
+from database import init_db
+try:
+    init_db()
+except Exception as _e:
+    pass  # Si ya existe, no importa
 
 init_db()
 
