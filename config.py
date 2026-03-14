@@ -39,13 +39,7 @@ def _get_secret(key: str, default: str = "") -> str:
     except Exception:
         pass
     # Fallback hardcoded para claves críticas (Streamlit Cloud)
-    HARDCODED = {
-        "ANTHROPIC_API_KEY": "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",
-        "TELEGRAM_TOKEN":    "8600755595:AAEfMyQKYNI_wrCORNKTJB6u2xsW3JanFJg",
-        "TELEGRAM_CHAT_ID":  "5427210648",
-        "SUPABASE_URL":      "https://zjrabazzvckvxhufppoa.supabase.co",
-        "SUPABASE_KEY":      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqcmFiYXp6dmNrdnhodWZwcG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MTY3OTUsImV4cCI6MjA4ODk5Mjc5NX0.cju7XBZwAPNzgkUNWh_OshVXSVmS-oCTXRqsU8IzlXM",
-    }
+    HARDCODED = {}  # Keys en Streamlit Secrets o variables de entorno
     if key in HARDCODED:
         return HARDCODED[key]
     return default

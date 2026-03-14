@@ -42,3 +42,6 @@ temp/
 # Excel temporales
 ~$*.xlsx
 ~$*.xls
+
+streamlit_secrets.toml
+.env
