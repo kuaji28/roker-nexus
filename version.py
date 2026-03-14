@@ -2,12 +2,12 @@
 ROKER NEXUS — Control de versiones
 """
 
-APP_VERSION = "v2.5.0"
+APP_VERSION = "v1.9.0"
 APP_BUILD   = "2026-03-14"
 
 CHANGELOG = [
     {
-        "version": "v2.5.0",
+        "version": "v1.9.0",
         "fecha": "2026-03-14",
         "cambios": [
             "🛒 Módulo MercadoLibre — comparador, editor masivo, MLA IDs, reporte",
