@@ -23,9 +23,19 @@ def _get_secret(key: str, default: str = "") -> str:
     # 2. st.secrets (Streamlit Cloud)
     try:
         import streamlit as st
-        val = st.secrets.get(key, "")
-        if val:
-            return str(val)
+        # Intentar acceso directo primero
+        if hasattr(st, 'secrets'):
+            try:
+                val = str(st.secrets[key])
+                if val: return val
+            except KeyError:
+                pass
+            except Exception:
+                try:
+                    val = st.secrets.get(key, "")
+                    if val: return str(val)
+                except Exception:
+                    pass
     except Exception:
         pass
     return default

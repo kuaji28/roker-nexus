@@ -76,14 +76,21 @@ CREATE TABLE IF NOT EXISTS stock_snapshots (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     codigo          TEXT NOT NULL,
     deposito        TEXT NOT NULL,
+    descripcion     TEXT DEFAULT '',
+    rubro           TEXT DEFAULT '',
     stock           REAL DEFAULT 0,
     stock_minimo    REAL DEFAULT 0,
     stock_optimo    REAL DEFAULT 0,
     stock_maximo    REAL DEFAULT 0,
     fecha           TEXT NOT NULL,
+    fecha_snapshot  TEXT DEFAULT (datetime('now')),
     importado_en    TEXT DEFAULT (datetime('now')),
     UNIQUE(codigo, deposito, fecha)
 );
+-- Migración: agregar columnas si no existen (para BD existentes)
+ALTER TABLE stock_snapshots ADD COLUMN IF NOT EXISTS descripcion TEXT DEFAULT '';
+ALTER TABLE stock_snapshots ADD COLUMN IF NOT EXISTS rubro TEXT DEFAULT '';
+ALTER TABLE stock_snapshots ADD COLUMN IF NOT EXISTS fecha_snapshot TEXT DEFAULT '';
 
 -- Lista de precios (todas las listas)
 CREATE TABLE IF NOT EXISTS precios (

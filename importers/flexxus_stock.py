@@ -114,20 +114,22 @@ class ImportadorStock(ImportadorBase):
 
 
     def _guardar(self, df: pd.DataFrame) -> int:
-        conn = sqlite3.connect("roker_nexus.db")
-        deposito = df["deposito"].iloc[0] if not df.empty else "DESCONOCIDO"
+        from database import df_to_db, execute_query
+        if df.empty:
+            return 0
+        deposito = df["deposito"].iloc[0]
         hoy = datetime.now().date().isoformat()
-        # Borrar snapshot de hoy para este depósito y reinsertar
-        conn.execute(
+        # Borrar snapshot de hoy para este depósito
+        execute_query(
             "DELETE FROM stock_snapshots WHERE deposito=? AND fecha=?",
-            (deposito, hoy)
+            (deposito, hoy), fetch=False
         )
-        df.to_sql("stock_snapshots", conn, if_exists="append", index=False, method="multi")
-        conn.commit()
-        count = len(df)
-        conn.close()
-        return count
-
+        # Asegurar columnas correctas
+        cols = ["codigo","deposito","descripcion","rubro",
+                "stock","stock_minimo","stock_maximo","stock_optimo",
+                "fecha","fecha_snapshot"]
+        df_save = df[[c for c in cols if c in df.columns]]
+        return df_to_db(df_save, "stock_snapshots")
     def _metadata(self, df: pd.DataFrame) -> dict:
         dep = getattr(self, "_deposito_detectado", "?")
         return {
