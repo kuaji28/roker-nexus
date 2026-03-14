@@ -1268,8 +1268,7 @@ async def _mostrar_pedido_codigo(message, codigo: str, desc: str = ""):
     else:
         texto = (
             f"📱 *{desc or codigo}* — `{codigo}`\n\n"
-            f"⚪ Sin registros de tránsito ni cotizaciones.\n"
-            f"_No hay pedidos activos para este artículo._"
+            f"⚪ Sin registros de tránsito ni cotizaciones."
         )
     await message.reply_text(texto, parse_mode="Markdown",
                               reply_markup=InlineKeyboardMarkup(keyboard))

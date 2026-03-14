@@ -82,17 +82,12 @@ class ImportadorListaPrecios(ImportadorBase):
         conn.close()
 
     def _guardar(self, df: pd.DataFrame) -> int:
-        conn = sqlite3.connect("roker_nexus.db")
+        from database import df_to_db, execute_query
         hoy = datetime.now().date().isoformat()
-        conn.execute("DELETE FROM precios WHERE fecha=?", (hoy,))
-        # La tabla precios NO tiene columna descripcion — se guarda solo en articulos
+        execute_query("DELETE FROM precios WHERE fecha=?", (hoy,), fetch=False)
         cols_validas = ["codigo", "lista_1", "lista_2", "lista_3", "lista_4", "lista_5", "moneda", "fecha"]
         df_save = df[[c for c in cols_validas if c in df.columns]]
-        df_save.to_sql("precios", conn, if_exists="append", index=False, method="multi")
-        conn.commit()
-        count = len(df_save)
-        conn.close()
-        return count
+        return df_to_db(df_save, "precios")
 
     def _metadata(self, df: pd.DataFrame) -> dict:
         return {

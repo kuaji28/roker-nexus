@@ -16,6 +16,11 @@ TIMEZONE = ZoneInfo(os.getenv("TIMEZONE", "America/Argentina/Buenos_Aires"))
 # ── Helper para leer secrets ────────────────────────────────
 def _get_secret(key: str, default: str = "") -> str:
     """Lee de st.secrets (Streamlit Cloud) o de variables de entorno."""
+    # 1. Variables de entorno (Railway, local)
+    env_val = os.getenv(key, "")
+    if env_val:
+        return env_val
+    # 2. st.secrets (Streamlit Cloud)
     try:
         import streamlit as st
         val = st.secrets.get(key, "")
@@ -23,7 +28,7 @@ def _get_secret(key: str, default: str = "") -> str:
             return str(val)
     except Exception:
         pass
-    return os.getenv(key, default)
+    return default
 
 # ── APIs ────────────────────────────────────────────────────
 SUPABASE_URL      = _get_secret("SUPABASE_URL")
