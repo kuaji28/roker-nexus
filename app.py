@@ -6,7 +6,7 @@ import streamlit as st
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 
-APP_VERSION = "v1.5.0"
+APP_VERSION = "v1.5.2"
 APP_BUILD   = "2026-03-13"
 
 st.set_page_config(
@@ -168,6 +168,7 @@ import pages.inventario as pg_inventario
 import pages.precios    as pg_precios
 import pages.dashboard  as pg_dashboard
 import pages.asistente  as pg_asistente
+import pages.sistema    as pg_sistema
 
 init_db()
 
@@ -188,6 +189,7 @@ paginas = [
     ("📦", "Inventario", "Inventario"),
     ("💰", "Precios",    "Precios"),
     ("🤖", "IA",         "Asistente"),
+    ("🔌", "Sistema",    "Sistema"),
 ]
 
 p_actual = st.session_state.pagina
@@ -220,5 +222,6 @@ elif p == "Compras":    pg_compras.render()
 elif p == "Inventario": pg_inventario.render()
 elif p == "Precios":    pg_precios.render()
 elif p == "Asistente":  pg_asistente.render()
+elif p == "Sistema":    pg_sistema.render()
 
 st.markdown('</div>', unsafe_allow_html=True)

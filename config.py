@@ -14,12 +14,23 @@ EMPRESA_NOMBRE = os.getenv("EMPRESA_NOMBRE", "El Celu")
 TIMEZONE = ZoneInfo(os.getenv("TIMEZONE", "America/Argentina/Buenos_Aires"))
 
 # ── APIs ────────────────────────────────────────────────────
-SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+SUPABASE_URL = _get_secret("SUPABASE_URL")
+SUPABASE_KEY = _get_secret("SUPABASE_KEY")
+def _get_secret(key: str, default: str = "") -> str:
+    """Lee de st.secrets (Streamlit Cloud) o de variables de entorno."""
+    try:
+        import streamlit as st
+        val = st.secrets.get(key, "")
+        if val:
+            return str(val)
+    except Exception:
+        pass
+    return os.getenv(key, default)
+
+ANTHROPIC_API_KEY = _get_secret("ANTHROPIC_API_KEY")
+GEMINI_API_KEY    = _get_secret("GEMINI_API_KEY")
+TELEGRAM_TOKEN   = _get_secret("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = _get_secret("TELEGRAM_CHAT_ID")
 GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")
 
 # ── Modelo IA ────────────────────────────────────────────────
