@@ -15,14 +15,76 @@ from telegram.ext import (
     CallbackQueryHandler, ContextTypes, filters
 )
 
-from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, MONEDA_USD_ARS
-from database import (
-    get_quiebres, get_lista_negra,
-    agregar_a_lista_negra, quitar_de_lista_negra,
-    query_to_df, execute_query, init_db
-)
-from utils.helpers import fmt_usd, fmt_num, color_stock
-from modules.inventario import detectar_quiebre_entre_depositos
+# Configuración — lee de Railway Variables (env vars) primero
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Railway Variables tienen prioridad
+TELEGRAM_TOKEN   = os.getenv("TELEGRAM_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+MONEDA_USD_ARS   = float(os.getenv("TASA_USD_ARS", "1420"))
+
+# Si no están en env vars, leer de la DB local
+if not TELEGRAM_TOKEN:
+    try:
+        from database import get_config as _gc_tg
+        TELEGRAM_TOKEN   = str(_gc_tg("telegram_token")   or "")
+        TELEGRAM_CHAT_ID = str(_gc_tg("telegram_admin_id") or TELEGRAM_CHAT_ID)
+        MONEDA_USD_ARS   = float(_gc_tg("tasa_usd_ars", float) or MONEDA_USD_ARS)
+    except Exception:
+        pass
+# Adaptar database para v3.0
+try:
+    from database import (
+        get_quiebres, get_lista_negra,
+        agregar_a_lista_negra, quitar_de_lista_negra,
+        query_to_df, execute_query, init_db
+    )
+except ImportError:
+    import roker_database as _rdb2
+    import pandas as _pd2
+    def query_to_df(sql, params=()):
+        conn = _rdb2.get_connection()
+        try:
+            df = _pd2.read_sql_query(sql, conn, params=params if params else None)
+        except Exception:
+            df = _pd2.DataFrame()
+        finally:
+            conn.close()
+        return df
+    def execute_query(sql, params=(), fetch=True):
+        conn = _rdb2.get_connection()
+        try:
+            cur = conn.execute(sql, params)
+            conn.commit()
+            if fetch:
+                rows = cur.fetchall()
+                return [dict(r) for r in rows]
+        except Exception:
+            pass
+        finally:
+            conn.close()
+        return []
+    def get_quiebres(umbral=10, deposito=None):
+        return _pd2.DataFrame()
+    def get_lista_negra():
+        return _rdb2.get_lista_negra()
+    def agregar_a_lista_negra(codigo, desc=""):
+        _rdb2.agregar_lista_negra(desc, codigo)
+    def quitar_de_lista_negra(codigo):
+        pass
+    def init_db():
+        _rdb2.inicializar_db()
+try:
+    from utils.helpers import fmt_usd, fmt_num, color_stock
+except ImportError:
+    def fmt_usd(v): return f"USD {float(v or 0):,.2f}"
+    def fmt_num(v): return f"{int(v or 0):,}"
+    def color_stock(s, m=0): return "🔴" if float(s or 0)==0 else ("🟡" if float(s or 0)<float(m or 0) else "🟢")
+try:
+    from modules.inventario import detectar_quiebre_entre_depositos
+except ImportError:
+    def detectar_quiebre_entre_depositos(*a, **k): return None
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -33,6 +95,10 @@ import functools
 
 # ── Seguridad: solo responde al chat autorizado ───────────────
 def autorizado(update: Update) -> bool:
+    # Si no hay CHAT_ID configurado, acepta cualquier mensaje (modo debug)
+    # En producción, configurar TELEGRAM_CHAT_ID en Railway Variables
+    if not TELEGRAM_CHAT_ID:
+        return True
     return str(update.effective_chat.id) == str(TELEGRAM_CHAT_ID)
 
 
@@ -239,7 +305,7 @@ async def _mostrar_stock_codigo(message, codigo: str):
 
     # Obtener tasa
     try:
-        from database import get_config as _gc
+        from database import get_config  # noqa as _gc
         tasa = float(_gc("tasa_usd_ars", float) or 1420)
     except Exception:
         tasa = 1420
@@ -1299,7 +1365,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📋 Ver menú completo",   callback_data="menu_volver")],
         ]
         await update.message.reply_text(
-            f"🔍 No encontré *{texto}* en el sistema.\n\n¿Qué querés hacer?",
+            f"🔍 No encontré *{texto[:30]}* en el sistema.\n\n¿Qué querés hacer?",
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -1883,6 +1949,45 @@ def _get_tasa_str() -> str:
         return "no registrado"
 
 
+
+
+@auth_required
+async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Muestra todos los comandos disponibles."""
+    texto = (
+        "⚡ *ROKER NEXUS — Comandos*\n\n"
+        "📦 *Stock e inventario*\n"
+        "/stock [modelo] — Stock, precios, tránsito\n"
+        "/precio [modelo] — Lista 1 USD/ARS + ML\n"
+        "/quiebres — Artículos en quiebre\n"
+        "/sinstock — Sin stock con demanda\n"
+        "/criticos [N] — Top N críticos\n"
+        "/urgentes [N] — Top N bajo mínimo\n"
+        "/pedido [código] — Estado de pedido\n\n"
+        "✈️ *Tránsito*\n"
+        "/transito — Lista completa en tránsito\n"
+        "/lotes — Últimos lotes de compra\n\n"
+        "📊 *Reportes*\n"
+        "/kpis — KPIs ejecutivos\n"
+        "/resumen — Resumen del sistema\n\n"
+        "🤖 *IA*\n"
+        "/ia [pregunta] — Consultar IA activa\n"
+        "/ia2 [pregunta] — Paralelo todos los IAs\n\n"
+        "⚙️ *Configuración*\n"
+        "/tasa [número] — Actualizar USD/ARS\n"
+        "/tasa RMB [número] — Actualizar RMB\n"
+        "/config — Ver configuración\n"
+        "/negra — Lista negra\n\n"
+        "📝 *Pedidos*\n"
+        "/borrador [modelo] — Agregar al borrador\n\n"
+        "_También podés escribir cualquier modelo o código directamente._"
+    )
+    kb = [[InlineKeyboardButton("🔙 Menú principal", callback_data="menu_volver")]]
+    await update.message.reply_text(
+        texto, parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(kb)
+    )
+
 def main():
     if not TELEGRAM_TOKEN:
         print("⚠️  TELEGRAM_TOKEN no configurado en .env")
@@ -1892,6 +1997,7 @@ def main():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
 
     app.add_handler(CommandHandler("start",     cmd_start))
+    app.add_handler(CommandHandler("help",      cmd_help))
     app.add_handler(CommandHandler("menu",      cmd_menu))
     app.add_handler(CommandHandler("stock",     cmd_stock))
     app.add_handler(CommandHandler("precio",    cmd_precio))

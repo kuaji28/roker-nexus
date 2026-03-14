@@ -192,7 +192,7 @@ def _tab_nuevo_pedido():
             "Flexxus":      i["codigo_flexxus"] or "❓",
             "Score":        i["match_score"] if i["codigo_flexxus"] else 0,
         } for i in items_con_match])
-        st.dataframe(df_preview, hide_index=True, use_container_width=True)
+        st.dataframe(df_preview, hide_index=True, width='stretch')
 
     st.markdown("---")
 
@@ -200,7 +200,7 @@ def _tab_nuevo_pedido():
     col_save, col_export, _ = st.columns([2, 2, 4])
 
     with col_save:
-        if st.button("💾 Guardar pedido", type="primary", use_container_width=True):
+        if st.button("💾 Guardar pedido", type="primary", width='stretch'):
             _guardar_cotizacion(datos, items_con_match)
             st.success(f"✅ Pedido #{datos['invoice_id']} guardado como PENDIENTE")
             st.rerun()
@@ -216,7 +216,7 @@ def _tab_nuevo_pedido():
             data=buf,
             file_name=f"AI-TECH_{datos['invoice_id']}_WF.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
+            width='stretch',
         )
 
 
@@ -280,26 +280,26 @@ def _card_cotizacion_activa(cot):
 
         with col_b1:
             if estado == "pendiente":
-                if st.button("✈️ Marcar Tránsito", key=f"tran_{cot_id}", use_container_width=True):
+                if st.button("✈️ Marcar Tránsito", key=f"tran_{cot_id}", width='stretch'):
                     _cambiar_estado(cot_id, "en_transito")
                     st.rerun()
             elif estado == "en_transito":
-                if st.button("✅ Ingresar Todo", key=f"ing_{cot_id}", use_container_width=True, type="primary"):
+                if st.button("✅ Ingresar Todo", key=f"ing_{cot_id}", width='stretch', type="primary"):
                     _ingresar_completo(cot_id)
                     st.rerun()
 
         with col_b2:
             if estado == "en_transito":
-                if st.button("📦 Ingreso Parcial", key=f"parc_{cot_id}", use_container_width=True):
+                if st.button("📦 Ingreso Parcial", key=f"parc_{cot_id}", width='stretch'):
                     st.session_state[f"mostrar_parcial_{cot_id}"] = True
 
         with col_b3:
-            if st.button("👁 Ver ítems", key=f"ver_{cot_id}", use_container_width=True):
+            if st.button("👁 Ver ítems", key=f"ver_{cot_id}", width='stretch'):
                 st.session_state[f"mostrar_items_{cot_id}"] = not st.session_state.get(f"mostrar_items_{cot_id}", False)
 
         with col_b4:
             if estado != "anulado":
-                if st.button("❌ Anular", key=f"anul_{cot_id}", use_container_width=True):
+                if st.button("❌ Anular", key=f"anul_{cot_id}", width='stretch'):
                     _cambiar_estado(cot_id, "anulado")
                     st.rerun()
 
@@ -329,7 +329,7 @@ def _panel_items(cot_id: int, estado: str):
     st.dataframe(
         df_items,
         hide_index=True,
-        use_container_width=True,
+        width='stretch',
         column_config={
             "cantidad_pedida":  st.column_config.NumberColumn("Pedido", format="%d"),
             "cantidad_recibida": st.column_config.NumberColumn("Recibido", format="%d"),
@@ -361,7 +361,7 @@ def _panel_ingreso_parcial(cot_id: int):
     df_edit = st.data_editor(
         df_items[["modelo_universal", "cantidad_pedida", "cantidad_recibida", "recibir_ahora"]],
         hide_index=True,
-        use_container_width=True,
+        width='stretch',
         column_config={
             "modelo_universal":   st.column_config.TextColumn("Modelo", disabled=True),
             "cantidad_pedida":    st.column_config.NumberColumn("Pedido", format="%d", disabled=True),
@@ -372,7 +372,7 @@ def _panel_ingreso_parcial(cot_id: int):
 
     col_ok, col_cancel, _ = st.columns([2, 2, 6])
     with col_ok:
-        if st.button("✅ Registrar ingreso", key=f"ok_parc_{cot_id}", type="primary", use_container_width=True):
+        if st.button("✅ Registrar ingreso", key=f"ok_parc_{cot_id}", type="primary", width='stretch'):
             for i, row in df_edit.iterrows():
                 item_id = int(df_items.iloc[i]["id"])
                 nueva_cantidad = int(df_items.iloc[i]["cantidad_recibida"]) + int(row["recibir_ahora"])
@@ -387,7 +387,7 @@ def _panel_ingreso_parcial(cot_id: int):
             st.rerun()
 
     with col_cancel:
-        if st.button("Cancelar", key=f"cancel_parc_{cot_id}", use_container_width=True):
+        if st.button("Cancelar", key=f"cancel_parc_{cot_id}", width='stretch'):
             st.session_state[f"mostrar_parcial_{cot_id}"] = False
             st.rerun()
 
@@ -432,7 +432,7 @@ def _tab_historial():
             "fecha_pendiente", "fecha_transito", "fecha_ingresado"
         ]],
         hide_index=True,
-        use_container_width=True,
+        width='stretch',
         column_config={
             "invoice_id":       st.column_config.TextColumn("Invoice"),
             "fecha":            st.column_config.TextColumn("Fecha"),

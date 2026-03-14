@@ -130,7 +130,7 @@ def render():
         </p>
         """, unsafe_allow_html=True)
     with col_ref:
-        if st.button("🔄", help="Actualizar datos", use_container_width=True):
+        if st.button("🔄", help="Actualizar datos", width='stretch'):
             st.rerun()
 
     kpis = _get_kpis_modulos()
@@ -341,7 +341,7 @@ def render():
         if df_log.empty:
             st.info("Sin importaciones registradas.")
         else:
-            st.dataframe(df_log, hide_index=True, use_container_width=True)
+            st.dataframe(df_log, hide_index=True, width='stretch')
 
 
 def _kpi_card(titulo: str, valor, subtitulo: str, color: str, detalle: str = ""):
@@ -428,7 +428,7 @@ def _panel_config_rapida(tasa_actual: float):
         value=tasa_actual, step=50.0, key="dash_tasa",
         label_visibility="collapsed"
     )
-    if st.button("💾 Guardar tasa", use_container_width=True, key="dash_save_tasa"):
+    if st.button("💾 Guardar tasa", width='stretch', key="dash_save_tasa"):
         set_config("tasa_usd_ars", str(int(nueva_tasa)))
         try:
             from utils.helpers import notificar_telegram, notificar_picos_demanda
