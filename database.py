@@ -669,9 +669,9 @@ def get_resumen_stats() -> dict:
                 WHERE s.stock>0 AND s.stock<s.stock_minimo AND s.stock_minimo>0""")
         else:
             # Usar optimizacion como fuente alternativa
-            total    = safe_count("SELECT COUNT(DISTINCT codigo) FROM optimizacion")
-            sin_stk  = safe_count("SELECT COUNT(*) FROM optimizacion WHERE stock_actual=0")
-            bajo_min = safe_count("SELECT COUNT(*) FROM optimizacion WHERE stock_actual>0 AND stock_actual<stock_minimo AND stock_minimo>0")
+            total    = safe_count("SELECT COUNT(DISTINCT codigo) FROM optimizacion WHERE UPPER(descripcion) LIKE 'MODULO%'")
+            sin_stk  = safe_count("SELECT COUNT(*) FROM optimizacion WHERE stock_actual=0 AND UPPER(descripcion) LIKE 'MODULO%'")
+            bajo_min = safe_count("SELECT COUNT(*) FROM optimizacion WHERE stock_actual>0 AND stock_actual<stock_minimo AND stock_minimo>0 AND UPPER(descripcion) LIKE 'MODULO%'")
 
         try:
             cur = conn.execute("SELECT importado_en FROM importaciones_log ORDER BY importado_en DESC LIMIT 1")

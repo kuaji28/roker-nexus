@@ -1,224 +1,499 @@
 """
-ROKER NEXUS — Dashboard
-Vista ejecutiva del estado del sistema.
+ROKER NEXUS — Dashboard v2.0
+Vista ejecutiva enfocada en MÓDULOS (el producto principal del negocio).
+
+Lógica de clasificación:
+  - MÓDULO = descripción empieza con "MODULO" en la tabla optimizacion
+  - FR      = código empieza con LETRA  (M, L, P...) → proveedor AITECH
+  - MECÁNICO = código empieza con NÚMERO               → proveedor MECÁNICO
+  - Todo lo demás (accesorios, etc.) se excluye del dashboard principal
+
+El stock general de Flexxus tiene 17.000+ artículos porque incluye TODO el catálogo.
+Solo hay ~850 módulos — eso es lo que importa para las compras.
 """
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
 from datetime import datetime
 
-from database import (
-    query_to_df, get_quiebres, get_ultima_importacion,
-    get_resumen_stats
-)
-from utils.horarios import ahora, hoy, label_horario
-from utils.helpers import fmt_usd, fmt_ars, fmt_num, color_stock
+from database import query_to_df, get_config, execute_query
+from utils.horarios import ahora
+from utils.helpers import fmt_usd, fmt_ars, fmt_num
 
 
+# ── Helpers ──────────────────────────────────────────────────
+def _es_modulo(descripcion: str) -> bool:
+    return str(descripcion or "").upper().strip().startswith("MODULO")
+
+def _tipo_codigo(codigo: str) -> str:
+    c = str(codigo or "").strip()
+    if not c or c == "nan": return "otro"
+    return "fr" if c[0].isalpha() else "mecanico"
 
 
-def _calcular_venta_perdida() -> dict:
-    """Calcula la venta perdida proyectada por quiebres de stock."""
-    df = query_to_df("""
-        SELECT o.codigo, o.demanda_promedio, o.costo_reposicion,
-               p.lista_4
-        FROM optimizacion o
-        LEFT JOIN articulos a ON o.codigo=a.codigo
-        LEFT JOIN precios p ON o.codigo=p.codigo
-        WHERE o.stock_actual = 0
-          AND o.demanda_promedio > 0
-          AND COALESCE(a.en_lista_negra, 0) = 0
-    """)
-    if df.empty:
-        return {"total_usd": 0, "total_ars": 0, "articulos": 0}
+def _get_kpis_modulos() -> dict:
+    """KPIs reales filtrados a módulos únicamente."""
+    try:
+        tasa = float(get_config("tasa_usd_ars", float) or 1420)
 
-    tasa = float(get_config("tasa_usd_ars", float) or 1420)
-    df["dem"] = df["demanda_promedio"].apply(lambda x: max(0.0, float(x or 0)))
-    df["costo"] = df["costo_reposicion"].apply(lambda x: float(x or 0))
-    df["l4"] = df["lista_4"].apply(lambda x: float(x or 0))
+        df = query_to_df("""
+            SELECT o.codigo,
+                   COALESCE(a.descripcion, o.descripcion) as descripcion,
+                   o.demanda_promedio, o.stock_actual,
+                   o.stock_optimo, o.costo_reposicion,
+                   p.lista_1, p.lista_4,
+                   COALESCE(a.en_lista_negra, 0) as en_lista_negra
+            FROM optimizacion o
+            LEFT JOIN articulos a ON o.codigo=a.codigo
+            LEFT JOIN precios p ON o.codigo=p.codigo
+            WHERE COALESCE(a.en_lista_negra, 0) = 0
+        """)
 
-    # Venta perdida = demanda × precio ML (si existe) o × costo × 1.8
-    df["venta_perdida_ars"] = df.apply(
-        lambda r: r["dem"] * r["l4"] if r["l4"] > 0
-        else r["dem"] * r["costo"] * tasa * 1.8,
-        axis=1
-    )
-    df["venta_perdida_usd"] = df["venta_perdida_ars"] / tasa
+        if df.empty:
+            return {"ok": False}
 
-    return {
-        "total_usd": round(df["venta_perdida_usd"].sum(), 0),
-        "total_ars": round(df["venta_perdida_ars"].sum(), 0),
-        "articulos": len(df),
-        "tasa": tasa,
-    }
+        # Filtrar solo módulos
+        df = df[df["descripcion"].apply(_es_modulo)].copy()
+        df["tipo"] = df["codigo"].apply(_tipo_codigo)
+        df["stock_actual"] = df["stock_actual"].fillna(0)
+        df["demanda_promedio"] = df["demanda_promedio"].fillna(0).clip(lower=0)
+        df["costo_reposicion"] = df["costo_reposicion"].fillna(0)
+        df["lista_4"] = df["lista_4"].fillna(0)
+
+        total_mods = len(df)
+        fr_total   = int((df["tipo"] == "fr").sum())
+        mec_total  = int((df["tipo"] == "mecanico").sum())
+
+        sin_stock     = df[df["stock_actual"] == 0]
+        fr_sin_stock  = int((sin_stock["tipo"] == "fr").sum())
+        mec_sin_stock = int((sin_stock["tipo"] == "mecanico").sum())
+
+        bajo_min = df[(df["stock_actual"] > 0) & (df["stock_actual"] < df["stock_optimo"])]
+        fr_bajo  = int((bajo_min["tipo"] == "fr").sum())
+        mec_bajo = int((bajo_min["tipo"] == "mecanico").sum())
+
+        # Inversión requerida
+        df["a_pedir"]   = (df["stock_optimo"] - df["stock_actual"]).clip(lower=0)
+        df["inversion"] = df["a_pedir"] * df["costo_reposicion"]
+        inversion_fr  = float(df[df["tipo"] == "fr"]["inversion"].sum())
+        inversion_mec = float(df[df["tipo"] == "mecanico"]["inversion"].sum())
+        inversion_tot = inversion_fr + inversion_mec
+
+        # Venta perdida (stock=0 con demanda)
+        vp = df[(df["stock_actual"] == 0) & (df["demanda_promedio"] > 0)].copy()
+        vp["vp_ars"] = vp.apply(
+            lambda r: r["demanda_promedio"] * r["lista_4"] if r["lista_4"] > 0
+            else r["demanda_promedio"] * r["costo_reposicion"] * tasa * 1.8,
+            axis=1
+        )
+        venta_perdida_usd = float(vp["vp_ars"].sum() / tasa)
+
+        # Top 10 críticos (stock=0, mayor demanda)
+        criticos = df[df["stock_actual"] == 0].sort_values(
+            "demanda_promedio", ascending=False
+        ).head(10)
+
+        # Top 10 urgentes (bajo mínimo)
+        urgentes = df[
+            (df["stock_actual"] > 0) &
+            (df["stock_actual"] < df["stock_optimo"]) &
+            (df["demanda_promedio"] > 0)
+        ].copy()
+        urgentes["dias_cob"] = (urgentes["stock_actual"] / (urgentes["demanda_promedio"] / 30)).round(0)
+        urgentes = urgentes.sort_values("dias_cob").head(10)
+
+        return {
+            "ok": True, "tasa": tasa,
+            "total_mods": total_mods, "fr_total": fr_total, "mec_total": mec_total,
+            "fr_sin_stock": fr_sin_stock, "mec_sin_stock": mec_sin_stock,
+            "fr_bajo": fr_bajo, "mec_bajo": mec_bajo,
+            "inversion_fr": inversion_fr, "inversion_mec": inversion_mec,
+            "inversion_tot": inversion_tot,
+            "venta_perdida_usd": venta_perdida_usd,
+            "criticos": criticos, "urgentes": urgentes,
+            "df_modulos": df,
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
 
 def render():
-    # ── Header ───────────────────────────────────────────────
-    col_tit, col_fecha = st.columns([3, 1])
-    with col_tit:
+    # ── Refresh ───────────────────────────────────────────────
+    col_h, col_ref = st.columns([5, 1])
+    with col_h:
         st.markdown("""
-        <h1 style="margin:0;font-size:28px;font-weight:700;
-                   background:linear-gradient(90deg,var(--nx-accent),var(--nx-purple));
-                   -webkit-background-clip:text;-webkit-text-fill-color:transparent;">
-            Dashboard
+        <h1 style="margin:0 0 2px;font-size:26px;font-weight:700;color:var(--nx-text)">
+            📊 Dashboard
         </h1>
-        <p style="margin:4px 0 20px;color:var(--nx-text2);font-size:14px;">
-            Estado general del sistema
+        <p style="color:var(--nx-text2);font-size:13px;margin-bottom:16px">
+            Vista ejecutiva de <strong>módulos</strong> — FR + Mecánico
         </p>
         """, unsafe_allow_html=True)
-    with col_fecha:
+    with col_ref:
+        if st.button("🔄", help="Actualizar datos", use_container_width=True):
+            st.rerun()
+
+    kpis = _get_kpis_modulos()
+
+    if not kpis.get("ok"):
+        err = kpis.get("error", "")
+        if "no such table" in err or not err:
+            st.info("📥 **Sin datos todavía.** Cargá primero el archivo de **Optimización de Stock** desde la pestaña Cargar.")
+        else:
+            st.error(f"Error cargando datos: {err}")
+        _panel_sin_datos()
+        return
+
+    tasa = kpis["tasa"]
+
+    # ════════════════════════════════════════════════════════
+    # BLOQUE 1 — SEMÁFORO PRINCIPAL (tarjetas grandes)
+    # ════════════════════════════════════════════════════════
+    st.markdown("### 🚦 Estado de Módulos")
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        _kpi_card(
+            "📦 FR sin stock",
+            kpis["fr_sin_stock"],
+            f"de {kpis['fr_total']} FR totales",
+            "rojo" if kpis["fr_sin_stock"] > 20 else "verde",
+            detalle=f"+ {kpis['fr_bajo']} bajo mínimo"
+        )
+    with c2:
+        _kpi_card(
+            "📦 Mecánico sin stock",
+            kpis["mec_sin_stock"],
+            f"de {kpis['mec_total']} Mecánico totales",
+            "rojo" if kpis["mec_sin_stock"] > 10 else "verde",
+            detalle=f"+ {kpis['mec_bajo']} bajo mínimo"
+        )
+    with c3:
+        _kpi_card(
+            "💸 Venta perdida/mes",
+            f"USD {kpis['venta_perdida_usd']:,.0f}",
+            f"= ${kpis['venta_perdida_usd']*tasa:,.0f} ARS",
+            "rojo" if kpis["venta_perdida_usd"] > 1000 else "amarillo",
+            detalle=f"stock=0 con demanda activa"
+        )
+    with c4:
+        _kpi_card(
+            "💰 Inversión requerida",
+            f"USD {kpis['inversion_tot']:,.0f}",
+            f"= ${kpis['inversion_tot']*tasa:,.0f} ARS",
+            "amarillo",
+            detalle=f"FR: ${kpis['inversion_fr']:,.0f} | Mec: ${kpis['inversion_mec']:,.0f}"
+        )
+
+    # ════════════════════════════════════════════════════════
+    # BLOQUE 2 — DESGLOSE FR vs MECÁNICO
+    # ════════════════════════════════════════════════════════
+    st.markdown("---")
+    st.markdown("### 📊 FR vs Mecánico")
+
+    col_fr, col_mec = st.columns(2)
+
+    with col_fr:
+        total_fr = kpis["fr_total"]
+        ok_fr = total_fr - kpis["fr_sin_stock"] - kpis["fr_bajo"]
         st.markdown(f"""
-        <div style="text-align:right;padding-top:8px">
-            <div style="font-size:13px;color:var(--nx-text2)">{ahora().strftime('%A %d/%m/%Y')}</div>
-            <div style="font-size:20px;font-weight:700;color:var(--nx-text)">{ahora().strftime('%H:%M')}</div>
+        <div style="background:rgba(10,132,255,.08);border:1px solid rgba(10,132,255,.2);
+                    border-left:3px solid #0a84ff;border-radius:12px;padding:14px 16px">
+            <div style="font-size:11px;color:#0a84ff;font-weight:700;text-transform:uppercase;letter-spacing:.8px">
+                FR (AITECH) — Código con letra</div>
+            <div style="display:flex;gap:20px;margin-top:10px">
+                <div><div style="font-size:22px;font-weight:700;color:var(--nx-text)">{total_fr}</div>
+                     <div style="font-size:11px;color:var(--nx-text2)">Total</div></div>
+                <div><div style="font-size:22px;font-weight:700;color:#32d74b">{ok_fr}</div>
+                     <div style="font-size:11px;color:var(--nx-text2)">Con stock OK</div></div>
+                <div><div style="font-size:22px;font-weight:700;color:#ff9f0a">{kpis['fr_bajo']}</div>
+                     <div style="font-size:11px;color:var(--nx-text2)">Bajo mínimo</div></div>
+                <div><div style="font-size:22px;font-weight:700;color:#ff375f">{kpis['fr_sin_stock']}</div>
+                     <div style="font-size:11px;color:var(--nx-text2)">Sin stock</div></div>
+            </div>
+            <div style="margin-top:10px">
+                <div style="height:6px;background:var(--nx-border);border-radius:3px;overflow:hidden">
+                    <div style="height:100%;width:{ok_fr/max(total_fr,1)*100:.0f}%;background:#32d74b;border-radius:3px"></div>
+                </div>
+                <div style="font-size:10px;color:var(--nx-text3);margin-top:4px">
+                    {ok_fr/max(total_fr,1)*100:.0f}% con stock suficiente</div>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
-    # ── Stats ────────────────────────────────────────────────
-    stats = get_resumen_stats()
+    with col_mec:
+        total_mec = kpis["mec_total"]
+        ok_mec = total_mec - kpis["mec_sin_stock"] - kpis["mec_bajo"]
+        st.markdown(f"""
+        <div style="background:rgba(255,159,10,.08);border:1px solid rgba(255,159,10,.2);
+                    border-left:3px solid #ff9f0a;border-radius:12px;padding:14px 16px">
+            <div style="font-size:11px;color:#ff9f0a;font-weight:700;text-transform:uppercase;letter-spacing:.8px">
+                MECÁNICO — Código con número</div>
+            <div style="display:flex;gap:20px;margin-top:10px">
+                <div><div style="font-size:22px;font-weight:700;color:var(--nx-text)">{total_mec}</div>
+                     <div style="font-size:11px;color:var(--nx-text2)">Total</div></div>
+                <div><div style="font-size:22px;font-weight:700;color:#32d74b">{ok_mec}</div>
+                     <div style="font-size:11px;color:var(--nx-text2)">Con stock OK</div></div>
+                <div><div style="font-size:22px;font-weight:700;color:#ff9f0a">{kpis['mec_bajo']}</div>
+                     <div style="font-size:11px;color:var(--nx-text2)">Bajo mínimo</div></div>
+                <div><div style="font-size:22px;font-weight:700;color:#ff375f">{kpis['mec_sin_stock']}</div>
+                     <div style="font-size:11px;color:var(--nx-text2)">Sin stock</div></div>
+            </div>
+            <div style="margin-top:10px">
+                <div style="height:6px;background:var(--nx-border);border-radius:3px;overflow:hidden">
+                    <div style="height:100%;width:{ok_mec/max(total_mec,1)*100:.0f}%;background:#32d74b;border-radius:3px"></div>
+                </div>
+                <div style="font-size:10px;color:var(--nx-text3);margin-top:4px">
+                    {ok_mec/max(total_mec,1)*100:.0f}% con stock suficiente</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        sin_stock = stats.get("sin_stock", 0)
-        delta_color = "inverse" if sin_stock > 0 else "normal"
-        st.metric("Sin Stock 🔴", sin_stock,
-                  help="Artículos con stock = 0")
-    with c2:
-        bajo_min = stats.get("bajo_minimo", 0)
-        st.metric("Bajo Mínimo 🟡", bajo_min,
-                  help="Stock menor al mínimo configurado")
-    with c3:
-        total_arts = stats.get("total_articulos", 0)
-        st.metric("Artículos Activos", fmt_num(total_arts))
-    with c4:
-        ultima_imp = stats.get("ultima_importacion", "—")
-        st.metric("Última Importación", ultima_imp)
+    # ════════════════════════════════════════════════════════
+    # BLOQUE 3 — CRÍTICOS EXPANDIBLES
+    # ════════════════════════════════════════════════════════
+    st.markdown("---")
 
-    st.divider()
+    col_crit, col_urg = st.columns(2)
 
-    # ── Dos columnas principales ──────────────────────────────
-    col_izq, col_der = st.columns([3, 2])
-
-    with col_izq:
-        st.markdown("#### 🔴 Quiebres urgentes")
-        df_q = get_quiebres(umbral=0)
-
-        if df_q.empty:
-            st.success("✅ Sin quiebres en stock cero al momento.")
+    with col_crit:
+        criticos = kpis["criticos"]
+        st.markdown(f"### 🔴 Top 10 Críticos — stock = 0")
+        if criticos.empty:
+            st.success("✅ Sin críticos ahora mismo")
         else:
-            # Tabla compacta
-            cols_show = ["codigo", "descripcion", "deposito", "stock", "stock_minimo"]
-            cols_show = [c for c in cols_show if c in df_q.columns]
-            df_show = df_q[cols_show].head(15).copy()
+            with st.expander(f"Ver {len(criticos)} críticos (click para expandir)", expanded=True):
+                for _, r in criticos.iterrows():
+                    desc = str(r.get("descripcion",""))[:35]
+                    dem  = float(r.get("demanda_promedio") or 0)
+                    costo = float(r.get("costo_reposicion") or 0)
+                    tipo = "🔵 FR" if _tipo_codigo(r["codigo"]) == "fr" else "🟡 MEC"
+                    vp_mes = dem * costo if costo > 0 else 0
+                    st.markdown(f"""
+                    <div style="padding:8px 0;border-bottom:1px solid var(--nx-border)">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                            <div>
+                                <span style="font-size:10px;color:var(--nx-text3)">{tipo}</span>
+                                <span style="font-size:13px;font-weight:600;color:var(--nx-text);margin-left:8px">{desc}</span>
+                            </div>
+                            <div style="text-align:right">
+                                <div style="font-size:12px;font-weight:600;color:#ff375f">STOCK 0</div>
+                                <div style="font-size:10px;color:var(--nx-text3)">{dem:.1f}/mes · ${vp_mes:.0f} USD/mes perdido</div>
+                            </div>
+                        </div>
+                        <div style="font-size:10px;color:var(--nx-text3);margin-top:2px">`{r['codigo']}`</div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-            if "stock" in df_show.columns:
-                df_show.insert(0, "🚦", df_show["stock"].apply(color_stock))
+    with col_urg:
+        urgentes = kpis["urgentes"]
+        st.markdown(f"### 🟡 Top 10 Urgentes — bajo mínimo")
+        if urgentes.empty:
+            st.success("✅ Sin urgentes ahora mismo")
+        else:
+            with st.expander(f"Ver {len(urgentes)} urgentes (click para expandir)", expanded=True):
+                for _, r in urgentes.iterrows():
+                    desc = str(r.get("descripcion",""))[:35]
+                    stk  = int(r.get("stock_actual") or 0)
+                    dias = int(r.get("dias_cob") or 0)
+                    tipo = "🔵 FR" if _tipo_codigo(r["codigo"]) == "fr" else "🟡 MEC"
+                    color = "#ff375f" if dias < 7 else "#ff9f0a"
+                    st.markdown(f"""
+                    <div style="padding:8px 0;border-bottom:1px solid var(--nx-border)">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                            <div>
+                                <span style="font-size:10px;color:var(--nx-text3)">{tipo}</span>
+                                <span style="font-size:13px;font-weight:600;color:var(--nx-text);margin-left:8px">{desc}</span>
+                            </div>
+                            <div style="text-align:right">
+                                <div style="font-size:12px;font-weight:600;color:{color}">{dias} días</div>
+                                <div style="font-size:10px;color:var(--nx-text3)">{stk} uds en stock</div>
+                            </div>
+                        </div>
+                        <div style="font-size:10px;color:var(--nx-text3);margin-top:2px">`{r['codigo']}`</div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-            st.dataframe(
-                df_show,
-                width="stretch",
-                hide_index=True,
-                column_config={
-                    "🚦": st.column_config.TextColumn("", width="small"),
-                    "codigo": st.column_config.TextColumn("Código", width="medium"),
-                    "descripcion": st.column_config.TextColumn("Artículo", width="large"),
-                    "deposito": st.column_config.TextColumn("Depósito", width="medium"),
-                    "stock": st.column_config.NumberColumn("Stock", format="%d"),
-                    "stock_minimo": st.column_config.NumberColumn("Mínimo", format="%d"),
-                }
-            )
+    # ════════════════════════════════════════════════════════
+    # BLOQUE 4 — GRÁFICO POR MARCA + CONFIG RÁPIDA
+    # ════════════════════════════════════════════════════════
+    st.markdown("---")
+    col_graf, col_conf = st.columns([3, 2])
 
-            if len(df_q) > 15:
-                st.caption(f"Mostrando 15 de {len(df_q)} quiebres. Ver todos en 📦 Inventario.")
+    with col_graf:
+        st.markdown("### 📈 Stock por marca (módulos)")
+        _grafico_marcas(kpis["df_modulos"])
 
-    with col_der:
-        st.markdown("#### 📊 Stock por depósito")
-        _grafico_depositos()
+    with col_conf:
+        st.markdown("### ⚡ Config rápida")
+        _panel_config_rapida(tasa)
 
-        st.markdown("#### 📅 Próximas actualizaciones")
-        _panel_horarios()
-
-    # ── Log de importaciones recientes ───────────────────────
-    st.divider()
-    st.markdown("#### 📥 Últimas importaciones")
-    df_log = query_to_df("""
-        SELECT tipo_archivo, nombre_archivo, filas_importadas,
-               estado, importado_en
-        FROM importaciones_log
-        ORDER BY importado_en DESC LIMIT 10
-    """)
-    if df_log.empty:
-        st.info("No hay importaciones registradas. Cargá tu primer archivo en 📥 Cargar Archivos.")
-    else:
-        st.dataframe(df_log, width="stretch", hide_index=True)
-
-
-def _grafico_depositos():
-    try:
-        df = query_to_df("""
-            SELECT s.deposito,
-                   COUNT(*) as articulos,
-                   SUM(CASE WHEN s.stock=0 THEN 1 ELSE 0 END) as sin_stock,
-                   SUM(CASE WHEN s.stock>0 AND s.stock<s.stock_minimo THEN 1 ELSE 0 END) as bajo_min
-            FROM stock_snapshots s
-            JOIN (
-                SELECT codigo, deposito, MAX(fecha) as mf
-                FROM stock_snapshots GROUP BY codigo, deposito
-            ) latest ON s.codigo=latest.codigo AND s.deposito=latest.deposito AND s.fecha=latest.mf
-            GROUP BY s.deposito
+    # ════════════════════════════════════════════════════════
+    # BLOQUE 5 — ÚLTIMAS IMPORTACIONES
+    # ════════════════════════════════════════════════════════
+    st.markdown("---")
+    with st.expander("📥 Últimas importaciones", expanded=False):
+        df_log = query_to_df("""
+            SELECT tipo_archivo, nombre_archivo, filas_importadas, estado, importado_en
+            FROM importaciones_log ORDER BY importado_en DESC LIMIT 8
         """)
-    except Exception:
-        df = pd.DataFrame()
-    if df.empty:
-        st.caption("Sin datos de stock. Cargá archivos primero.")
-        return
-
-    fig = go.Figure()
-    depositos = df["deposito"].tolist()
-    fig.add_bar(name="Sin stock", x=depositos, y=df["sin_stock"],
-                marker_color="#ff5252")
-    fig.add_bar(name="Bajo mínimo", x=depositos, y=df["bajo_min"],
-                marker_color="#ffab40")
-    ok = df["articulos"] - df["sin_stock"] - df["bajo_min"]
-    fig.add_bar(name="OK", x=depositos, y=ok, marker_color="#00e676")
-
-    fig.update_layout(
-        barmode="stack",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Space Grotesk", size=11, color="#8b95a8"),
-        height=200,
-        margin=dict(l=0, r=0, t=10, b=30),
-        legend=dict(orientation="h", y=-0.3, font_size=10),
-        xaxis=dict(gridcolor="rgba(255,255,255,0.05)"),
-        yaxis=dict(gridcolor="rgba(255,255,255,0.05)"),
-    )
-    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+        if df_log.empty:
+            st.info("Sin importaciones registradas.")
+        else:
+            st.dataframe(df_log, hide_index=True, use_container_width=True)
 
 
-def _panel_horarios():
-    from config import ACTUALIZACIONES_SUGERIDAS
-    ahora_h = ahora()
-    hoy_dow = ahora_h.weekday()
-
-    st.markdown("""
-    <style>
-    .hor-row{display:flex;align-items:center;gap:10px;padding:5px 0;
-             border-bottom:1px solid var(--nx-border);font-size:12px}
-    .hor-row:last-child{border-bottom:none}
-    .hor-time{font-family:monospace;color:var(--nx-accent);min-width:45px}
-    .hor-task{color:var(--nx-text2);flex:1}
-    .hor-freq{font-size:10px;color:var(--nx-text3)}
-    </style>
+def _kpi_card(titulo: str, valor, subtitulo: str, color: str, detalle: str = ""):
+    colores = {
+        "rojo":    ("#ff375f", "rgba(255,55,95,.12)", "rgba(255,55,95,.25)"),
+        "verde":   ("#32d74b", "rgba(50,215,75,.12)",  "rgba(50,215,75,.25)"),
+        "amarillo":("#ff9f0a", "rgba(255,159,10,.12)", "rgba(255,159,10,.25)"),
+        "azul":    ("#0a84ff", "rgba(10,132,255,.12)", "rgba(10,132,255,.25)"),
+    }
+    c, bg, border = colores.get(color, colores["azul"])
+    det_html = f'<div style="font-size:10px;color:var(--nx-text3);margin-top:2px">{detalle}</div>' if detalle else ""
+    st.markdown(f"""
+    <div style="background:{bg};border:1px solid {border};border-top:3px solid {c};
+                border-radius:12px;padding:14px 16px;height:110px">
+        <div style="font-size:11px;color:var(--nx-text2);font-weight:600;
+                    text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">{titulo}</div>
+        <div style="font-size:24px;font-weight:700;color:{c};line-height:1.1">{valor}</div>
+        <div style="font-size:11px;color:var(--nx-text2);margin-top:4px">{subtitulo}</div>
+        {det_html}
+    </div>
     """, unsafe_allow_html=True)
 
-    rows_html = ""
-    for a in ACTUALIZACIONES_SUGERIDAS[:5]:
-        rows_html += f"""
-        <div class="hor-row">
-            <span class="hor-time">{a['hora']}</span>
-            <span class="hor-task">{a['tarea']}</span>
-            <span class="hor-freq">{a['frecuencia']}</span>
-        </div>"""
-    st.markdown(f'<div class="nx-card">{rows_html}</div>', unsafe_allow_html=True)
+
+def _grafico_marcas(df: pd.DataFrame):
+    """Gráfico de barras por marca — sin stock vs con stock."""
+    if df.empty:
+        st.caption("Sin datos")
+        return
+
+    def extraer_marca(desc):
+        desc = str(desc).upper()
+        marcas = [("SAM","Samsung"),("IPH","iPhone"),("MOT","Motorola"),
+                  ("LG","LG"),("XIA","Xiaomi"),("ALC","Alcatel"),
+                  ("HUA","Huawei"),("TCL","TCL"),("INF","Infinix"),
+                  ("TE ","Tecno"),("NOK","Nokia"),("OPPO","OPPO")]
+        for key, label in marcas:
+            if key in desc: return label
+        return "Otros"
+
+    df = df.copy()
+    df["marca"] = df["descripcion"].apply(extraer_marca)
+    df["stock_actual"] = df["stock_actual"].fillna(0)
+
+    resumen = df.groupby("marca").agg(
+        total=("codigo","count"),
+        sin_stock=("stock_actual", lambda x: (x==0).sum())
+    ).reset_index()
+    resumen["con_stock"] = resumen["total"] - resumen["sin_stock"]
+    resumen = resumen.sort_values("total", ascending=True).tail(12)
+
+    fig = go.Figure()
+    fig.add_bar(
+        name="Con stock", y=resumen["marca"], x=resumen["con_stock"],
+        orientation="h", marker_color="#32d74b", marker_opacity=0.8
+    )
+    fig.add_bar(
+        name="Sin stock", y=resumen["marca"], x=resumen["sin_stock"],
+        orientation="h", marker_color="#ff375f", marker_opacity=0.9
+    )
+    fig.update_layout(
+        barmode="stack",
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(size=11, color="#8b95a8"),
+        height=320, margin=dict(l=0, r=10, t=10, b=10),
+        legend=dict(orientation="h", y=-0.08, font_size=10),
+        xaxis=dict(gridcolor="rgba(255,255,255,0.06)", zeroline=False),
+        yaxis=dict(gridcolor="rgba(0,0,0,0)"),
+    )
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+
+def _panel_config_rapida(tasa_actual: float):
+    """Panel de configuración rápida en el dashboard."""
+    from database import set_config, get_config
+
+    st.markdown(f"""
+    <div style="font-size:12px;color:var(--nx-text2);margin-bottom:8px">
+        💵 Tasa actual: <strong style="color:var(--nx-text)">${tasa_actual:,.0f} ARS/USD</strong>
+    </div>
+    """, unsafe_allow_html=True)
+
+    nueva_tasa = st.number_input(
+        "Actualizar USD/ARS", min_value=100.0, max_value=99999.0,
+        value=tasa_actual, step=50.0, key="dash_tasa",
+        label_visibility="collapsed"
+    )
+    if st.button("💾 Guardar tasa", use_container_width=True, key="dash_save_tasa"):
+        set_config("tasa_usd_ars", str(int(nueva_tasa)))
+        try:
+            from utils.helpers import notificar_telegram, notificar_picos_demanda
+            from modules.ia_engine import motor_ia
+            import threading
+            alertas = motor_ia.alertas_margen_dolar(nueva_tasa)
+            msg = f"💵 *Tasa actualizada:* ${nueva_tasa:,.0f} ARS/USD"
+            if alertas:
+                msg += f"\n⚠️ {len(alertas)} artículos con margen caído"
+            notificar_telegram(msg)
+            threading.Thread(target=notificar_picos_demanda, daemon=True).start()
+        except Exception:
+            pass
+        st.success(f"✅ Tasa guardada: ${nueva_tasa:,.0f}")
+        st.rerun()
+
+    st.markdown("---")
+
+    lead = int(get_config("lead_time_dias", int) or 30)
+    st.markdown(f"⏱️ Lead time actual: **{lead} días**")
+    nuevo_lead = st.slider("Lead time (días)", 7, 120, lead, key="dash_lead")
+    if nuevo_lead != lead:
+        set_config("lead_time_dias", str(nuevo_lead))
+
+    st.markdown("---")
+    ultima = query_to_df(
+        "SELECT importado_en FROM importaciones_log ORDER BY importado_en DESC LIMIT 1"
+    )
+    if not ultima.empty:
+        st.markdown(f"🕐 Última carga: **{str(ultima.iloc[0]['importado_en'])[:16]}**")
+    st.markdown(
+        "<a href='?page=Importar' style='font-size:13px;color:var(--nx-accent);text-decoration:none'>"
+        "📥 Cargar nuevos archivos →</a>",
+        unsafe_allow_html=True
+    )
+
+
+def _panel_sin_datos():
+    """Panel de bienvenida cuando no hay datos."""
+    st.markdown("""
+    <div style="background:var(--nx-card);border:1px solid var(--nx-border);
+                border-radius:16px;padding:32px;text-align:center;margin-top:16px">
+        <div style="font-size:48px;margin-bottom:16px">📦</div>
+        <div style="font-size:18px;font-weight:700;color:var(--nx-text);margin-bottom:8px">
+            Empezá cargando tus datos de Flexxus</div>
+        <div style="font-size:14px;color:var(--nx-text2);margin-bottom:24px">
+            El sistema necesita al menos el archivo de <strong>Optimización de Stock</strong>
+            para mostrarte los KPIs de módulos.
+        </div>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+            <div style="background:rgba(10,132,255,.1);border:1px solid rgba(10,132,255,.3);
+                        border-radius:10px;padding:12px 20px;font-size:13px;color:var(--nx-text2)">
+                1️⃣ <strong>Optimización de Stock</strong><br>
+                <span style="font-size:11px">Módulos, demanda, stock actual</span>
+            </div>
+            <div style="background:rgba(10,132,255,.1);border:1px solid rgba(10,132,255,.3);
+                        border-radius:10px;padding:12px 20px;font-size:13px;color:var(--nx-text2)">
+                2️⃣ <strong>Lista de Precios</strong><br>
+                <span style="font-size:11px">Lista 1 USD · Lista 4 ML ARS</span>
+            </div>
+            <div style="background:rgba(10,132,255,.1);border:1px solid rgba(10,132,255,.3);
+                        border-radius:10px;padding:12px 20px;font-size:13px;color:var(--nx-text2)">
+                3️⃣ <strong>Planilla de Stock</strong><br>
+                <span style="font-size:11px">San José · Larrea</span>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
