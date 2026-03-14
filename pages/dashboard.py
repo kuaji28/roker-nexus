@@ -16,6 +16,43 @@ from utils.horarios import ahora, hoy, label_horario
 from utils.helpers import fmt_usd, fmt_ars, fmt_num, color_stock
 
 
+
+
+def _calcular_venta_perdida() -> dict:
+    """Calcula la venta perdida proyectada por quiebres de stock."""
+    df = query_to_df("""
+        SELECT o.codigo, o.demanda_promedio, o.costo_reposicion,
+               p.lista_4
+        FROM optimizacion o
+        LEFT JOIN articulos a ON o.codigo=a.codigo
+        LEFT JOIN precios p ON o.codigo=p.codigo
+        WHERE o.stock_actual = 0
+          AND o.demanda_promedio > 0
+          AND COALESCE(a.en_lista_negra, 0) = 0
+    """)
+    if df.empty:
+        return {"total_usd": 0, "total_ars": 0, "articulos": 0}
+
+    tasa = float(get_config("tasa_usd_ars", float) or 1420)
+    df["dem"] = df["demanda_promedio"].apply(lambda x: max(0.0, float(x or 0)))
+    df["costo"] = df["costo_reposicion"].apply(lambda x: float(x or 0))
+    df["l4"] = df["lista_4"].apply(lambda x: float(x or 0))
+
+    # Venta perdida = demanda × precio ML (si existe) o × costo × 1.8
+    df["venta_perdida_ars"] = df.apply(
+        lambda r: r["dem"] * r["l4"] if r["l4"] > 0
+        else r["dem"] * r["costo"] * tasa * 1.8,
+        axis=1
+    )
+    df["venta_perdida_usd"] = df["venta_perdida_ars"] / tasa
+
+    return {
+        "total_usd": round(df["venta_perdida_usd"].sum(), 0),
+        "total_ars": round(df["venta_perdida_ars"].sum(), 0),
+        "articulos": len(df),
+        "tasa": tasa,
+    }
+
 def render():
     # ── Header ───────────────────────────────────────────────
     col_tit, col_fecha = st.columns([3, 1])

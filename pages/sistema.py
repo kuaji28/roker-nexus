@@ -251,3 +251,69 @@ def _estado_card(nombre: str, ok: bool, detalle: str, variable: str):
         <div style="font-size:10px;color:var(--text3);margin-top:4px">Var: {variable}</div>
     </div>
     """, unsafe_allow_html=True)
+
+
+
+def _seccion_backups():
+    """Gestión de backups automáticos de la base de datos."""
+    st.markdown("### 💾 Backups & Restauración")
+
+    import os, shutil, glob
+    from datetime import datetime
+    from database import SQLITE_PATH
+
+    backup_dir = os.path.join(os.path.dirname(SQLITE_PATH), "backups")
+    os.makedirs(backup_dir, exist_ok=True)
+
+    col_b1, col_b2, col_b3 = st.columns(3)
+
+    with col_b1:
+        if st.button("💾 Crear Backup ahora", use_container_width=True, type="primary"):
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            dest = os.path.join(backup_dir, f"roker_nexus_backup_{ts}.db")
+            shutil.copy2(SQLITE_PATH, dest)
+            # Mantener solo las 3 más recientes
+            backups = sorted(glob.glob(os.path.join(backup_dir, "*.db")))
+            while len(backups) > 3:
+                os.remove(backups.pop(0))
+            st.success(f"✅ Backup creado: {os.path.basename(dest)}")
+            st.rerun()
+
+    # Listar backups disponibles
+    backups = sorted(glob.glob(os.path.join(backup_dir, "*.db")), reverse=True)
+    if backups:
+        st.markdown(f"**{len(backups)} backup(s) disponibles:**")
+        for i, bp in enumerate(backups):
+            nombre = os.path.basename(bp)
+            size_kb = os.path.getsize(bp) // 1024
+            ts_str = nombre.replace("roker_nexus_backup_","").replace(".db","")
+            try:
+                dt = datetime.strptime(ts_str, "%Y%m%d_%H%M%S")
+                fecha_label = dt.strftime("%d/%m/%Y %H:%M:%S")
+            except Exception:
+                fecha_label = ts_str
+
+            col_info, col_rest, col_dl = st.columns([4, 2, 2])
+            col_info.markdown(f"📦 `{nombre}` · {size_kb} KB · {fecha_label}")
+            with col_rest:
+                if st.button(f"🔄 Restaurar", key=f"rest_{i}", use_container_width=True):
+                    # Hacer backup del actual antes de restaurar
+                    ts2 = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    shutil.copy2(SQLITE_PATH, os.path.join(backup_dir, f"pre_restore_{ts2}.db"))
+                    shutil.copy2(bp, SQLITE_PATH)
+                    st.success(f"✅ Restaurado desde {fecha_label}. Reiniciá la app.")
+                    st.balloons()
+            with col_dl:
+                with open(bp, "rb") as f:
+                    st.download_button(
+                        "⬇️ Descargar", data=f.read(),
+                        file_name=nombre, mime="application/octet-stream",
+                        key=f"dl_{i}", use_container_width=True
+                    )
+    else:
+        st.info("No hay backups todavía. Creá el primero con el botón de arriba.")
+
+    st.markdown("---")
+    st.caption("💡 Los backups se crean automáticamente en acciones importantes. "
+               "Se conservan las 3 más recientes.")
+

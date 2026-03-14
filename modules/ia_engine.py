@@ -146,6 +146,265 @@ class MotorIA:
         )
 
 
+
+    def consultar_paralelo(self, prompt: str) -> dict:
+        """
+        Consulta en paralelo a todos los IAs disponibles.
+        Retorna dict {nombre_ia: respuesta}
+        """
+        import threading
+        resultados = {}
+        lock = threading.Lock()
+
+        def _llamar(nombre, fn):
+            try:
+                resp = fn(prompt)
+                with lock:
+                    resultados[nombre] = resp
+            except Exception as e:
+                with lock:
+                    resultados[nombre] = f"Error: {e}"
+
+        threads = []
+        if self.claude_disponible:
+            t = threading.Thread(target=_llamar, args=("Claude", self._consultar_claude))
+            threads.append(t)
+        if self.gemini_disponible:
+            t = threading.Thread(target=_llamar, args=("Gemini", self._consultar_gemini))
+            threads.append(t)
+
+        # GPT si está configurado
+        from config import _get_secret
+        gpt_key = _get_secret("OPENAI_API_KEY")
+        if gpt_key:
+            def _gpt(p):
+                try:
+                    import openai
+                    client = openai.OpenAI(api_key=gpt_key)
+                    r = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {"role": "user", "content": p}
+                        ],
+                        max_tokens=1000
+                    )
+                    return r.choices[0].message.content
+                except Exception as e:
+                    return f"Error GPT: {e}"
+            t = threading.Thread(target=_llamar, args=("GPT", _gpt))
+            threads.append(t)
+
+        if not threads:
+            return {"Sin IA": "⚠️ No hay claves de IA configuradas."}
+
+        for t in threads: t.start()
+        for t in threads: t.join(timeout=30)
+
+        if not resultados:
+            return {"Error": "Tiempo agotado o sin respuesta."}
+        return resultados
+
+    def calcular_ventas_fantasmas(self) -> list:
+        """
+        Detecta productos donde el ERP muestra 0 ventas por quiebre de stock.
+        Si la demanda cayó a 0 en el mismo período en que el stock era 0,
+        proyecta la demanda latente.
+        Retorna lista de dicts con: codigo, descripcion, demanda_proyectada, impacto_usd_mes
+        """
+        from database import query_to_df
+        df = query_to_df("""
+            SELECT o.codigo, COALESCE(a.descripcion, o.descripcion) as descripcion,
+                   o.demanda_promedio, o.stock_actual, o.costo_reposicion,
+                   a.marca
+            FROM optimizacion o
+            LEFT JOIN articulos a ON o.codigo=a.codigo
+            WHERE o.stock_actual = 0
+              AND (o.demanda_promedio = 0 OR o.demanda_promedio IS NULL)
+              AND COALESCE(a.en_lista_negra, 0) = 0
+            ORDER BY o.costo_reposicion DESC
+        """)
+        if df.empty:
+            return []
+
+        # Buscar el promedio histórico de artículos similares de la misma marca/rubro
+        df_hist = query_to_df("""
+            SELECT a.marca, AVG(o.demanda_promedio) as dem_prom_marca
+            FROM optimizacion o JOIN articulos a ON o.codigo=a.codigo
+            WHERE o.demanda_promedio > 0 AND o.stock_actual > 0
+            GROUP BY a.marca
+        """)
+        prom_marca = {}
+        if not df_hist.empty:
+            for _, r in df_hist.iterrows():
+                prom_marca[str(r.get("marca",""))] = float(r.get("dem_prom_marca") or 0)
+
+        fantasmas = []
+        for _, r in df.iterrows():
+            marca = str(r.get("marca",""))
+            dem_ref = prom_marca.get(marca, 3.0)  # default 3 uds/mes si no hay referencia
+            costo = float(r.get("costo_reposicion") or 0)
+            impacto = dem_ref * costo
+
+            fantasmas.append({
+                "codigo":              r["codigo"],
+                "descripcion":         str(r.get("descripcion",""))[:40],
+                "marca":               marca,
+                "dem_proyectada_mes":  round(dem_ref, 1),
+                "impacto_usd_mes":     round(impacto, 2),
+                "confianza":           "Media" if marca in prom_marca else "Baja",
+            })
+
+        return sorted(fantasmas, key=lambda x: -x["impacto_usd_mes"])[:50]
+
+    def detectar_picos_demanda(self, umbral_pct: float = 50.0) -> list:
+        """
+        Detecta productos donde la demanda del último período es
+        X% mayor que el promedio histórico.
+        """
+        from database import query_to_df
+        # Comparar optimizacion (período actual) vs promedio histórico de ventas
+        df = query_to_df("""
+            SELECT o.codigo, COALESCE(a.descripcion, o.descripcion) as descripcion,
+                   o.demanda_promedio as dem_actual,
+                   o.stock_actual, o.stock_optimo, o.costo_reposicion,
+                   CASE WHEN o.stock_actual < o.stock_optimo * 0.3 THEN 1 ELSE 0 END as critico
+            FROM optimizacion o
+            LEFT JOIN articulos a ON o.codigo=a.codigo
+            WHERE o.demanda_promedio > 0
+              AND o.stock_actual >= 0
+              AND COALESCE(a.en_lista_negra, 0) = 0
+            ORDER BY o.demanda_promedio DESC
+            LIMIT 200
+        """)
+        if df.empty:
+            return []
+
+        picos = []
+        # Sin historial previo usamos el promedio general como referencia
+        promedio_general = float(df["dem_actual"].mean())
+
+        for _, r in df.iterrows():
+            dem = float(r.get("dem_actual") or 0)
+            if dem > promedio_general * (1 + umbral_pct/100):
+                stk = float(r.get("stock_actual") or 0)
+                dem_mes = dem
+                dias_cobertura = int(stk / (dem_mes/30)) if dem_mes > 0 else 999
+                picos.append({
+                    "codigo":          r["codigo"],
+                    "descripcion":     str(r.get("descripcion",""))[:40],
+                    "dem_actual":      round(dem, 1),
+                    "pct_sobre_media": round((dem/promedio_general - 1)*100, 1),
+                    "dias_cobertura":  dias_cobertura,
+                    "alerta":          dias_cobertura < 15,
+                })
+        return sorted(picos, key=lambda x: -x["pct_sobre_media"])
+
+    def optimizar_lote_roi(self, tope_usd: float, proveedor: str = "TODOS") -> list:
+        """
+        Optimizador de lote por ROI.
+        Score = 60% margen + 40% rotación (demanda).
+        Los críticos (stock=0) siempre entran primero.
+        """
+        from database import query_to_df
+        df = query_to_df("""
+            SELECT o.codigo, COALESCE(a.descripcion, o.descripcion) as descripcion,
+                   o.stock_actual, o.stock_optimo, o.demanda_promedio,
+                   o.costo_reposicion,
+                   p.lista_1 as precio_lista1,
+                   (o.stock_optimo - o.stock_actual) as a_pedir,
+                   ((o.stock_optimo - o.stock_actual) * o.costo_reposicion) as subtotal_usd
+            FROM optimizacion o
+            LEFT JOIN articulos a ON o.codigo=a.codigo
+            LEFT JOIN precios p ON o.codigo=p.codigo
+            WHERE o.stock_actual < o.stock_optimo
+              AND o.costo_reposicion > 0
+              AND (o.stock_optimo - o.stock_actual) > 0
+              AND COALESCE(a.en_lista_negra, 0) = 0
+        """)
+        if df.empty:
+            return []
+
+        # Filtrar por proveedor
+        if "MECÁNICO" in proveedor.upper() or "MECANICO" in proveedor.upper():
+            df = df[df["codigo"].str[0].str.isdigit()]
+        elif "FR" in proveedor.upper() or "AITECH" in proveedor.upper():
+            df = df[df["codigo"].str[0].str.isalpha()]
+
+        # Calcular score ROI
+        max_dem = float(df["demanda_promedio"].max() or 1)
+        max_costo = float(df["costo_reposicion"].max() or 1)
+
+        def score(r):
+            dem = max(0.0, float(r.get("demanda_promedio") or 0))
+            costo = float(r.get("costo_reposicion") or 0)
+            l1 = float(r.get("precio_lista1") or 0)
+            # Margen estimado
+            margen = (l1 - costo) / l1 if l1 > 0 else 0
+            margen = max(0, min(1, margen))
+            # Rotación normalizada
+            rotacion = dem / max_dem if max_dem > 0 else 0
+            # Críticos (stock=0) → bonus
+            critico_bonus = 0.3 if float(r.get("stock_actual") or 0) == 0 else 0
+            return round(0.6 * margen + 0.4 * rotacion + critico_bonus, 4)
+
+        df["score_roi"] = df.apply(score, axis=1)
+        df = df.sort_values("score_roi", ascending=False)
+
+        # Llenar hasta el tope
+        seleccionados = []
+        acumulado = 0.0
+        for _, r in df.iterrows():
+            sub = float(r.get("subtotal_usd") or 0)
+            if acumulado + sub <= tope_usd:
+                seleccionados.append({
+                    "codigo":        r["codigo"],
+                    "descripcion":   str(r.get("descripcion",""))[:40],
+                    "a_pedir":       int(r.get("a_pedir") or 0),
+                    "precio_usd":    float(r.get("costo_reposicion") or 0),
+                    "subtotal_usd":  round(sub, 2),
+                    "score_roi":     float(r.get("score_roi") or 0),
+                    "es_critico":    float(r.get("stock_actual") or 0) == 0,
+                })
+                acumulado += sub
+        return seleccionados
+
+    def alertas_margen_dolar(self, tasa_nueva: float) -> list:
+        """
+        Cuando cambia la tasa USD/ARS, detecta artículos donde
+        el margen cae por debajo del umbral configurado.
+        """
+        from database import query_to_df, get_config
+        umbral = float(get_config("umbral_margen_minimo", float) or 40)
+
+        df = query_to_df("""
+            SELECT p.codigo, a.descripcion, p.lista_1, p.lista_4
+            FROM precios p JOIN articulos a ON p.codigo=a.codigo
+            WHERE p.lista_1 > 0 AND p.lista_4 > 0
+        """)
+        if df.empty:
+            return []
+
+        alertas = []
+        for _, r in df.iterrows():
+            l1_usd = float(r.get("lista_1") or 0)
+            l4_ars = float(r.get("lista_4") or 0)
+            costo_ars = l1_usd * tasa_nueva
+            if l4_ars > 0 and costo_ars > 0:
+                margen_pct = (l4_ars - costo_ars) / l4_ars * 100
+                if margen_pct < umbral:
+                    precio_sugerido = costo_ars / (1 - umbral/100)
+                    alertas.append({
+                        "codigo":           r["codigo"],
+                        "descripcion":      str(r.get("descripcion",""))[:35],
+                        "l1_usd":           l1_usd,
+                        "precio_ml_actual": l4_ars,
+                        "margen_actual_pct": round(margen_pct, 1),
+                        "precio_sugerido":  round(precio_sugerido, 0),
+                    })
+        return sorted(alertas, key=lambda x: x["margen_actual_pct"])[:20]
+
+
 # Instancia global
 motor_ia = MotorIA()
 

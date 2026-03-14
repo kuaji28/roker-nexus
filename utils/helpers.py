@@ -173,3 +173,43 @@ def check_apis() -> dict:
         "telegram":  bool(TELEGRAM_TOKEN),
         "supabase":  bool(SUPABASE_URL),
     }
+
+
+def notificar_telegram(mensaje: str):
+    """
+    Envía una notificación al chat de Telegram de Sergio.
+    Usada cuando se importa un archivo, se detecta un pico, etc.
+    """
+    import requests as _req
+    try:
+        from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
+        if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+            return
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        _req.post(url, json={
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": mensaje,
+            "parse_mode": "Markdown"
+        }, timeout=8)
+    except Exception:
+        pass
+
+
+def notificar_picos_demanda():
+    """Detecta picos y envía alerta si los hay."""
+    from modules.ia_engine import motor_ia
+    picos = motor_ia.detectar_picos_demanda(umbral_pct=50.0)
+    if not picos:
+        return
+    criticos = [p for p in picos if p.get("alerta")]
+    if not criticos:
+        return
+    lineas = [f"⚡ *Alerta pico de demanda* — {len(criticos)} artículos\n"]
+    for p in criticos[:5]:
+        lineas.append(
+            f"• `{p['codigo']}` {p['descripcion']}\n"
+            f"  Demanda: {p['dem_actual']:.1f}/mes (+{p['pct_sobre_media']:.0f}%) | "
+            f"Cobertura: *{p['dias_cobertura']} días*"
+        )
+    notificar_telegram("\n".join(lineas))
+

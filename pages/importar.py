@@ -232,6 +232,22 @@ def _procesar_archivo(f, forzar_tipo: str = None):
 
             if resultado.exitoso:
                 st.success(f"✅ {fmt_num(resultado.filas_ok)} filas")
+                # Notificación Telegram
+                try:
+                    from utils.helpers import notificar_telegram, notificar_picos_demanda
+                    import threading
+                    _msg = (f"📥 *Archivo cargado*\n`{archivo.name}`\n"
+                            f"✅ {resultado.filas_ok} filas importadas")
+                    notificar_telegram(_msg)
+                    threading.Thread(target=notificar_picos_demanda, daemon=True).start()
+                except Exception:
+                    pass
+                # Backup automático
+                try:
+                    from pages.sistema import _llamar_backup_auto
+                    _llamar_backup_auto()
+                except Exception:
+                    pass
                 # Mostrar metadata
                 if resultado.metadata:
                     _mostrar_metadata(resultado.metadata, tipo)

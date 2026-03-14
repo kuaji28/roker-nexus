@@ -176,41 +176,121 @@ async def _buscar_y_mostrar_stock(message, query: str, context):
 
 
 async def _mostrar_stock_codigo(message, codigo: str):
-    """Muestra stock de un código específico en todos los depósitos."""
-    import sqlite3 as _sq
-    conn = _sq.connect("roker_nexus.db")
+    """Muestra stock completo: depósitos, precios L1/L4, tránsito, último ingreso, sugerencia."""
+    import sqlite3 as _sq, os as _os_s
+    _db = _os_s.path.join(_os_s.path.dirname(_os_s.path.abspath(__file__)), "roker_nexus.db")
+    conn = _sq.connect(_db)
+
+    # Stock por depósito
     cur = conn.execute("""
-        SELECT s.deposito, s.stock, s.stock_minimo
+        SELECT s.deposito, s.stock, s.stock_minimo, s.stock_optimo
         FROM stock_snapshots s
-        JOIN (
-            SELECT deposito, MAX(fecha) as mf FROM stock_snapshots
-            WHERE codigo=? GROUP BY deposito
-        ) lx ON s.deposito=lx.deposito AND s.fecha=lx.mf
+        JOIN (SELECT deposito, MAX(fecha) mf FROM stock_snapshots WHERE codigo=? GROUP BY deposito) lx
+          ON s.deposito=lx.deposito AND s.fecha=lx.mf
         WHERE s.codigo=?
-        ORDER BY CASE s.deposito
-            WHEN 'SAN_JOSE' THEN 1
-            WHEN 'LARREA' THEN 2
-            ELSE 3 END
+        ORDER BY CASE s.deposito WHEN 'SAN_JOSE' THEN 1 WHEN 'LARREA' THEN 2 ELSE 3 END
     """, (codigo, codigo))
-    rows = cur.fetchall()
-    cur2 = conn.execute("SELECT descripcion, marca FROM articulos WHERE codigo=?", (codigo,))
+    rows_stock = cur.fetchall()
+
+    # Artículo + precios
+    cur2 = conn.execute("""
+        SELECT a.descripcion, a.marca, p.lista_1, p.lista_4
+        FROM articulos a
+        LEFT JOIN precios p ON a.codigo=p.codigo
+        WHERE a.codigo=?
+        ORDER BY p.fecha DESC LIMIT 1
+    """, (codigo,))
     art = cur2.fetchone()
+
+    # En tránsito (cotizaciones)
+    cur3 = conn.execute("""
+        SELECT SUM(ci.cantidad_pedida - COALESCE(ci.cantidad_recibida,0)) as en_transito,
+               c.invoice_id, c.fecha
+        FROM cotizacion_items ci
+        JOIN cotizaciones c ON ci.cotizacion_id=c.id
+        WHERE (ci.codigo_flexxus=? OR ci.codigo_proveedor=?)
+          AND c.estado IN ('pendiente','en_transito')
+          AND ci.cantidad_pedida > COALESCE(ci.cantidad_recibida,0)
+        GROUP BY c.id ORDER BY c.fecha DESC LIMIT 1
+    """, (codigo, codigo))
+    transito = cur3.fetchone()
+
+    # Optimización (sugerencia y demanda)
+    cur4 = conn.execute("""
+        SELECT demanda_promedio, stock_actual, stock_optimo, costo_reposicion
+        FROM optimizacion WHERE codigo=? LIMIT 1
+    """, (codigo,))
+    opt = cur4.fetchone()
+
     conn.close()
 
-    if not rows:
-        await message.reply_text(f"❓ Sin datos de stock para `{codigo}`.", parse_mode="Markdown")
+    if not rows_stock and not art:
+        await message.reply_text(f"❓ Sin datos para `{codigo}`.", parse_mode="Markdown")
         return
 
-    desc = f"{art[0]}" if art else codigo
-    marca = f" ({art[1]})" if art and art[1] else ""
-    nombres_dep = {"SAN_JOSE": "🏭 San José", "LARREA": "🏪 Larrea", "ES_LOCAL": "🏬 Local"}
-    lineas = [f"📦 *{desc}*{marca}\n`{codigo}`\n"]
-    for deposito, stock, minimo in rows:
-        icono = color_stock(stock, minimo)
-        nombre = nombres_dep.get(deposito, deposito)
-        lineas.append(f"{icono} *{nombre}*: {int(stock)} uds _(mín: {int(minimo)})_")
+    desc = art[0] if art else codigo
+    marca_str = f" ({art[1]})" if art and art[1] else ""
+    l1_usd = float(art[2] or 0) if art else 0
+    l4_ars = float(art[3] or 0) if art else 0
 
-    await message.reply_text("\n".join(lineas), parse_mode="Markdown")
+    # Obtener tasa
+    try:
+        from database import get_config as _gc
+        tasa = float(_gc("tasa_usd_ars", float) or 1420)
+    except Exception:
+        tasa = 1420
+
+    l1_ars = l1_usd * tasa
+    nombres_dep = {"SAN_JOSE": "🏭 San José", "LARREA": "🏪 Larrea", "ES_LOCAL": "🏬 Local"}
+
+    lineas = [f"📦 *{desc}*{marca_str}\n`{codigo}`\n"]
+
+    # Stock por depósito
+    stock_total = 0
+    for dep, stk, minn, opt_s in rows_stock:
+        stk = int(stk or 0)
+        minn = int(minn or 0)
+        stock_total += stk
+        icono = color_stock(stk, minn)
+        nombre = nombres_dep.get(dep, dep)
+        lineas.append(f"{icono} *{nombre}*: {stk} u _(mín: {minn})_")
+
+    # Precios
+    lineas.append("")
+    if l1_usd > 0:
+        lineas.append(f"💵 Lista 1: *USD {l1_usd:.2f}* = *${l1_ars:,.0f} ARS*")
+    if l4_ars > 0:
+        alerta = " ⚠️ _bajo stock_" if stock_total <= 3 and stock_total > 0 else ""
+        lineas.append(f"🛒 Precio ML (L4): *${l4_ars:,.0f} ARS*{alerta}")
+    elif l1_usd > 0:
+        lineas.append(f"🛒 Precio ML: _sin precio L4 cargado_")
+
+    # En tránsito
+    if transito and transito[0] and int(transito[0]) > 0:
+        lineas.append(f"\n✈️ En tránsito: *{int(transito[0])} uds* (Invoice {transito[1] or '?'}, {str(transito[2] or '')[:10]})")
+    else:
+        lineas.append(f"\n✈️ En tránsito: _ninguno_")
+
+    # Sugerencia IA
+    if opt:
+        dem = max(0.0, float(opt[0] or 0))
+        stk_actual = float(opt[1] or 0)
+        stk_opt = float(opt[2] or 0)
+        costo = float(opt[3] or 0)
+        if dem > 0 and stk_actual < stk_opt:
+            dias = int(stk_actual / (dem / 30)) if dem > 0 else 999
+            a_pedir = int(stk_opt - stk_actual)
+            subtotal = a_pedir * costo
+            lineas.append(f"\n🧠 *Sugerencia:* pedir *{a_pedir} uds* | Cobertura actual: *{dias} días* | Costo: USD {subtotal:.0f}")
+        elif stk_actual >= stk_opt:
+            lineas.append(f"\n🧠 Stock OK — cobertura suficiente")
+
+    kb = [[
+        InlineKeyboardButton("💰 Ver precio", callback_data=f"precio_cod_{codigo}"),
+        InlineKeyboardButton("🔙 Menú", callback_data="menu_volver"),
+    ]]
+    await message.reply_text("\n".join(lineas), parse_mode="Markdown",
+                              reply_markup=InlineKeyboardMarkup(kb))
 
 
 # ── /precio ───────────────────────────────────────────────────
@@ -245,27 +325,62 @@ async def cmd_precio(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def _mostrar_precio_codigo(message, codigo: str):
-    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.abspath(__file__)), "roker_nexus.db"))
-    cur = conn.execute("SELECT lista_1, lista_4, moneda FROM precios WHERE codigo=? ORDER BY fecha DESC LIMIT 1", (codigo,))
+    import os as _osp
+    _db = _osp.path.join(_osp.path.dirname(_osp.path.abspath(__file__)), "roker_nexus.db")
+    conn = sqlite3.connect(_db)
+    cur = conn.execute("SELECT lista_1, lista_4 FROM precios WHERE codigo=? ORDER BY fecha DESC LIMIT 1", (codigo,))
     row = cur.fetchone()
     cur2 = conn.execute("SELECT descripcion, marca FROM articulos WHERE codigo=?", (codigo,))
     art = cur2.fetchone()
+    # Stock total
+    cur3 = conn.execute("""
+        SELECT SUM(s.stock) FROM stock_snapshots s
+        JOIN (SELECT codigo, MAX(fecha) mf FROM stock_snapshots WHERE codigo=? GROUP BY 1) lx
+          ON s.codigo=lx.codigo AND s.fecha=lx.mf
+        WHERE s.codigo=?
+    """, (codigo, codigo))
+    stk_row = cur3.fetchone()
     conn.close()
 
     if not row:
         await message.reply_text(f"❓ Sin precios para `{codigo}`.", parse_mode="Markdown")
         return
 
-    desc = f"{art[0]}" if art else codigo
+    desc = art[0] if art else codigo
     marca = f" ({art[1]})" if art and art[1] else ""
     tasa = _get_tasa()
-    l1, l4 = row[0] or 0, row[1] or 0
+    l1_usd = float(row[0] or 0)
+    l4_ars = float(row[1] or 0)
+    l1_ars = l1_usd * tasa
+    stock = int(stk_row[0] or 0) if stk_row else 0
+
+    # Alerta si bajo stock
+    alerta_stock = ""
+    if stock == 0:
+        alerta_stock = "\n\n🔴 *SIN STOCK* — artículo en quiebre"
+    elif stock <= 5:
+        alerta_stock = f"\n\n🟡 *Stock bajo:* solo {stock} unidades"
+
+    # Calcular margen ML
+    margen_info = ""
+    if l1_ars > 0 and l4_ars > 0:
+        margen_pct = (l4_ars - l1_ars) / l4_ars * 100
+        emoji_mg = "🟢" if margen_pct >= 30 else ("🟡" if margen_pct >= 15 else "🔴")
+        margen_info = f"\n{emoji_mg} Margen ML: *{margen_pct:.1f}%*"
+
     texto = (
         f"💰 *{desc}*{marca}\n`{codigo}`\n\n"
-        f"📋 Lista 1 (mayorista): *USD {l1:,.2f}* = ${l1*tasa:,.0f} ARS\n"
-        f"🛒 Lista 4 (ML): *USD {l4:,.2f}* = ${l4*tasa:,.0f} ARS"
+        f"📋 Lista 1 (mayorista): *USD {l1_usd:.2f}* = *${l1_ars:,.0f} ARS*\n"
+        f"🛒 Lista 4 (ML): *${l4_ars:,.0f} ARS*"
+        f"{margen_info}"
+        f"{alerta_stock}"
     )
-    await message.reply_text(texto, parse_mode="Markdown")
+    kb = [[
+        InlineKeyboardButton("📦 Ver stock", callback_data=f"stock_cod_{codigo}"),
+        InlineKeyboardButton("🔙 Menú", callback_data="menu_volver"),
+    ]]
+    await message.reply_text(texto, parse_mode="Markdown",
+                              reply_markup=InlineKeyboardMarkup(kb))
 
 
 # ── /quiebres ─────────────────────────────────────────────────
@@ -331,27 +446,50 @@ async def cmd_sinstock(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ── /transito ─────────────────────────────────────────────────
 @auth_required
 async def cmd_transito(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.abspath(__file__)), "roker_nexus.db"))
-    cur = conn.execute("""
-        SELECT t.invoice_id, t.proveedor, t.estado, t.total_usd,
-               t.fecha_pedido, t.fecha_estimada
-        FROM pedidos_transito t ORDER BY t.fecha_pedido DESC LIMIT 10
+    """Lista completa de cotizaciones en tránsito con detalle de ítems."""
+    df_cots = query_to_df("""
+        SELECT c.id, c.invoice_id, c.proveedor, c.fecha, c.total_usd, c.estado,
+               c.fecha_transito, c.fecha_estimada_llegada,
+               COUNT(ci.id) as items,
+               SUM(ci.cantidad_pedida) as unidades,
+               SUM(ci.cantidad_recibida) as recibidas
+        FROM cotizaciones c
+        LEFT JOIN cotizacion_items ci ON c.id=ci.cotizacion_id
+        WHERE c.estado IN ('pendiente','en_transito')
+        GROUP BY c.id
+        ORDER BY c.fecha DESC
     """)
-    rows = cur.fetchall()
-    conn.close()
 
-    if not rows:
-        await update.message.reply_text("📭 No hay pedidos en tránsito registrados.")
+    if df_cots.empty:
+        await update.message.reply_text("📭 No hay pedidos pendientes ni en tránsito.")
         return
 
-    lineas = ["🚢 *Pedidos en tránsito*\n"]
-    for inv, prov, estado, total, f_ped, f_est in rows:
+    lineas = [f"✈️ *Pedidos activos* — {len(df_cots)} invoices\n"]
+    for _, r in df_cots.iterrows():
+        estado = str(r.get("estado",""))
+        emoji = "✈️" if estado == "en_transito" else "⏳"
+        inv = r.get("invoice_id","?")
+        total = float(r.get("total_usd") or 0)
+        items = int(r.get("items") or 0)
+        uds = int(r.get("unidades") or 0)
+        rec = int(r.get("recibidas") or 0)
+        pendiente = uds - rec
+        fecha = str(r.get("fecha_transito") or r.get("fecha","?"))[:10]
+        eta = str(r.get("fecha_estimada_llegada") or "—")[:10]
+
         lineas.append(
-            f"• {inv or '?'} ({prov}) — {estado}\n"
-            f"  USD {total:,.0f} · Est: {str(f_est or '?')[:10]}"
+            f"{emoji} *Invoice #{inv}*\n"
+            f"  {items} ítems | {uds} uds pedidas | {pendiente} pendientes\n"
+            f"  USD {total:,.0f} | Fecha: {fecha} | ETA: {eta}"
         )
 
-    await update.message.reply_text("\n".join(lineas), parse_mode="Markdown")
+    kb = [[InlineKeyboardButton("🔙 Menú", callback_data="menu_volver")]]
+    # Telegram tiene límite de 4096 chars
+    texto = "\n".join(lineas)
+    if len(texto) > 3900:
+        texto = texto[:3900] + "\n_...y más_"
+    await update.message.reply_text(texto, parse_mode="Markdown",
+                                     reply_markup=InlineKeyboardMarkup(kb))
 
 
 # ── /negra ────────────────────────────────────────────────────
@@ -503,6 +641,20 @@ async def _guardar_config(message, clave: str, valor: float):
             f"✅ *Dólar actualizado*\n💵 USD/ARS = *${valor:,.0f}*",
             parse_mode="Markdown"
         )
+        # Alertar si algún producto perdió margen
+        try:
+            from modules.ia_engine import motor_ia
+            alertas = motor_ia.alertas_margen_dolar(valor)
+            if alertas:
+                lineas = [f"⚠️ *{len(alertas)} artículos con margen bajo ({valor:,.0f} ARS/USD)*\n"]
+                for a in alertas[:5]:
+                    lineas.append(
+                        f"• `{a['codigo']}` {a['descripcion']}\n"
+                        f"  Margen: *{a['margen_actual_pct']:.1f}%* → Precio sugerido: ${a['precio_sugerido']:,.0f}"
+                    )
+                await message.reply_text("\n".join(lineas), parse_mode="Markdown")
+        except Exception:
+            pass
     elif clave == "umbral":
         await message.reply_text(
             f"✅ *Umbral de quiebre actualizado*\n🟡 Stock mínimo = *{int(valor)} unidades*",
@@ -1256,6 +1408,33 @@ async def _responder_busqueda_opciones(msg, resultados: list, termino: str):
 
 
 
+
+# ── /ia2 — consulta en paralelo (Claude + Gemini + GPT activos) ───────────
+@auth_required
+async def cmd_ia2(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    consulta = " ".join(context.args) if context.args else ""
+    if not consulta:
+        await update.message.reply_text(
+            "🤖 */ia2* — Consulta a todos los modelos IA activos en paralelo.\n"
+            "Uso: `/ia2 ¿qué artículos Samsung están en quiebre?`",
+            parse_mode="Markdown"
+        )
+        return
+
+    await update.message.reply_text(f"🤖🤖 Consultando a todos los IAs: _{consulta}_\nEsperá...",
+                                     parse_mode="Markdown")
+    from modules.ia_engine import motor_ia
+    respuestas = motor_ia.consultar_paralelo(consulta)
+
+    for nombre, respuesta in respuestas.items():
+        emoji = {"claude": "🤖", "gemini": "✨", "gpt": "💡"}.get(nombre.lower(), "🧠")
+        texto = f"{emoji} *{nombre.upper()}:*\n{respuesta[:3500]}"
+        try:
+            await update.message.reply_text(texto, parse_mode="Markdown")
+        except Exception:
+            await update.message.reply_text(texto)
+
+
 # ── /tasa — sin argumentos muestra menú, con número actualiza directo ──────────────────
 @auth_required
 async def cmd_tasa(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1550,6 +1729,7 @@ def main():
     app.add_handler(CommandHandler("resumen",   cmd_resumen))
     app.add_handler(CommandHandler("ia",        cmd_ia))
     app.add_handler(CommandHandler("tasa",      cmd_tasa))
+    app.add_handler(CommandHandler("ia2",       cmd_ia2))
     app.add_handler(CommandHandler("criticos",  cmd_criticos))
     app.add_handler(CommandHandler("urgentes",  cmd_urgentes))
     app.add_handler(CommandHandler("kpis",      cmd_kpis))
