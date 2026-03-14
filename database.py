@@ -34,7 +34,8 @@ DEBUG = _env("DEBUG", "False").lower() == "true"
 
 # ── Detección de backend ─────────────────────────────────────
 USE_SUPABASE = SUPABASE_AVAILABLE and bool(SUPABASE_URL) and bool(SUPABASE_KEY)
-SQLITE_PATH = "roker_nexus.db"
+import os as _os
+SQLITE_PATH = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "roker_nexus.db")
 
 _supabase: Optional[object] = None
 
@@ -356,15 +357,19 @@ def init_db():
     else:
         # SQLite local
         conn = get_sqlite()
-        # Ejecutar sentencia por sentencia — tolerante a errores
-        for stmt in SCHEMA_SQL.split(';'):
-            stmt = stmt.strip()
-            if stmt:
-                try:
-                    conn.execute(stmt)
-                except Exception:
-                    pass
-        conn.commit()
+        # Ejecutar schema completo
+        try:
+            conn.executescript(SCHEMA_SQL)
+        except Exception as e:
+            # Fallback: sentencia por sentencia
+            for stmt in SCHEMA_SQL.split(';'):
+                stmt = stmt.strip()
+                if stmt:
+                    try:
+                        conn.execute(stmt)
+                    except Exception:
+                        pass
+            conn.commit()
         # Insertar configuración por defecto (tabla ya creada por schema)
         try:
             for k, v, d in CONFIG_DEFAULTS:
