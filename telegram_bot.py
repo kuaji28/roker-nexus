@@ -1,3 +1,4 @@
+import os
 """
 ROKER NEXUS — Bot de Telegram
 Comandos de consulta, alertas automáticas y actualizaciones de configuración.
@@ -244,7 +245,7 @@ async def cmd_precio(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def _mostrar_precio_codigo(message, codigo: str):
-    conn = sqlite3.connect("roker_nexus.db")
+    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.abspath(__file__)), "roker_nexus.db"))
     cur = conn.execute("SELECT lista_1, lista_4, moneda FROM precios WHERE codigo=? ORDER BY fecha DESC LIMIT 1", (codigo,))
     row = cur.fetchone()
     cur2 = conn.execute("SELECT descripcion, marca FROM articulos WHERE codigo=?", (codigo,))
@@ -330,7 +331,7 @@ async def cmd_sinstock(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ── /transito ─────────────────────────────────────────────────
 @auth_required
 async def cmd_transito(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    conn = sqlite3.connect("roker_nexus.db")
+    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.abspath(__file__)), "roker_nexus.db"))
     cur = conn.execute("""
         SELECT t.invoice_id, t.proveedor, t.estado, t.total_usd,
                t.fecha_pedido, t.fecha_estimada
@@ -482,7 +483,7 @@ async def cmd_config(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def _guardar_config(message, clave: str, valor: float):
     """Guarda un valor de configuración y confirma."""
     if clave == "tasa_usd":
-        conn = sqlite3.connect("roker_nexus.db")
+        conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.abspath(__file__)), "roker_nexus.db"))
         conn.execute(
             "INSERT OR REPLACE INTO tasas_cambio (fecha, usd_ars) VALUES (date('now'), ?)",
             (valor,)
@@ -731,7 +732,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ── CONFIG desde botones ──
     elif data == "cfg_tasa_usd":
         _set_estado(user_id, "tasa_usd")
-        conn = sqlite3.connect("roker_nexus.db")
+        conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.abspath(__file__)), "roker_nexus.db"))
         cur = conn.execute("SELECT usd_ars FROM tasas_cambio ORDER BY fecha DESC LIMIT 1")
         row = cur.fetchone(); conn.close()
         actual = f"${row[0]:,.0f}" if row else "no registrado"
@@ -1211,7 +1212,7 @@ async def alerta_quiebres(context: ContextTypes.DEFAULT_TYPE):
 # ── Helpers ───────────────────────────────────────────────────
 def _get_tasa() -> float:
     try:
-        conn = sqlite3.connect("roker_nexus.db")
+        conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.abspath(__file__)), "roker_nexus.db"))
         cur = conn.execute("SELECT usd_ars FROM tasas_cambio ORDER BY fecha DESC LIMIT 1")
         row = cur.fetchone()
         conn.close()

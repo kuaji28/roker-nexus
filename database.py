@@ -33,7 +33,8 @@ SUPABASE_KEY = _env("SUPABASE_KEY")
 DEBUG = _env("DEBUG", "False").lower() == "true"
 
 # ── Detección de backend ─────────────────────────────────────
-USE_SUPABASE = SUPABASE_AVAILABLE and bool(SUPABASE_URL) and bool(SUPABASE_KEY)
+# Supabase desactivado hasta crear tablas en dashboard
+USE_SUPABASE = False
 import os as _os
 SQLITE_PATH = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "roker_nexus.db")
 

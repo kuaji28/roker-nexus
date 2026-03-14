@@ -9,7 +9,11 @@ from typing import Optional
 import pandas as pd
 import streamlit as st
 
-from config import FLEXXUS_ARCHIVOS, MONEDA_USD_ARS
+try:
+    from config import FLEXXUS_ARCHIVOS, MONEDA_USD_ARS
+except Exception:
+    FLEXXUS_ARCHIVOS = []
+    MONEDA_USD_ARS = 1420.0
 
 
 # ── Formateo de valores ───────────────────────────────────────

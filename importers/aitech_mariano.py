@@ -1,3 +1,4 @@
+import os
 """
 ROKER NEXUS — Importador: AI-TECH y archivo de Mariano
 """
@@ -82,7 +83,7 @@ class ImportadorAITECH(ImportadorBase):
         return match.group(0) if match else "SIN_INVOICE"
 
     def _guardar(self, df: pd.DataFrame) -> int:
-        conn = sqlite3.connect("roker_nexus.db")
+        conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "roker_nexus.db"))
         invoice_id = getattr(self, "_invoice_id", "SIN_INVOICE")
         fecha_hoy  = datetime.now().date().isoformat()
 
@@ -253,7 +254,7 @@ class ImportadorMariano(ImportadorBase):
         return df_out
 
     def _guardar(self, df: pd.DataFrame) -> int:
-        conn = sqlite3.connect("roker_nexus.db")
+        conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "roker_nexus.db"))
         total = 0
 
         # Guardar repuestos en tabla optimizacion

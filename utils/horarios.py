@@ -6,9 +6,16 @@ from datetime import datetime, date, time, timedelta
 from typing import Optional
 import pytz
 
-from config import (
-    TIMEZONE, HORARIO_SEMANA, HORARIO_SABADO, FERIADOS_2026
-)
+import os as _os, pytz as _pytz_mod
+
+# Valores directos sin importar config (evita circular import)
+try:
+    from config import TIMEZONE, HORARIO_SEMANA, HORARIO_SABADO, FERIADOS_2026
+except Exception:
+    TIMEZONE = _pytz_mod.timezone("America/Argentina/Buenos_Aires")
+    HORARIO_SEMANA = {"apertura": __import__('datetime').time(8, 30), "cierre": __import__('datetime').time(18, 30)}
+    HORARIO_SABADO = {"apertura": __import__('datetime').time(9, 0), "cierre": __import__('datetime').time(13, 0)}
+    FERIADOS_2026 = []
 
 
 def ahora() -> datetime:
