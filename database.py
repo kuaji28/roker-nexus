@@ -339,13 +339,17 @@ def init_db():
         # SQLite local
         conn = get_sqlite()
         conn.executescript(SCHEMA_SQL)
-        # Insertar configuración por defecto
-        for k, v, d in CONFIG_DEFAULTS:
-            conn.execute(
-                "INSERT OR IGNORE INTO configuracion (clave, valor, descripcion) VALUES (?,?,?)",
-                (k, v, d)
-            )
         conn.commit()
+        # Insertar configuración por defecto (tabla ya creada por schema)
+        try:
+            for k, v, d in CONFIG_DEFAULTS:
+                conn.execute(
+                    "INSERT OR IGNORE INTO configuracion (clave, valor, descripcion) VALUES (?,?,?)",
+                    (k, v, d)
+                )
+            conn.commit()
+        except Exception as e:
+            print(f"Config defaults warning: {e}")
         conn.close()
         return True
 
@@ -469,7 +473,7 @@ def get_quiebres(deposito: Optional[str] = None, umbral: int = 10) -> pd.DataFra
 
 
 # Inicializar al importar
-init_db()
+# init_db() se llama desde app.py
 
 
 def get_resumen_stats() -> dict:
