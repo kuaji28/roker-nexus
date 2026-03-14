@@ -133,28 +133,39 @@ class ImportadorOptimizacion(ImportadorBase):
             "costo_total_usd": round(df["costo_reposicion"].sum(), 2),
         }
 
-    def get_sugerencias_compra(self, tope_usd: float = 0) -> pd.DataFrame:
+    def get_sugerencias_compra(self, tope_usd: float = 0, proveedor: str = "TODOS") -> pd.DataFrame:
         """
-        Retorna artículos que necesitan reposición, ordenados por prioridad.
-        Si tope_usd > 0, limita el total a ese monto.
+        Retorna artículos que necesitan reposición, filtrados por proveedor.
+        FR (AITECH): códigos que empiezan con LETRA
+        MECÁNICO: códigos que empiezan con NÚMERO
         """
         sql = """
             SELECT o.codigo, o.descripcion, o.stock_actual, o.stock_optimo,
                    o.demanda_promedio, o.costo_reposicion, o.moneda,
                    (o.stock_optimo - o.stock_actual) as a_pedir,
                    ((o.stock_optimo - o.stock_actual) * o.costo_reposicion) as subtotal_usd,
-                   a.en_lista_negra
+                   COALESCE(a.en_lista_negra, 0) as en_lista_negra
             FROM optimizacion o
             LEFT JOIN articulos a ON o.codigo = a.codigo
             WHERE o.stock_actual < o.stock_optimo
               AND COALESCE(a.en_lista_negra, 0) = 0
+              AND o.a_pedir > 0
             ORDER BY (o.stock_optimo - o.stock_actual) * o.costo_reposicion DESC
         """
         df = query_to_df(sql)
         if df.empty:
             return df
 
+        # Filtrar por proveedor según primera letra del código
+        prov_up = proveedor.upper()
+        if "MECÁNICO" in prov_up or "MECANICO" in prov_up:
+            df = df[df["codigo"].str[0].str.isdigit()]
+        elif "FR" in prov_up or "AITECH" in prov_up:
+            df = df[df["codigo"].str[0].str.isalpha()]
+        # Si es "TODOS" o cualquier otro, no filtra
+
         if tope_usd > 0:
+            df = df[df["subtotal_usd"] > 0]  # Solo con costo conocido primero
             df["acumulado"] = df["subtotal_usd"].cumsum()
             df = df[df["acumulado"] <= tope_usd]
 

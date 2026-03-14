@@ -1,12 +1,12 @@
 """
-ROKER NEXUS v1.6.9 — El Celu
+ROKER NEXUS v1.7.0 — El Celu
 Navegación horizontal — sin depender del sidebar
 """
 import streamlit as st
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 
-APP_VERSION = "v1.6.9"
+APP_VERSION = "v1.7.0"
 APP_BUILD   = "2026-03-13"
 
 st.set_page_config(
@@ -156,6 +156,12 @@ hr{border-color:var(--line)!important;margin:24px 0!important}
 .nx-badge-green{background:var(--green-bg);color:var(--green)}
 .nx-badge-amber{background:var(--amber-bg);color:var(--amber)}
 .nx-badge-red{background:var(--red-bg);color:var(--red)}
+
+        /* Navbar compacto — menos espacio arriba */
+        header[data-testid="stHeader"] { display: none !important; }
+        .main .block-container { padding-top: 0.5rem !important; padding-bottom: 1rem !important; }
+        div[data-testid="stHorizontalBlock"] { gap: 4px !important; }
+        .nx-nav-btn { padding: 6px 10px !important; font-size: 12px !important; }
 </style>
 """, unsafe_allow_html=True)
 

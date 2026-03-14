@@ -3,12 +3,12 @@ ROKER NEXUS — Control de versiones
 Cada entrada = un deploy con cambios reales.
 """
 
-APP_VERSION = "v1.6.9"
+APP_VERSION = "v1.7.0"
 APP_BUILD   = "2026-03-13"
 
 CHANGELOG = [
     {
-        "version": "v1.6.9",
+        "version": "v1.7.0",
         "fecha": "2026-03-13",
         "cambios": [
             "🔍 Detector archivos Flexxus — Planilla de Stock corregido",
@@ -28,7 +28,7 @@ CHANGELOG = [
         ]
     },
     {
-        "version": "v1.6.9",
+        "version": "v1.7.0",
         "fecha": "2026-03-13",
         "cambios": [
             "🎨 Diseño One UI 8 completo — paleta Samsung auténtica",
@@ -42,7 +42,7 @@ CHANGELOG = [
         ]
     },
     {
-        "version": "v1.6.9",
+        "version": "v1.7.0",
         "fecha": "2026-03-13",
         "cambios": [
             "🚀 Sistema Roker Nexus lanzado",

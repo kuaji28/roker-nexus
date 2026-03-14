@@ -36,7 +36,7 @@ def render():
         with col_conf:
             st.markdown("### Configurar lote")
             nombre_lote = st.text_input("Nombre del lote", value=f"Lote {datetime.now().strftime('%d/%m/%Y')}")
-            proveedor = st.selectbox("Proveedor", ["FR (AITECH)", "MECÁNICO", "AI-TECH", "Otro"])
+            proveedor = st.selectbox("Proveedor", ["TODOS", "MECÁNICO", "FR (AITECH)", "AI-TECH", "Otro"])
             tope_usd = st.number_input(
                 "Tope USD",
                 min_value=0,
@@ -74,7 +74,7 @@ def render():
 
                 with st.spinner("Calculando..."):
                     imp = ImportadorOptimizacion()
-                    df_sug = imp.get_sugerencias_compra(tope_usd=config["tope"])
+                    df_sug = imp.get_sugerencias_compra(tope_usd=config["tope"], proveedor=config.get("proveedor","TODOS"))
 
                 if df_sug.empty:
                     st.info("Sin sugerencias. Cargá primero el archivo de Optimización de Stock.")

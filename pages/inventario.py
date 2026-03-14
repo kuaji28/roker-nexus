@@ -44,7 +44,7 @@ def render():
 
     # ── Tab Quiebres ──────────────────────────────────────────
     with tabs[0]:
-        col_f1, col_f2, col_f3 = st.columns([2, 2, 1])
+        col_f1, col_f2, col_f3, col_f4 = st.columns([2, 2, 2, 1])
         with col_f1:
             deposito_sel = st.selectbox(
                 "Depósito",
@@ -54,12 +54,23 @@ def render():
         with col_f2:
             umbral = st.slider("Umbral de stock", 0, 50, 10)
         with col_f3:
+            try:
+                from database import execute_query
+                rubros_rows = execute_query("SELECT DISTINCT rubro FROM stock_snapshots WHERE rubro IS NOT NULL AND rubro != '' ORDER BY rubro")
+                rubros_opts = ["Todos"] + [r["rubro"] for r in rubros_rows if r.get("rubro")]
+            except Exception:
+                rubros_opts = ["Todos"]
+            rubros_sel = st.multiselect("Rubro(s)", rubros_opts[1:], placeholder="Todos los rubros")
+        with col_f4:
             solo_cero = st.checkbox("Solo stock=0", value=False)
 
         dep = deposito_sel if deposito_sel != "Todos" else None
         umb = 0 if solo_cero else umbral
 
         df_q = detectar_quiebres(umbral=umb, deposito=dep)
+        # Filtrar por rubros seleccionados
+        if rubros_sel and "rubro" in df_q.columns:
+            df_q = df_q[df_q["rubro"].isin(rubros_sel)]
 
         if df_q.empty:
             st.success("✅ No hay quiebres con los filtros actuales.")
@@ -171,8 +182,28 @@ def render():
         </div>
         """, unsafe_allow_html=True)
 
+        # Subir Excel de lista negra
+        with st.expander("📤 Cargar lista negra desde Excel"):
+            st.caption("El archivo debe llamarse 'lista negra.xlsx' · Col A = Código · Col B = Descripción (opcional)")
+            f_negra = st.file_uploader("Archivo Excel", type=["xlsx","xls"], key="upload_negra")
+            if f_negra and st.button("⛔ Cargar lista negra", type="primary"):
+                import pandas as pd
+                try:
+                    df_upload = pd.read_excel(f_negra, header=None)
+                    agregados = 0
+                    for _, row in df_upload.iterrows():
+                        cod = str(row.iloc[0]).strip()
+                        desc = str(row.iloc[1]).strip() if len(row) > 1 else ""
+                        if cod and cod != "nan" and len(cod) > 1:
+                            if agregar_a_lista_negra(cod, desc):
+                                agregados += 1
+                    st.success(f"✅ {agregados} artículos agregados a lista negra")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
         # Agregar manualmente
-        with st.expander("➕ Agregar artículo a lista negra"):
+        with st.expander("➕ Agregar artículo manualmente"):
             col1, col2, col3 = st.columns([2, 3, 1])
             with col1:
                 codigo_neg = st.text_input("Código", key="input_negro_cod")
