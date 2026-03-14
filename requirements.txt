@@ -1,5 +1,3 @@
-# Roker Nexus — Requirements
-# Funciona para Streamlit Cloud (ignora telegram) y Railway (lo usa)
 streamlit>=1.32.0
 pandas>=2.0.0
 numpy>=1.24.0
@@ -12,4 +10,5 @@ pytz>=2023.3
 python-dotenv>=1.0.0
 anthropic>=0.25.0
 httpx>=0.24.0
+plotly>=5.18.0
 python-telegram-bot==21.1.1
