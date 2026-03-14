@@ -483,11 +483,20 @@ async def cmd_config(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def _guardar_config(message, clave: str, valor: float):
     """Guarda un valor de configuración y confirma."""
     if clave == "tasa_usd":
-        conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.abspath(__file__)), "roker_nexus.db"))
-        conn.execute(
-            "INSERT OR REPLACE INTO tasas_cambio (fecha, usd_ars) VALUES (date('now'), ?)",
-            (valor,)
-        )
+        _db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "roker_nexus.db")
+        conn = sqlite3.connect(_db_path)
+        try:
+            conn.execute(
+                "INSERT OR REPLACE INTO tasas_cambio (moneda, fecha, usd_ars) VALUES ('USD', date('now'), ?)",
+                (valor,)
+            )
+        except Exception:
+            conn.execute(
+                "INSERT OR REPLACE INTO tasas_cambio (fecha, usd_ars) VALUES (date('now'), ?)",
+                (valor,)
+            )
+        conn.execute("INSERT OR REPLACE INTO configuracion (clave,valor,descripcion) VALUES(?,?,?)",
+                    ("tasa_usd_ars", str(int(valor)), "USD a ARS"))
         conn.commit()
         conn.close()
         await message.reply_text(
@@ -505,8 +514,15 @@ async def _guardar_config(message, clave: str, valor: float):
             parse_mode="Markdown"
         )
     elif clave == "rmb":
+        import sqlite3 as _sq3, os as _os3
+        _db3 = _os3.path.join(_os3.path.dirname(_os3.path.abspath(__file__)), "roker_nexus.db")
+        _c3 = _sq3.connect(_db3)
+        _c3.execute("INSERT OR REPLACE INTO configuracion (clave,valor,descripcion) VALUES(?,?,?)",
+                    ("tasa_rmb_usd", str(valor), "RMB Yuan a ARS"))
+        _c3.commit()
+        _c3.close()
         await message.reply_text(
-            f"✅ *Yuan actualizado*\n💱 RMB/ARS = *${valor:,.2f}*",
+            f"✅ *Yuan actualizado*\n🇨🇳 RMB/ARS = *${valor:,.2f}*",
             parse_mode="Markdown"
         )
 
