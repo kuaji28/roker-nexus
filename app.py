@@ -13,7 +13,7 @@ st.set_page_config(
     page_title="Roker Nexus",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 st.markdown("""
@@ -174,6 +174,98 @@ from utils.helpers import check_apis, fmt_usd, fmt_ars, fmt_num
 # En Streamlit Cloud el filesystem es efímero - las tablas deben
 # crearse en cada arranque
 # ══════════════════════════════════════════════════════════════════
+
+def _render_sidebar():
+    """Sidebar de configuración global — siempre visible."""
+    from database import get_all_config, set_config
+    with st.sidebar:
+        st.markdown("""<div style="display:flex;align-items:center;gap:10px;margin-bottom:1.2rem">
+        <div style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#0A84FF,#5AC8FA);
+                    display:flex;align-items:center;justify-content:center;font-size:17px">⚡</div>
+        <div><div style="font-weight:700;font-size:.9rem;color:#F2F2F7">ROKER NEXUS</div>
+        <div style="font-size:.6rem;color:#545458;letter-spacing:.08em">MANAGER v2.0</div>
+        </div></div>""", unsafe_allow_html=True)
+
+        cfg = get_all_config()
+        def v(k, t=float, d=0):
+            try: return t(cfg.get(k, {}).get("valor", d) or d)
+            except: return d
+
+        with st.expander("🚚 Logística", expanded=False):
+            lt = st.number_input("Lead Time (días)", 1, 365, int(v("lead_time_dias",float,30)), key="sb_lt")
+            if st.button("💾 Guardar", key="sb_lt_s"):
+                set_config("lead_time_dias", lt); st.success("✓")
+
+        with st.expander("💰 Presupuestos (USD)", expanded=False):
+            c1,c2 = st.columns(2)
+            with c1:
+                p1 = st.number_input("Lote 1", 0, value=int(v("presupuesto_lote_1",float,15000)), step=500, key="sb_p1")
+                p3 = st.number_input("Lote 3", 0, value=int(v("presupuesto_lote_3",float,8000)),  step=500, key="sb_p3")
+            with c2:
+                p2 = st.number_input("Lote 2", 0, value=int(v("presupuesto_lote_2",float,10000)), step=500, key="sb_p2")
+            if st.button("💾 Guardar", key="sb_p_s"):
+                for k,val in [("presupuesto_lote_1",p1),("presupuesto_lote_2",p2),("presupuesto_lote_3",p3)]:
+                    set_config(k, val)
+                st.success("✓")
+
+        with st.expander("💱 Tasas de cambio", expanded=True):
+            ars = st.number_input("USD → ARS", 100.0, 99999.0, v("tasa_usd_ars",float,1420), step=10.0, format="%.0f", key="sb_ars")
+            rmb = st.number_input("RMB → USD", .01, 99.0, v("tasa_rmb_usd",float,7.3), step=.01, format="%.4f", key="sb_rmb")
+            if st.button("💾 Guardar", key="sb_fx_s"):
+                set_config("tasa_usd_ars", ars)
+                set_config("tasa_rmb_usd", rmb)
+                st.success("✓")
+
+        with st.expander("🛒 Comisiones ML", expanded=False):
+            cf  = st.number_input("FR (%)",              0.0, 50.0, v("comision_ml_fr",float,14.0),        .5, "%.1f", key="sb_cf")
+            cm_ = st.number_input("Mecánico (%)",        0.0, 50.0, v("comision_ml_mecanico",float,13.0),  .5, "%.1f", key="sb_cm")
+            mf  = st.number_input("Margen extra FR (%)", 0.0, 50.0, v("margen_extra_ml_fr",float,0.0),   1.0, "%.1f", key="sb_mf")
+            mm  = st.number_input("Margen extra MEC (%)",0.0, 50.0, v("margen_extra_ml_mec",float,0.0),  1.0, "%.1f", key="sb_mm")
+            if st.button("💾 Guardar", key="sb_ml_s"):
+                for k,val in [("comision_ml_fr",cf),("comision_ml_mecanico",cm_),
+                               ("margen_extra_ml_fr",mf),("margen_extra_ml_mec",mm)]:
+                    set_config(k, val)
+                st.success("✓")
+
+        with st.expander("📊 Coeficientes Stock", expanded=False):
+            c1,c2,c3 = st.columns(3)
+            with c1: cmin = st.number_input("Mín",.1,5.,v("coef_stock_min",float,1.0),.1,"%.1f",key="sb_cmin")
+            with c2: copt = st.number_input("Opt",.1,5.,v("coef_stock_opt",float,1.2),.1,"%.1f",key="sb_copt")
+            with c3: cmax = st.number_input("Máx",.1,5.,v("coef_stock_max",float,1.4),.1,"%.1f",key="sb_cmax")
+            if st.button("💾 Guardar", key="sb_coef_s"):
+                for k,val in [("coef_stock_min",cmin),("coef_stock_opt",copt),("coef_stock_max",cmax)]:
+                    set_config(k, val)
+                st.success("✓")
+
+        with st.expander("🧠 Inteligencia IA", expanded=False):
+            cfg2 = get_all_config()
+            prov_act = str(cfg2.get("ia_proveedor",{}).get("valor","claude") or "claude")
+            opciones  = ["claude","gemini","gpt"]
+            labels    = ["🤖 Claude Pro","✨ Gemini Pro","💬 ChatGPT"]
+            idx = opciones.index(prov_act) if prov_act in opciones else 0
+            sel = st.radio("Proveedor IA", opciones,
+                           format_func=lambda x: labels[opciones.index(x)],
+                           index=idx, horizontal=True, key="sb_prov")
+            if sel != prov_act:
+                set_config("ia_proveedor", sel); st.rerun()
+            for prov,lbl,ph in [
+                ("claude","Claude API Key","sk-ant-api03-..."),
+                ("gemini","Gemini API Key","AIzaSy..."),
+                ("gpt",   "OpenAI API Key","sk-..."),
+            ]:
+                kk  = f"{prov}_api_key"
+                val = str(cfg2.get(kk,{}).get("valor","") or "")
+                ico = "✅" if val else "⬜"
+                nueva = st.text_input(f"{ico} {lbl}", value=val, type="password",
+                                       placeholder=ph, key=f"sb_k_{prov}")
+                if st.button(f"💾 Guardar", key=f"sb_ks_{prov}"):
+                    set_config(kk, nueva); st.success("✓")
+
+        st.markdown("---")
+        from utils.horarios import ahora
+        st.caption(f"🕐 {ahora().strftime('%d/%m %H:%M')}")
+
+
 try:
     init_db()
 except Exception as _init_err:
@@ -188,7 +280,14 @@ import pages.inventario   as pg_inventario
 import pages.precios    as pg_precios
 import pages.dashboard  as pg_dashboard
 import pages.asistente  as pg_asistente
-import pages.sistema    as pg_sistema
+import pages.sistema       as pg_sistema
+try:
+    import pages.demanda_manual as pg_demanda
+    import pages.ghost_skus     as pg_ghost
+    import pages.lista_negra    as pg_lista_negra
+    _PAGES_EXTRA = True
+except ImportError:
+    _PAGES_EXTRA = False
 
 init_db()
 
@@ -213,6 +312,9 @@ paginas = [
     ("💰", "Precios",      "Precios"),
     ("🤖", "IA",           "Asistente"),
     ("🔌", "Sistema",      "Sistema"),
+    ("✏️", "Demanda",      "Demanda Manual"),
+    ("👻", "Ghost",        "Ghost SKUs"),
+    ("🚫", "Negra",        "Lista Negra"),
 ]
 
 p_actual = st.session_state.pagina
@@ -247,6 +349,9 @@ elif p == "Cotizaciones": pg_cotizaciones.render()
 elif p == "Inventario":   pg_inventario.render()
 elif p == "Precios":      pg_precios.render()
 elif p == "Asistente":    pg_asistente.render()
-elif p == "Sistema":      pg_sistema.render()
+elif p == "Sistema":        pg_sistema.render()
+elif p == "Demanda Manual" and _PAGES_EXTRA: pg_demanda.render()
+elif p == "Ghost SKUs" and _PAGES_EXTRA:     pg_ghost.render()
+elif p == "Lista Negra" and _PAGES_EXTRA:    pg_lista_negra.render()
 
 st.markdown('</div>', unsafe_allow_html=True)

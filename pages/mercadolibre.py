@@ -15,6 +15,15 @@ from io import BytesIO
 from datetime import datetime
 
 from database import query_to_df, execute_query, get_config
+try:
+    from modules.ml_motor import (
+        calcular_precio_publicacion, calcular_comision_implicita,
+        buscar_con_cache, analizar_competencia, generar_termino,
+        get_termino_aprendido, _redondear
+    )
+    _MOTOR_OK = True
+except Exception:
+    _MOTOR_OK = False
 from utils.helpers import fmt_usd, fmt_num
 from utils.matching import tipo_codigo
 
@@ -57,6 +66,7 @@ def render():
     """, unsafe_allow_html=True)
 
     tabs = st.tabs([
+        "🧮 Calculadora",
         "📊 Precios & Comparador",
         "✏️ Editor Masivo",
         "🆚 Precios Competencia",
@@ -65,14 +75,16 @@ def render():
     ])
 
     with tabs[0]:
+        _tab_calculadora()
+    with tabs[5]:
         _tab_comparador()
-    with tabs[1]:
+    with tabs[5]:
         _tab_editor_masivo()
-    with tabs[2]:
+    with tabs[5]:
         _tab_competencia()
-    with tabs[3]:
+    with tabs[5]:
         _tab_importar_mla()
-    with tabs[4]:
+    with tabs[5]:
         _tab_reporte()
 
 
@@ -873,3 +885,94 @@ def _guardar_en_reporte(codigo: str, tienda: str, resultado: dict, precio_propio
         precio_propio, resultado["precio"],
         round(diff_pct, 2), resultado.get("link", "")
     ), fetch=False)
+
+
+def _tab_calculadora():
+    """Calculadora de precios ML paso a paso con detector de comisión implícita."""
+    st.markdown("### 🧮 Calculadora de Precios ML")
+
+    if not _MOTOR_OK:
+        st.error("Motor ML no disponible. Verificá el archivo modules/ml_motor.py")
+        return
+
+    tasa    = float(get_config("tasa_usd_ars", float) or 1420)
+    com_fr  = float(get_config("comision_ml_fr", float) or 14.0)
+    com_mec = float(get_config("comision_ml_mecanico", float) or 13.0)
+    m_fr    = float(get_config("margen_extra_ml_fr", float) or 0.0)
+    m_mec   = float(get_config("margen_extra_ml_mec", float) or 0.0)
+
+    st.markdown(f"""
+    <div style="background:rgba(10,132,255,.08);border:1px solid rgba(10,132,255,.2);
+                border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:13px">
+        💡 Tienda <strong>FR</strong>: comisión {com_fr}% + margen extra {m_fr}% &nbsp;|&nbsp;
+        Tienda <strong>Mecánico</strong>: comisión {com_mec}% + margen extra {m_mec}% &nbsp;|&nbsp;
+        Tasa: ${tasa:,.0f} ARS/USD
+    </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns([1, 1.2])
+
+    with col1:
+        st.markdown("**Ingresá el precio de Lista 1**")
+        lista1_usd = st.number_input("Lista 1 (USD)", min_value=0.0, value=0.0,
+                                      step=1.0, format="%.2f", key="calc_l1_usd")
+        lista1_ars = lista1_usd * tasa if lista1_usd > 0 else 0
+
+        tipo_tienda = st.radio("Tienda", ["FR (aitech)", "Mecánico"],
+                                horizontal=True, key="calc_tienda")
+        es_fr = "FR" in tipo_tienda
+        com_base = com_fr if es_fr else com_mec
+        m_base   = m_fr   if es_fr else m_mec
+
+        com_adj = st.slider("Comisión ML (%)", 0.0, 30.0, com_base, 0.5, key="calc_com")
+        m_adj   = st.slider("Margen extra (%)", 0.0, 30.0, m_base, 0.5, key="calc_mex")
+
+        if lista1_ars > 0:
+            st.markdown(f"Lista 1: **USD {lista1_usd:.2f}** = **ARS ${lista1_ars:,.0f}**")
+
+    with col2:
+        if lista1_ars > 0:
+            cal = calcular_precio_publicacion(lista1_ars, com_adj, m_adj)
+            st.markdown("**Desglose del cálculo**")
+            filas = [
+                ("📋 Lista 1 (base)",         f"USD {lista1_usd:.2f} = ARS ${lista1_ars:,.0f}", ""),
+                ("➕ Margen extra",            f"{m_adj}%",       f"→ ARS ${cal['precio_base_ars']:,.0f}"),
+                ("➗ Absorber comisión ML",    f"{com_adj}%",      "÷ (1 − comisión)"),
+                ("🏷️ Precio a publicar",       f"**ARS ${cal['precio_ml_ars']:,.0f}**", f"≈ USD {cal['precio_ml_ars']/tasa:,.0f}"),
+                ("💫 Precio psicológico",      f"**ARS ${cal['precio_ml_redondeado']:,}**", "Termina en 99"),
+                ("💸 Comisión que pagás",      f"ARS ${cal['comision_pagada_ars']:,.0f}", ""),
+                ("✅ Ganancia neta",            f"ARS ${cal['ganancia_neta_ars']:,.0f}", ""),
+                ("📊 Margen real sobre L1",    f"{cal['margen_real_pct']}%", ""),
+            ]
+            for lbl, val, nota in filas:
+                st.markdown(f"""
+                <div style="display:flex;justify-content:space-between;padding:6px 0;
+                            border-bottom:1px solid rgba(255,255,255,.06);font-size:13px">
+                    <span style="color:var(--nx-text2)">{lbl}</span>
+                    <span><strong>{val}</strong>
+                    <span style="color:var(--nx-text3);font-size:11px;margin-left:6px">{nota}</span></span>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("Ingresá el precio de Lista 1 en USD para ver el desglose.")
+
+    st.markdown("---")
+    st.markdown("#### 🔍 ¿Qué comisión está usando la empresa?")
+    st.caption("Ingresá el precio publicado actual y la Lista 1 para calcular la comisión implícita.")
+    ci1, ci2 = st.columns(2)
+    with ci1:
+        precio_pub = st.number_input("Precio publicado en ML (ARS)", 0.0, step=100.0, key="calc_pub")
+    with ci2:
+        l1_check = st.number_input("Lista 1 (ARS)", 0.0, step=100.0, key="calc_l1_check")
+    if precio_pub > 0 and l1_check > 0:
+        com_imp = calcular_comision_implicita(precio_pub, l1_check)
+        color = "#ff375f" if com_imp > 20 else "#ff9f0a" if com_imp > 15 else "#32d74b"
+        st.markdown(f"""
+        <div style="background:rgba(191,90,242,.1);border:1px solid rgba(191,90,242,.3);
+                    border-radius:10px;padding:12px 16px;margin-top:8px;font-size:14px">
+            Con precio ARS ${precio_pub:,.0f} y Lista 1 ARS ${l1_check:,.0f},
+            la comisión implícita es
+            <strong style="color:{color};font-size:18px">{com_imp}%</strong>
+        </div>
+        """, unsafe_allow_html=True)
+

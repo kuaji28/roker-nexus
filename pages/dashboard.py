@@ -42,7 +42,8 @@ def _get_kpis_modulos() -> dict:
                    o.demanda_promedio, o.stock_actual,
                    o.stock_optimo, o.costo_reposicion,
                    p.lista_1, p.lista_4,
-                   COALESCE(a.en_lista_negra, 0) as en_lista_negra
+                   COALESCE(a.en_lista_negra, 0) as en_lista_negra,
+                   COALESCE(a.en_transito, 0) as en_transito
             FROM optimizacion o
             LEFT JOIN articulos a ON o.codigo=a.codigo
             LEFT JOIN precios p ON o.codigo=p.codigo
@@ -59,6 +60,8 @@ def _get_kpis_modulos() -> dict:
         df["demanda_promedio"] = df["demanda_promedio"].fillna(0).clip(lower=0)
         df["costo_reposicion"] = df["costo_reposicion"].fillna(0)
         df["lista_4"] = df["lista_4"].fillna(0)
+        df["en_transito"] = df["en_transito"].fillna(0) if "en_transito" in df.columns else 0
+        df["stock_real"] = df["stock_actual"] + df["en_transito"]
 
         total_mods = len(df)
         fr_total   = int((df["tipo"] == "fr").sum())
@@ -102,6 +105,25 @@ def _get_kpis_modulos() -> dict:
         urgentes["dias_cob"] = (urgentes["stock_actual"] / (urgentes["demanda_promedio"] / 30)).round(0)
         urgentes = urgentes.sort_values("dias_cob").head(10)
 
+        # KPIs de tránsito
+        en_transito_items = int((df["en_transito"] > 0).sum())
+        en_transito_usd = float((df["en_transito"] * df["costo_reposicion"]).sum())
+
+        # Valor inventario
+        valor_inv_usd = float((df["stock_actual"] * df["costo_reposicion"]).sum())
+
+        # Cobertura promedio (solo módulos con demanda)
+        df_con_dem = df[df["demanda_promedio"] > 0].copy()
+        df_con_dem["dias_cob"] = (df_con_dem["stock_real"] / (df_con_dem["demanda_promedio"] / 30))
+        cob_prom = float(df_con_dem["dias_cob"].clip(upper=999).mean()) if not df_con_dem.empty else 0
+
+        # Overrides demanda
+        try:
+            df_ov = query_to_df("SELECT COUNT(*) as n FROM demanda_manual")
+            overrides = int(df_ov.iloc[0]["n"]) if not df_ov.empty else 0
+        except Exception:
+            overrides = 0
+
         return {
             "ok": True, "tasa": tasa,
             "total_mods": total_mods, "fr_total": fr_total, "mec_total": mec_total,
@@ -110,6 +132,11 @@ def _get_kpis_modulos() -> dict:
             "inversion_fr": inversion_fr, "inversion_mec": inversion_mec,
             "inversion_tot": inversion_tot,
             "venta_perdida_usd": venta_perdida_usd,
+            "en_transito_items": en_transito_items,
+            "en_transito_usd": en_transito_usd,
+            "valor_inv_usd": valor_inv_usd,
+            "cob_prom_dias": cob_prom,
+            "overrides": overrides,
             "criticos": criticos, "urgentes": urgentes,
             "df_modulos": df,
         }
@@ -134,6 +161,23 @@ def render():
             st.rerun()
 
     kpis = _get_kpis_modulos()
+
+    # ── Banner tránsito ───────────────────────────────────────
+    if kpis.get("ok") and kpis.get("en_transito_items", 0) > 0:
+        n_t = kpis["en_transito_items"]
+        v_t = kpis["en_transito_usd"]
+        st.markdown(f"""
+        <div style="background:rgba(90,200,250,.08);border:1px solid rgba(90,200,250,.2);
+                    border-radius:10px;padding:10px 16px;margin-bottom:12px;
+                    display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:13px;color:#5ac8fa;font-weight:600">
+                ✈️ {n_t} SKUs en tránsito
+            </span>
+            <span style="font-size:12px;color:var(--nx-text2)">
+                Valor: USD ${v_t:,.2f} — stock_real ya incluye estas unidades en todos los cálculos
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
 
     if not kpis.get("ok"):
         err = kpis.get("error", "")
@@ -185,6 +229,29 @@ def render():
             "amarillo",
             detalle=f"FR: ${kpis['inversion_fr']:,.0f} | Mec: ${kpis['inversion_mec']:,.0f}"
         )
+
+    # ════════════════════════════════════════════════════════
+    # BLOQUE 1b — KPIs OPERATIVOS (6 métricas)
+    # ════════════════════════════════════════════════════════
+    st.markdown("---")
+    k1,k2,k3,k4,k5,k6 = st.columns(6)
+    with k1: _kpi_card("Total Módulos", kpis["total_mods"], "FR + Mecánico", "azul")
+    with k2: _kpi_card("🔴 Sin Stock", kpis["fr_sin_stock"]+kpis["mec_sin_stock"], "Acción inmediata", "rojo")
+    with k3: _kpi_card("🟡 Bajo Mínimo", kpis["fr_bajo"]+kpis["mec_bajo"], "Próxima compra", "amarillo")
+    with k4: _kpi_card("✈️ En Tránsito", kpis.get("en_transito_items",0), "SKUs con pedido", "azul")
+    with k5: _kpi_card("Cob. Promedio", f"{kpis.get('cob_prom_dias',0):.0f}d", "Días cobertura global", "verde")
+    with k6: _kpi_card("Overrides", kpis.get("overrides",0), "Demanda manual", "azul")
+
+    # ── KPIs FINANCIEROS (4 métricas) ──
+    st.markdown("---")
+    f1,f2,f3,f4 = st.columns(4)
+    val = kpis.get("valor_inv_usd",0)
+    req = kpis.get("inversion_tot",0)
+    vp  = kpis.get("venta_perdida_usd",0)
+    with f1: _kpi_card("💼 Valor Inventario", f"USD {val:,.0f}", f"≈ ARS ${val*tasa:,.0f}", "azul")
+    with f2: _kpi_card("💳 Inversión Requerida", f"USD {req:,.0f}", f"≈ ARS ${req*tasa:,.0f}", "amarillo")
+    with f3: _kpi_card("💸 Costo Oportunidad", f"USD {vp:,.0f}", "Stock=0 con demanda activa", "rojo")
+    with f4: _kpi_card("FR vs MEC", f"FR {kpis['fr_total']} / MEC {kpis['mec_total']}", "Distribución proveedores", "verde")
 
     # ════════════════════════════════════════════════════════
     # BLOQUE 2 — DESGLOSE FR vs MECÁNICO

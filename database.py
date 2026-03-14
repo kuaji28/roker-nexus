@@ -473,6 +473,20 @@ def _migrar_db():
             creado_en TEXT DEFAULT (datetime('now')),
             actualizado_en TEXT DEFAULT (datetime('now'))
         )""",
+        # Columnas sidebar que pueden faltar
+        "ALTER TABLE configuracion ADD COLUMN descripcion TEXT",
+        # Tabla demanda_manual
+        """CREATE TABLE IF NOT EXISTS demanda_manual (
+            codigo TEXT PRIMARY KEY, demanda_manual REAL NOT NULL,
+            nota TEXT, actualizado TEXT DEFAULT (datetime('now')))""",
+        # Tabla ghost_skus
+        """CREATE TABLE IF NOT EXISTS ghost_skus (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            modelo_descripcion TEXT NOT NULL, proveedor_tipo TEXT DEFAULT 'MECÁNICO',
+            cantidad_estimada REAL DEFAULT 0, estado TEXT DEFAULT 'PENDIENTE',
+            codigo_vinculado TEXT DEFAULT '', notas TEXT DEFAULT '',
+            origen TEXT DEFAULT 'WEB', fecha_creacion TEXT DEFAULT (datetime('now')),
+            fecha_vinculacion TEXT)""",
         # ML reporte (tabla completa si no existe)
         """CREATE TABLE IF NOT EXISTS ml_reporte_comparaciones (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
