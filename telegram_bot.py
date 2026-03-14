@@ -594,15 +594,21 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif data == "menu_resumen":
-        from database import get_resumen_stats
-        stats = get_resumen_stats()
+        try:
+            from database import get_resumen_stats
+            stats = get_resumen_stats()
+        except Exception:
+            stats = {}
+        total = stats.get('total_articulos', 0)
+        nota = "" if total > 0 else "\n\n_Subí los archivos Flexxus desde la app web para ver datos._"
         texto = (
             f"⚡ *Roker Nexus — Resumen*\n"
             f"_{datetime.now().strftime('%d/%m/%Y %H:%M')}_\n\n"
-            f"📦 Artículos activos: *{stats.get('total_articulos',0):,}*\n"
+            f"📦 Artículos activos: *{total:,}*\n"
             f"🔴 Sin stock: *{stats.get('sin_stock',0)}*\n"
             f"🟡 Bajo mínimo: *{stats.get('bajo_minimo',0)}*\n"
-            f"🕐 Última importación: {stats.get('ultima_importacion','—')}\n"
+            f"🕐 Última importación: {stats.get('ultima_importacion','—')}"
+            f"{nota}\n"
         )
         keyboard = [[InlineKeyboardButton("🔄 Actualizar", callback_data="menu_resumen"),
                      InlineKeyboardButton("🔙 Menú", callback_data="menu_volver")]]
@@ -610,8 +616,11 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                        reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif data == "menu_negra":
-        from database import get_lista_negra
-        lista = get_lista_negra()
+        try:
+            from database import get_lista_negra
+            lista = get_lista_negra()
+        except Exception:
+            lista = []
         kb = [
             [InlineKeyboardButton("➕ Agregar artículo", callback_data="negra_buscar")],
             [InlineKeyboardButton("🔙 Menú", callback_data="menu_volver")],
@@ -633,10 +642,13 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                            reply_markup=InlineKeyboardMarkup(kb))
 
     elif data == "menu_transito":
-        await query.message.edit_text("🔄 Consultando tránsito...")
-        # reusar lógica de cmd_transito
-        import sqlite3 as _sq
-        conn = _sq.connect("roker_nexus.db")
+        try:
+            await query.message.edit_text("🔄 Consultando tránsito...")
+        except Exception:
+            pass
+        import sqlite3 as _sq, os as _ost
+        _db = _ost.path.join(_ost.path.dirname(_ost.path.abspath(__file__)), "roker_nexus.db")
+        conn = _sq.connect(_db)
         cur = conn.execute("""
             SELECT p.codigo, a.descripcion, p.cantidad, p.proveedor, p.fecha_estimada
             FROM pedidos_transito p

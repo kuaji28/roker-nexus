@@ -33,8 +33,7 @@ SUPABASE_KEY = _env("SUPABASE_KEY")
 DEBUG = _env("DEBUG", "False").lower() == "true"
 
 # ── Detección de backend ─────────────────────────────────────
-# Supabase desactivado hasta crear tablas en dashboard
-USE_SUPABASE = False
+USE_SUPABASE = SUPABASE_AVAILABLE and bool(SUPABASE_URL) and bool(SUPABASE_KEY)
 import os as _os
 SQLITE_PATH = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "roker_nexus.db")
 
@@ -413,7 +412,14 @@ def df_to_db(df: pd.DataFrame, table: str, if_exists: str = "append") -> int:
     """Inserta un DataFrame en la base de datos. Usa OR IGNORE para evitar UNIQUE errors."""
     if USE_SUPABASE:
         try:
-            records = df.to_dict("records")
+            import math
+            # Limpiar NaN/Inf antes de enviar a Supabase
+            df_clean = df.copy()
+            for col in df_clean.select_dtypes(include=['float','float64']).columns:
+                df_clean[col] = df_clean[col].apply(
+                    lambda x: None if (x is None or (isinstance(x, float) and (math.isnan(x) or math.isinf(x)))) else x
+                )
+            records = df_clean.where(df_clean.notna(), None).to_dict("records")
             sb = get_supabase()
             result = sb.table(table).upsert(records).execute()
             return len(result.data)
