@@ -87,10 +87,7 @@ CREATE TABLE IF NOT EXISTS stock_snapshots (
     importado_en    TEXT DEFAULT (datetime('now')),
     UNIQUE(codigo, deposito, fecha)
 );
--- Migración: agregar columnas si no existen (para BD existentes)
-ALTER TABLE stock_snapshots ADD COLUMN IF NOT EXISTS descripcion TEXT DEFAULT '';
-ALTER TABLE stock_snapshots ADD COLUMN IF NOT EXISTS rubro TEXT DEFAULT '';
-ALTER TABLE stock_snapshots ADD COLUMN IF NOT EXISTS fecha_snapshot TEXT DEFAULT '';
+
 
 -- Lista de precios (todas las listas)
 CREATE TABLE IF NOT EXISTS precios (

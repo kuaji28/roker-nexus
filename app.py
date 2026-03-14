@@ -6,7 +6,7 @@ import streamlit as st
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 
-APP_VERSION = "v1.5.8"
+APP_VERSION = "v1.5.9"
 APP_BUILD   = "2026-03-13"
 
 st.set_page_config(
