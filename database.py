@@ -377,6 +377,61 @@ def get_all_config() -> dict:
     return result
 
 
+
+
+def _migrar_db():
+    """
+    Migración incremental: agrega columnas/tablas nuevas a DBs existentes.
+    Se ejecuta siempre en init_db() — es idempotente (usa try/except por columna).
+    """
+    conn = get_sqlite()
+    migraciones = [
+        # cotizaciones: columnas nuevas de v1.8
+        "ALTER TABLE cotizaciones ADD COLUMN filename TEXT",
+        "ALTER TABLE cotizaciones ADD COLUMN fecha_pendiente TEXT",
+        "ALTER TABLE cotizaciones ADD COLUMN fecha_transito TEXT",
+        "ALTER TABLE cotizaciones ADD COLUMN fecha_ingresado TEXT",
+        # cotizacion_items: campos del Order List
+        "ALTER TABLE cotizacion_items ADD COLUMN brand TEXT",
+        "ALTER TABLE cotizacion_items ADD COLUMN codigo_proveedor TEXT",
+        "ALTER TABLE cotizacion_items ADD COLUMN modelo_universal TEXT",
+        "ALTER TABLE cotizacion_items ADD COLUMN modelo_sticker TEXT",
+        "ALTER TABLE cotizacion_items ADD COLUMN specification TEXT",
+        "ALTER TABLE cotizacion_items ADD COLUMN type_lcd TEXT",
+        "ALTER TABLE cotizacion_items ADD COLUMN quality TEXT",
+        "ALTER TABLE cotizacion_items ADD COLUMN colour TEXT",
+        "ALTER TABLE cotizacion_items ADD COLUMN seccion TEXT",
+        "ALTER TABLE cotizacion_items ADD COLUMN cantidad_pedida INTEGER DEFAULT 0",
+        "ALTER TABLE cotizacion_items ADD COLUMN cantidad_recibida INTEGER DEFAULT 0",
+        "ALTER TABLE cotizacion_items ADD COLUMN subtotal_usd REAL DEFAULT 0",
+        "ALTER TABLE cotizacion_items ADD COLUMN descripcion_flexxus TEXT",
+        "ALTER TABLE cotizacion_items ADD COLUMN match_score INTEGER DEFAULT 0",
+        "ALTER TABLE cotizacion_items ADD COLUMN match_confirmado INTEGER DEFAULT 0",
+        "ALTER TABLE cotizacion_items ADD COLUMN estado_item TEXT DEFAULT 'pendiente'",
+        # articulos: campos ML
+        "ALTER TABLE articulos ADD COLUMN mla_id_fr TEXT",
+        "ALTER TABLE articulos ADD COLUMN mla_id_mec TEXT",
+        "ALTER TABLE articulos ADD COLUMN ml_termino_busqueda TEXT",
+        "ALTER TABLE articulos ADD COLUMN ml_termino_anclado INTEGER DEFAULT 0",
+        # ML reporte (tabla completa si no existe)
+        """CREATE TABLE IF NOT EXISTS ml_reporte_comparaciones (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo TEXT, descripcion TEXT, tipo_tienda TEXT,
+            termino_busqueda TEXT, nuestro_precio REAL,
+            mejor_competidor_precio REAL, diferencia_pct REAL,
+            link_competidor TEXT,
+            fecha_comparacion TEXT DEFAULT (datetime('now')),
+            observaciones TEXT
+        )""",
+    ]
+    for sql in migraciones:
+        try:
+            conn.execute(sql)
+        except Exception:
+            pass  # Columna/tabla ya existe — normal
+    conn.commit()
+    conn.close()
+
 def init_db():
     """Inicializa la base de datos con el schema completo."""
     if USE_SUPABASE:
@@ -417,6 +472,7 @@ def init_db():
         except Exception as e:
             print(f"Config defaults warning: {e}")
         conn.close()
+        _migrar_db()
         return True
 
 

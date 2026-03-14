@@ -935,6 +935,13 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown"
         )
 
+    elif data == "sinstock_mov":
+        await _mostrar_sinstock(query.message, con_mov=True)
+    elif data == "sinstock_sinmov":
+        await _mostrar_sinstock(query.message, con_mov=False)
+    elif data == "sinstock_todos":
+        await _mostrar_sinstock(query.message, con_mov=None)
+
     elif data in ("negra_cancel", "cancelar"):
         await query.message.edit_text("❌ Cancelado.")
 
@@ -1248,6 +1255,184 @@ async def _responder_busqueda_opciones(msg, resultados: list, termino: str):
 
 
 
+
+# ── /tasa — sin argumentos muestra menú, con número actualiza directo ──────────────────
+@auth_required
+async def cmd_tasa(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    args = context.args
+    if not args:
+        kb = [
+            [InlineKeyboardButton("💵 USD → ARS", callback_data="cfg_tasa_usd")],
+            [InlineKeyboardButton("🇨🇳 RMB → ARS", callback_data="cfg_tasa_rmb")],
+            [InlineKeyboardButton("❌ Cancelar",   callback_data="cancelar")],
+        ]
+        await update.message.reply_text(
+            "💱 *¿Qué tasa querés actualizar?*",
+            parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb)
+        )
+        return
+    if args[0].upper() == "RMB" and len(args) > 1:
+        try:
+            valor = float(args[1].replace(",", "."))
+            await _guardar_config(update.message, "rmb", valor)
+        except ValueError:
+            await update.message.reply_text("Uso: /tasa RMB 7.3")
+    else:
+        try:
+            valor = float(args[0].replace(".", "").replace(",", "."))
+            await _guardar_config(update.message, "tasa_usd", valor)
+        except ValueError:
+            await update.message.reply_text("Uso: /tasa 1420")
+
+
+# ── /criticos ──────────────────────────────────────────────────────────────────────────
+@auth_required
+async def cmd_criticos(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    top = int(context.args[0]) if context.args and context.args[0].isdigit() else 10
+    df = query_to_df("""
+        SELECT o.codigo, COALESCE(a.descripcion, o.descripcion) as descripcion,
+               o.stock_actual, o.demanda_promedio, o.costo_reposicion,
+               (o.stock_optimo - o.stock_actual) as a_pedir,
+               ((o.stock_optimo - o.stock_actual) * o.costo_reposicion) as subtotal
+        FROM optimizacion o LEFT JOIN articulos a ON o.codigo=a.codigo
+        WHERE o.stock_actual = 0 AND o.demanda_promedio > 0
+          AND COALESCE(a.en_lista_negra, 0) = 0
+        ORDER BY o.demanda_promedio DESC
+    """)
+    if df.empty:
+        await update.message.reply_text("✅ Sin críticos (stock=0) al momento.")
+        return
+    df = df.head(top)
+    lineas = [f"🔴 *Top {top} Críticos* (stock = 0)\n"]
+    total_usd = 0.0
+    for _, r in df.iterrows():
+        desc = str(r.get("descripcion") or r.get("codigo","?"))[:30]
+        dem = max(0.0, float(r.get("demanda_promedio") or 0))
+        sub = float(r.get("subtotal") or 0)
+        pedir = int(r.get("a_pedir") or 0)
+        total_usd += sub
+        lineas.append(f"`{r['codigo']}` {desc}\n  Dem: {dem:.1f}/mes | Pedir: {pedir}u | ${sub:.0f}")
+    lineas.append(f"\n💰 *Total: USD {total_usd:,.0f}*")
+    await update.message.reply_text("\n".join(lineas), parse_mode="Markdown")
+
+
+# ── /urgentes ─────────────────────────────────────────────────────────────────────────
+@auth_required
+async def cmd_urgentes(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    top = int(context.args[0]) if context.args and context.args[0].isdigit() else 10
+    df = query_to_df("""
+        SELECT o.codigo, COALESCE(a.descripcion, o.descripcion) as descripcion,
+               o.stock_actual, o.stock_optimo, o.demanda_promedio, o.costo_reposicion,
+               CASE WHEN o.demanda_promedio > 0
+                    THEN ROUND(o.stock_actual / (o.demanda_promedio / 30.0), 0)
+                    ELSE 999 END as dias_cobertura
+        FROM optimizacion o LEFT JOIN articulos a ON o.codigo=a.codigo
+        WHERE o.stock_actual > 0 AND o.stock_actual < o.stock_optimo
+          AND o.demanda_promedio > 0 AND COALESCE(a.en_lista_negra, 0) = 0
+        ORDER BY dias_cobertura ASC
+    """)
+    if df.empty:
+        await update.message.reply_text("✅ Sin urgentes al momento.")
+        return
+    df = df.head(top)
+    lineas = [f"🟡 *Top {top} Urgentes* (bajo mínimo)\n"]
+    for _, r in df.iterrows():
+        desc = str(r.get("descripcion") or r.get("codigo","?"))[:30]
+        dias = int(r.get("dias_cobertura") or 0)
+        stk = int(r.get("stock_actual") or 0)
+        emoji = "🔴" if dias < 7 else "🟡"
+        lineas.append(f"{emoji} `{r['codigo']}` {desc}\n  Stock: {stk}u | Cobertura: {dias} días")
+    await update.message.reply_text("\n".join(lineas), parse_mode="Markdown")
+
+
+# ── /kpis ─────────────────────────────────────────────────────────────────────────────
+@auth_required
+async def cmd_kpis(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    from database import get_resumen_stats, get_config as _gcfg
+    stats = get_resumen_stats()
+    tasa = float(_gcfg("tasa_usd_ars", float) or 1420)
+    df_inv = query_to_df("""
+        SELECT SUM((stock_optimo - stock_actual) * costo_reposicion) as total_usd
+        FROM optimizacion
+        WHERE stock_actual < stock_optimo AND demanda_promedio > 0 AND costo_reposicion > 0
+    """)
+    inversion = float(df_inv.iloc[0]["total_usd"] or 0) if not df_inv.empty else 0
+    texto = (
+        f"📊 *KPIs — {datetime.now().strftime('%d/%m/%Y %H:%M')}*\n\n"
+        f"📦 Artículos activos: *{stats.get('total_articulos',0):,}*\n"
+        f"🔴 Sin stock: *{stats.get('sin_stock',0)}*\n"
+        f"🟡 Bajo mínimo: *{stats.get('bajo_minimo',0)}*\n"
+        f"💰 Inversión requerida: *USD {inversion:,.0f}* = *${inversion*tasa:,.0f} ARS*\n"
+        f"💵 Tasa USD/ARS: *${tasa:,.0f}*\n"
+        f"🕐 Última importación: {stats.get('ultima_importacion','—')}"
+    )
+    kb = [[InlineKeyboardButton("🔄 Actualizar", callback_data="menu_resumen"),
+           InlineKeyboardButton("🔴 Críticos", callback_data="menu_quiebres")]]
+    await update.message.reply_text(texto, parse_mode="Markdown",
+                                     reply_markup=InlineKeyboardMarkup(kb))
+
+
+# ── /lotes ────────────────────────────────────────────────────────────────────────────
+@auth_required
+async def cmd_lotes(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    df = query_to_df("""
+        SELECT l.nombre, l.proveedor, l.tope_usd, l.total_usd, l.estado,
+               COUNT(i.id) as items
+        FROM pedidos_lotes l
+        LEFT JOIN pedidos_items i ON l.id=i.lote_id
+        GROUP BY l.id ORDER BY l.fecha_creado DESC LIMIT 5
+    """)
+    if df.empty:
+        await update.message.reply_text("📭 Sin lotes. Creá uno desde la app web.")
+        return
+    lineas = ["🛒 *Lotes recientes*\n"]
+    for _, r in df.iterrows():
+        e = {"borrador":"📝","enviado":"📤","confirmado":"✅","en_transito":"✈️"}.get(str(r.get("estado","")),"📋")
+        lineas.append(
+            f"{e} *{r.get('nombre','')}*\n"
+            f"  {r.get('proveedor','')} | {r.get('items',0)} ítems | "
+            f"USD {float(r.get('total_usd') or 0):,.0f}"
+        )
+    await update.message.reply_text("\n".join(lineas), parse_mode="Markdown")
+
+
+# ── Callbacks de sinstock ─────────────────────────────────────────────────────────────
+async def _mostrar_sinstock(message, con_mov: bool = None):
+    if con_mov is True:
+        df = query_to_df("""
+            SELECT o.codigo, COALESCE(a.descripcion,o.descripcion) as descripcion, o.demanda_promedio
+            FROM optimizacion o LEFT JOIN articulos a ON o.codigo=a.codigo
+            WHERE o.stock_actual=0 AND o.demanda_promedio>0
+            ORDER BY o.demanda_promedio DESC LIMIT 20
+        """)
+        titulo = "🔴 *Sin stock CON movimiento*"
+    elif con_mov is False:
+        df = query_to_df("""
+            SELECT o.codigo, COALESCE(a.descripcion,o.descripcion) as descripcion, o.demanda_promedio
+            FROM optimizacion o LEFT JOIN articulos a ON o.codigo=a.codigo
+            WHERE o.stock_actual=0 AND (o.demanda_promedio=0 OR o.demanda_promedio IS NULL)
+            ORDER BY a.descripcion LIMIT 20
+        """)
+        titulo = "⚪ *Sin stock SIN movimiento*"
+    else:
+        df = query_to_df("""
+            SELECT o.codigo, COALESCE(a.descripcion,o.descripcion) as descripcion, o.demanda_promedio
+            FROM optimizacion o LEFT JOIN articulos a ON o.codigo=a.codigo
+            WHERE o.stock_actual=0 ORDER BY o.demanda_promedio DESC LIMIT 20
+        """)
+        titulo = "🔴 *Sin stock — todos*"
+    if df.empty:
+        await message.reply_text("✅ Sin artículos en esa categoría.")
+        return
+    lineas = [titulo + "\n"]
+    for _, r in df.iterrows():
+        desc = str(r.get("descripcion") or r.get("codigo","?"))[:35]
+        dem = float(r.get("demanda_promedio") or 0)
+        suffix = f" | {dem:.1f}/mes" if con_mov is True and dem > 0 else ""
+        lineas.append(f"`{r['codigo']}` {desc}{suffix}")
+    await message.reply_text("\n".join(lineas), parse_mode="Markdown")
+
+
 # ── Alerta programada de quiebres ─────────────────────────────
 async def alerta_quiebres(context: ContextTypes.DEFAULT_TYPE):
     """Se ejecuta automáticamente a las 13:00 Lun-Vie."""
@@ -1364,6 +1549,11 @@ def main():
     app.add_handler(CommandHandler("config",    cmd_config))
     app.add_handler(CommandHandler("resumen",   cmd_resumen))
     app.add_handler(CommandHandler("ia",        cmd_ia))
+    app.add_handler(CommandHandler("tasa",      cmd_tasa))
+    app.add_handler(CommandHandler("criticos",  cmd_criticos))
+    app.add_handler(CommandHandler("urgentes",  cmd_urgentes))
+    app.add_handler(CommandHandler("kpis",      cmd_kpis))
+    app.add_handler(CommandHandler("lotes",     cmd_lotes))
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
@@ -1389,15 +1579,46 @@ def main():
         import time, requests
         time.sleep(5)
         try:
-            from version import get_nota_deploy
+            from version import get_nota_deploy, APP_VERSION
+            # Solo notificar si cambió la versión (evitar spam en reinicios)
+            import sqlite3 as _sq, os as _os_n
+            _db_n = _os_n.path.join(_os_n.path.dirname(_os_n.path.abspath(__file__)), "roker_nexus.db")
+            try:
+                _conn_n = _sq.connect(_db_n)
+                _row_n = _conn_n.execute(
+                    "SELECT valor FROM configuracion WHERE clave='ultima_version_notif'"
+                ).fetchone()
+                _ultima = _row_n[0] if _row_n else ""
+                _conn_n.close()
+            except Exception:
+                _ultima = ""
+
+            if _ultima == APP_VERSION:
+                print(f"ℹ️  Versión {APP_VERSION} ya notificada, omitiendo")
+                return
+
             texto = get_nota_deploy()
             url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-            requests.post(url, json={
+            r = requests.post(url, json={
                 "chat_id": TELEGRAM_CHAT_ID,
                 "text": texto,
                 "parse_mode": "Markdown"
             }, timeout=10)
-            print("✅ Notificación de deploy enviada")
+            if r.status_code == 200:
+                # Guardar versión notificada
+                try:
+                    _conn2 = _sq.connect(_db_n)
+                    _conn2.execute(
+                        "INSERT OR REPLACE INTO configuracion (clave, valor, descripcion) VALUES (?,?,?)",
+                        ("ultima_version_notif", APP_VERSION, "Última versión notificada por Telegram")
+                    )
+                    _conn2.commit()
+                    _conn2.close()
+                except Exception:
+                    pass
+                print(f"✅ Notificación deploy {APP_VERSION} enviada")
+            else:
+                print(f"⚠️ Telegram respondió: {r.status_code} — {r.text[:200]}")
         except Exception as e:
             print(f"⚠️ Notificación fallida: {e}")
     threading.Thread(target=_enviar_notif_arranque, daemon=True).start()
