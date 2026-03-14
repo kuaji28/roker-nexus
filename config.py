@@ -15,7 +15,7 @@ TIMEZONE = ZoneInfo(os.getenv("TIMEZONE", "America/Argentina/Buenos_Aires"))
 
 # ── Helper para leer secrets ────────────────────────────────
 def _get_secret(key: str, default: str = "") -> str:
-    """Lee de: 1) env vars, 2) st.secrets, 3) BD configuracion."""
+    """Lee de: 1) env vars, 2) st.secrets."""
     # 1. Variables de entorno (Railway, .env local)
     env_val = os.getenv(key, "")
     if env_val:
@@ -28,7 +28,11 @@ def _get_secret(key: str, default: str = "") -> str:
             return str(val)
     except Exception:
         pass
-    # 3. Base de datos (configurado manualmente desde la app)
+    return default
+
+
+def get_secret_from_db(key: str, default: str = "") -> str:
+    """Lee de la BD de configuracion (llamar solo DESPUES de init_db)."""
     try:
         import sqlite3 as _sq
         _db = os.path.join(os.path.dirname(__file__), "roker_nexus.db")
@@ -57,7 +61,7 @@ MODELO_CLAUDE = "claude-sonnet-4-6"
 MODELO_GEMINI = "gemini-1.5-pro"
 
 # ── Moneda ───────────────────────────────────────────────────
-MONEDA_USD_ARS = float(os.getenv("MONEDA_USD_ARS", "1200"))
+MONEDA_USD_ARS = float(_get_secret("MONEDA_USD_ARS", "1420"))
 
 # ── Depósitos ────────────────────────────────────────────────
 DEPOSITOS = {
@@ -154,4 +158,4 @@ DRIVE_SUBCARPETAS = {
 }
 
 # ── Debug ─────────────────────────────────────────────────────
-DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+DEBUG = _get_secret("DEBUG", "False").lower() == "true"

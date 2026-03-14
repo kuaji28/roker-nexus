@@ -36,7 +36,7 @@ def render():
         with col_conf:
             st.markdown("### Configurar lote")
             nombre_lote = st.text_input("Nombre del lote", value=f"Lote {datetime.now().strftime('%d/%m/%Y')}")
-            proveedor = st.selectbox("Proveedor", ["AI-TECH", "Mariano", "Otro"])
+            proveedor = st.selectbox("Proveedor", ["FR (AITECH)", "MECÁNICO", "AI-TECH", "Otro"])
             tope_usd = st.number_input(
                 "Tope USD",
                 min_value=0,
