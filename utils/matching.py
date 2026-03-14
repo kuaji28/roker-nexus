@@ -35,21 +35,29 @@ for marca_norm, aliases in MARCAS_NORMALIZE.items():
 
 def tipo_codigo(codigo: str) -> str:
     """
-    Detecta si un código es mecánico (numérico) o con marco (FR).
-    Mecánico: solo dígitos, opcionalmente con punto al final
-    Con marco: empieza con letra(s), a veces termina con punto
+    Reglas de negocio El Celu:
+    - FR (con marco): código empieza con LETRA (M, L, P, etc.) → Proveedor AITECH/FR
+    - MECÁNICO: código empieza con NÚMERO → Proveedor MECÁNICO
+    Ejemplos FR: MSAMA10., MLGK50SM., MIPX.
+    Ejemplos MEC: 2411150023, 30013., 93807C.
     """
-    codigo = codigo.strip()
-    # Solo dígitos (con o sin punto final)
-    if re.match(r'^\d+\.?$', codigo):
+    codigo = str(codigo).strip()
+    if not codigo or codigo == "nan":
+        return "otro"
+    primer_char = codigo[0]
+    if primer_char.isdigit():
         return "mecanico"
-    # Empieza con letra(s) y termina en punto
-    if re.match(r'^[A-Za-z][A-Za-z0-9]*\.$', codigo):
-        return "con_marco"
-    # Empieza con letra
-    if re.match(r'^[A-Za-z]', codigo):
-        return "con_marco"
+    if primer_char.isalpha():
+        return "fr"
     return "otro"
+
+
+def proveedor_codigo(codigo: str) -> str:
+    """Retorna el nombre del proveedor según el código."""
+    t = tipo_codigo(codigo)
+    if t == "fr":       return "FR (AITECH)"
+    if t == "mecanico": return "MECÁNICO"
+    return "Otro"
 
 
 def normalizar_descripcion(desc: str) -> str:

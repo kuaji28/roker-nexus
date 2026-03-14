@@ -169,6 +169,34 @@ def render():
     except Exception as e:
         st.error(f"Error en configuración: {e}")
 
+    # ── API Keys manuales ──
+    st.markdown("---")
+    st.markdown("### 🔑 API Keys")
+    st.caption("Si las keys no se leen desde Streamlit Secrets, podés cargarlas acá. Se guardan en la BD local.")
+    with st.form("form_apikeys"):
+        col1, col2 = st.columns(2)
+        with col1:
+            ak_claude  = st.text_input("🤖 Anthropic (Claude)", type="password",
+                                        placeholder="sk-ant-api03-...")
+            ak_gemini  = st.text_input("✨ Gemini", type="password",
+                                        placeholder="AIza...")
+        with col2:
+            ak_tg_tok  = st.text_input("📱 Telegram Token", type="password",
+                                        placeholder="123456:ABC...")
+            ak_tg_chat = st.text_input("📱 Telegram Chat ID",
+                                        placeholder="5427210648")
+        if st.form_submit_button("💾 Guardar API Keys", type="primary"):
+            from database import set_config
+            saved = []
+            if ak_claude:  set_config("ANTHROPIC_API_KEY", ak_claude);  saved.append("Claude")
+            if ak_gemini:  set_config("GEMINI_API_KEY",    ak_gemini);  saved.append("Gemini")
+            if ak_tg_tok:  set_config("TELEGRAM_TOKEN",    ak_tg_tok);  saved.append("Telegram Token")
+            if ak_tg_chat: set_config("TELEGRAM_CHAT_ID",  ak_tg_chat); saved.append("Telegram Chat ID")
+            if saved:
+                st.success(f"✅ Guardado: {', '.join(saved)} — Recargá la página para aplicar")
+            else:
+                st.warning("No ingresaste ningún valor")
+
     # ── Última importación ──
     st.markdown("---")
     st.markdown("### 📥 Últimas importaciones")

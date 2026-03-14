@@ -15,8 +15,8 @@ TIMEZONE = ZoneInfo(os.getenv("TIMEZONE", "America/Argentina/Buenos_Aires"))
 
 # ── Helper para leer secrets ────────────────────────────────
 def _get_secret(key: str, default: str = "") -> str:
-    """Lee de st.secrets (Streamlit Cloud) o de variables de entorno."""
-    # 1. Variables de entorno (Railway, local)
+    """Lee de: 1) env vars, 2) st.secrets, 3) BD configuracion."""
+    # 1. Variables de entorno (Railway, .env local)
     env_val = os.getenv(key, "")
     if env_val:
         return env_val
@@ -26,6 +26,18 @@ def _get_secret(key: str, default: str = "") -> str:
         val = st.secrets.get(key, "")
         if val:
             return str(val)
+    except Exception:
+        pass
+    # 3. Base de datos (configurado manualmente desde la app)
+    try:
+        import sqlite3 as _sq
+        _db = os.path.join(os.path.dirname(__file__), "roker_nexus.db")
+        _conn = _sq.connect(_db)
+        _cur = _conn.execute("SELECT valor FROM configuracion WHERE clave=?", (key,))
+        _row = _cur.fetchone()
+        _conn.close()
+        if _row and _row[0]:
+            return str(_row[0])
     except Exception:
         pass
     return default

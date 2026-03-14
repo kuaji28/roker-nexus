@@ -70,9 +70,10 @@ def detectar_tipo_flexxus(nombre_archivo: str) -> Optional[str]:
     if "OPTIMIZACIN" in nombre_norm or "OPTIMIZACION" in nombre_norm:
         return "optimizacion"
     # Stock: "Planilla de Stock" o "Planilla_de_Stock" — NO es ventas
+    # Stock: nombre largo "Planilla de Stock..." o nombre corto "Stock san jose.XLS"
     if "PLANILLA" in nombre_norm and "STOCK" in nombre_norm and "VENTAS" not in nombre_norm:
         return "stock"
-    if "PLANILLADESTOCK" in nombre_norm or "PLANILLA_DE_STOCK" in nombre_up:
+    if nombre_norm.startswith("STOCK") or nombre_up.startswith("STOCK ") or nombre_up.startswith("STOCK_"):
         return "stock"
 
     # Archivos de proveedores
