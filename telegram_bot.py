@@ -570,24 +570,19 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                        parse_mode="Markdown")
 
     elif data == "menu_dolar":
-        _set_estado(user_id, "tasa_usd")
-        try:
-            import sqlite3 as _sq2
-            conn2 = _sq2.connect("roker_nexus.db")
-            cur2 = conn2.execute("SELECT usd_ars FROM tasas_cambio ORDER BY fecha DESC LIMIT 1")
-            row2 = cur2.fetchone(); conn2.close()
-            actual = f"${row2[0]:,.0f}" if row2 else "no registrado"
-        except Exception:
-            actual = "no registrado"
-        kb = [[InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")]]
+        kb = [
+            [InlineKeyboardButton("💵 USD → ARS",   callback_data="cfg_tasa_usd")],
+            [InlineKeyboardButton("🇨🇳 RMB → ARS",  callback_data="cfg_tasa_rmb")],
+            [InlineKeyboardButton("❌ Cancelar",    callback_data="cancelar")],
+        ]
         try:
             await query.message.edit_text(
-                f"💵 *Tipo de cambio USD*\nValor actual: *{actual}*\n\nEscribí el nuevo valor:",
+                "💱 *Tipo de cambio*\n¿Cuál querés actualizar?",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb)
             )
         except Exception:
             await query.message.reply_text(
-                f"💵 *Tipo de cambio USD*\nValor actual: *{actual}*\n\nEscribí el nuevo valor:",
+                "💱 *Tipo de cambio*\n¿Cuál querés actualizar?",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb)
             )
 
@@ -989,8 +984,13 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if estado.get("esperando") == "ia_consulta":
         _clear_estado(user_id)
         await update.message.reply_text("🤖 Consultando a Claude...")
-        from modules.ia_engine import motor_ia
-        respuesta = motor_ia.consultar(texto)
+        try:
+            from modules.ia_engine import motor_ia
+            respuesta = motor_ia.consultar(texto)
+            if "401" in str(respuesta) or "authentication" in str(respuesta).lower():
+                respuesta = "⚠️ API Key de Claude no configurada en Railway.\nAndá a Railway → Variables → agregá ANTHROPIC_API_KEY"
+        except Exception as e:
+            respuesta = f"⚠️ Error IA: {str(e)[:200]}"
         keyboard = [[InlineKeyboardButton("🔙 Menú principal", callback_data="menu_volver")]]
         await update.message.reply_text(respuesta[:4000], reply_markup=InlineKeyboardMarkup(keyboard))
         return
@@ -1273,6 +1273,19 @@ async def _mostrar_pedido_codigo(message, codigo: str, desc: str = ""):
         )
     await message.reply_text(texto, parse_mode="Markdown",
                               reply_markup=InlineKeyboardMarkup(keyboard))
+
+
+def _get_tasa_str() -> str:
+    """Retorna la tasa USD/ARS como string formateado."""
+    try:
+        import sqlite3 as _sq, os as _os
+        db = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "roker_nexus.db")
+        conn = _sq.connect(db)
+        row = conn.execute("SELECT usd_ars FROM tasas_cambio ORDER BY fecha DESC LIMIT 1").fetchone()
+        conn.close()
+        return f"${row[0]:,.0f}" if row else "no registrado"
+    except Exception:
+        return "no registrado"
 
 
 def main():
