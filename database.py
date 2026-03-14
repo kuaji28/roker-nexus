@@ -55,7 +55,7 @@ def get_sqlite() -> sqlite3.Connection:
 # ── Schema SQL ────────────────────────────────────────────────
 SCHEMA_SQL = """
 
--- Catálogo maestro de artículos
+-- Catalogo maestro de articulos
 CREATE TABLE IF NOT EXISTS articulos (
     codigo          TEXT PRIMARY KEY,
     descripcion     TEXT NOT NULL,
@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS articulos (
     actualizado_en  TEXT DEFAULT (datetime('now'))
 );
 
--- Snapshots de stock por depósito y fecha
+-- Snapshots de stock por deposito y fecha
 CREATE TABLE IF NOT EXISTS stock_snapshots (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     codigo          TEXT NOT NULL,
@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS precios (
     UNIQUE(codigo, fecha)
 );
 
--- Datos de optimización de stock (de Flexxus)
+-- Datos de optimizacion de stock (de Flexxus)
 CREATE TABLE IF NOT EXISTS optimizacion (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     codigo              TEXT NOT NULL,
@@ -127,7 +127,7 @@ CREATE TABLE IF NOT EXISTS optimizacion (
     UNIQUE(codigo, importado_en)
 );
 
--- Historial de ventas por artículo
+-- Historial de ventas por articulo
 CREATE TABLE IF NOT EXISTS ventas (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     codigo          TEXT NOT NULL,
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS compras_historial (
     UNIQUE(codigo, fecha_desde, fecha_hasta)
 );
 
--- Remitos internos entre depósitos
+-- Remitos internos entre depositos
 CREATE TABLE IF NOT EXISTS remitos_internos (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     numero          TEXT,
@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS cotizaciones (
     importado_en    TEXT DEFAULT (datetime('now'))
 );
 
--- Ítems de cada cotización
+-- Items de cada cotizacion
 CREATE TABLE IF NOT EXISTS cotizacion_items (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     cotizacion_id   INTEGER REFERENCES cotizaciones(id),
@@ -209,7 +209,7 @@ CREATE TABLE IF NOT EXISTS pedidos_lotes (
     notas           TEXT
 );
 
--- Ítems de cada lote de pedido
+-- Items de cada lote de pedido
 CREATE TABLE IF NOT EXISTS pedidos_items (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     lote_id         INTEGER REFERENCES pedidos_lotes(id),
@@ -222,7 +222,7 @@ CREATE TABLE IF NOT EXISTS pedidos_items (
     editado_manual  INTEGER DEFAULT 0
 );
 
--- Pedidos en tránsito
+-- Pedidos en transito
 CREATE TABLE IF NOT EXISTS pedidos_transito (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     lote_id         INTEGER REFERENCES pedidos_lotes(id),
@@ -236,7 +236,7 @@ CREATE TABLE IF NOT EXISTS pedidos_transito (
     notas           TEXT
 );
 
--- Anomalías detectadas
+-- Anomalias detectadas
 CREATE TABLE IF NOT EXISTS anomalias (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     codigo          TEXT NOT NULL,
@@ -250,7 +250,7 @@ CREATE TABLE IF NOT EXISTS anomalias (
     notas           TEXT
 );
 
--- Tasa de cambio USD/ARS histórico
+-- Tasa de cambio USD/ARS historico
 CREATE TABLE IF NOT EXISTS tasas_cambio (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     fecha           TEXT NOT NULL UNIQUE,
@@ -270,7 +270,7 @@ CREATE TABLE IF NOT EXISTS importaciones_log (
     importado_en    TEXT DEFAULT (datetime('now'))
 );
 
--- Índices para performance
+-- Indices para performance
 CREATE INDEX IF NOT EXISTS idx_stock_codigo ON stock_snapshots(codigo);
 CREATE INDEX IF NOT EXISTS idx_stock_fecha ON stock_snapshots(fecha);
 CREATE INDEX IF NOT EXISTS idx_stock_deposito ON stock_snapshots(deposito);
