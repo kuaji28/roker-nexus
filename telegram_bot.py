@@ -713,23 +713,14 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
-    # ── Stock de un depósito específico ──
-    elif data.startswith("stock_dep_"):
+    # ── Stock de un depósito específico (artículo + depósito) ──
+    elif data.startswith("stock_dep_") and not any(data == f"stock_dep_{d}" for d in ("SAN_JOSE", "LARREA", "TODOS")):
         partes = data.replace("stock_dep_", "").rsplit("_", 1)
-        if len(partes) == 2:
-            cod, dep = partes[0], partes[1]
-            dep_real = dep.replace("_", " ")
+        if len(partes) == 2 and not partes[1].isdigit():
+            cod = partes[0]
         else:
-            cod, dep_real = partes[0], "TODOS"
-        texto_resp = _stock_texto(cod, dep_real if dep_real != "TODOS" else None)
-        keyboard = [
-            [
-                InlineKeyboardButton("💰 Ver precio", callback_data=f"precio_cod_{cod}"),
-                InlineKeyboardButton("🔙 Menú",       callback_data="menu_volver"),
-            ]
-        ]
-        await query.message.edit_text(texto_resp, parse_mode="Markdown",
-                                       reply_markup=InlineKeyboardMarkup(keyboard))
+            cod = partes[0]
+        await _mostrar_stock_codigo(query.message, cod)
 
     # ── Menu precio ──
     elif data == "menu_precio":
@@ -753,6 +744,19 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _enviar_menu_principal(query.message, edit=True)
 
     # ── CONFIG desde botones ──
+    elif data in ("cfg_tasa_rmb", "menu_rmb"):
+        _set_estado(user_id, "rmb")
+        try:
+            await query.message.edit_text(
+                "🇨🇳 *Tipo de cambio RMB (Yuan)*\n\nEscribí el nuevo valor ARS por RMB (ej: 200):",
+                parse_mode="Markdown"
+            )
+        except Exception:
+            await query.message.reply_text(
+                "🇨🇳 *Tipo de cambio RMB (Yuan)*\n\nEscribí el nuevo valor ARS por RMB:",
+                parse_mode="Markdown"
+            )
+
     elif data == "cfg_tasa_usd":
         _set_estado(user_id, "tasa_usd")
         conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.abspath(__file__)), "roker_nexus.db"))
@@ -890,6 +894,30 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.message.reply_text(
                 "⛔ *Agregar a lista negra*\n\nEscribí el nombre o código del artículo:",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb)
+            )
+
+    # ── Lista negra: negra_add_ (alias de negra_ok_) ──
+    elif data.startswith("negra_add_"):
+        codigo = data.replace("negra_add_", "")
+        import sqlite3 as _sq2
+        _conn2 = _sq2.connect(os.path.join(os.path.dirname(os.path.abspath(__file__)), "roker_nexus.db"))
+        _cur2 = _conn2.execute("SELECT descripcion FROM articulos WHERE codigo=?", (codigo,))
+        _art2 = _cur2.fetchone()
+        _conn2.close()
+        _desc2 = _art2[0] if _art2 else codigo
+        keyboard_neg = [[
+            InlineKeyboardButton(f"⛔ Sí, bloquear", callback_data=f"negra_ok_{codigo}"),
+            InlineKeyboardButton("❌ Cancelar", callback_data="cancelar"),
+        ]]
+        try:
+            await query.message.edit_text(
+                f"⛔ ¿Agregás `{codigo}` a lista negra?\n_{_desc2}_",
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard_neg)
+            )
+        except Exception:
+            await query.message.reply_text(
+                f"⛔ ¿Agregás `{codigo}` a lista negra?\n_{_desc2}_",
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard_neg)
             )
 
     # ── Lista negra: confirmar ──
@@ -1181,7 +1209,7 @@ async def _responder_busqueda_opciones(msg, resultados: list, termino: str):
         return
 
     if len(resultados) == 1:
-        cod, desc = resultados[0]
+        cod, desc, *_ = resultados[0]
         # Ofrecer opciones para ese artículo específico
         keyboard = [
             [
