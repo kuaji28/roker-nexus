@@ -356,7 +356,14 @@ def init_db():
     else:
         # SQLite local
         conn = get_sqlite()
-        conn.executescript(SCHEMA_SQL)
+        # Ejecutar sentencia por sentencia — tolerante a errores
+        for stmt in SCHEMA_SQL.split(';'):
+            stmt = stmt.strip()
+            if stmt:
+                try:
+                    conn.execute(stmt)
+                except Exception:
+                    pass
         conn.commit()
         # Insertar configuración por defecto (tabla ya creada por schema)
         try:
