@@ -46,7 +46,7 @@ def detectar_quiebres(umbral: int = STOCK_QUIEBRE_UMBRAL,
 
     df = query_to_df(f"""
         SELECT
-            s.codigo, s.deposito, s.stock, s.stock_minimo, s.stock_optimo, s.fecha,
+            s.codigo, s.deposito, s.rubro, s.stock, s.stock_minimo, s.stock_optimo, s.fecha,
             a.descripcion, a.marca, a.en_lista_negra,
             p.lista_1 as precio_l1, p.lista_4 as precio_ml
         FROM stock_snapshots s

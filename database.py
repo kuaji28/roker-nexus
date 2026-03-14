@@ -413,6 +413,14 @@ def _migrar_db():
         "ALTER TABLE articulos ADD COLUMN mla_id_mec TEXT",
         "ALTER TABLE articulos ADD COLUMN ml_termino_busqueda TEXT",
         "ALTER TABLE articulos ADD COLUMN ml_termino_anclado INTEGER DEFAULT 0",
+        # Precios competencia
+        """CREATE TABLE IF NOT EXISTS ml_precios_competencia (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            descripcion TEXT NOT NULL, precio_ars REAL DEFAULT 0,
+            competidor TEXT, link TEXT,
+            fecha_carga TEXT DEFAULT (date('now')),
+            UNIQUE(descripcion, competidor)
+        )""",
         # ML reporte (tabla completa si no existe)
         """CREATE TABLE IF NOT EXISTS ml_reporte_comparaciones (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

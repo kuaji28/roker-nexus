@@ -59,6 +59,7 @@ def render():
     tabs = st.tabs([
         "📊 Precios & Comparador",
         "✏️ Editor Masivo",
+        "🆚 Precios Competencia",
         "📥 Importar MLA IDs",
         "📈 Reporte Acumulativo",
     ])
@@ -68,8 +69,10 @@ def render():
     with tabs[1]:
         _tab_editor_masivo()
     with tabs[2]:
-        _tab_importar_mla()
+        _tab_competencia()
     with tabs[3]:
+        _tab_importar_mla()
+    with tabs[4]:
         _tab_reporte()
 
 
@@ -317,8 +320,219 @@ def _tab_editor_masivo():
                 st.rerun()
 
 
+
+
 # ─────────────────────────────────────────────────────────────
-# TAB 3 — IMPORTAR MLA IDs
+# TAB 3 — PRECIOS COMPETENCIA
+# ─────────────────────────────────────────────────────────────
+def _tab_competencia():
+    """
+    Permite cargar manualmente los precios de competidores.
+    El matching se hace por nombre/descripción, no por código.
+    """
+    st.markdown("### 🆚 Precios de la Competencia")
+    st.markdown(
+        "<span style='font-size:13px;color:var(--nx-text2)'>"
+        "Cargá los precios de competidores desde un Excel o manualmente. "
+        "El sistema cruza por nombre de producto (no por código). "
+        "Después podés comparar tu precio vs el de la competencia.</span>",
+        unsafe_allow_html=True
+    )
+
+    _init_tabla_competencia()
+
+    sub_tabs = st.tabs(["📥 Cargar precios", "📊 Ver comparación", "✏️ Editar manual"])
+
+    # ── Sub-tab: Cargar archivo ──────────────────────────────
+    with sub_tabs[0]:
+        st.markdown("#### Subir Excel de competencia")
+        st.markdown(
+            "**Columnas esperadas:** `descripcion` (nombre del producto) y `precio` (ARS). "
+            "Opcional: `competidor` (nombre del vendedor), `link` (URL de la publicación)."
+        )
+        ejemplo_df = pd.DataFrame({
+            "descripcion": ["Modulo Samsung A12 Mecanico", "Modulo iPhone 13 Oled"],
+            "precio": [18500, 95000],
+            "competidor": ["repuestosarg", "piedrascell"],
+            "link": ["https://ml.com/...", "https://ml.com/..."]
+        })
+        with st.expander("Ver formato de ejemplo"):
+            st.dataframe(ejemplo_df, hide_index=True)
+
+        archivo = st.file_uploader("Excel de precios competencia", type=["xlsx", "xls"],
+                                    key="uploader_competencia")
+
+        if archivo:
+            try:
+                df_comp = pd.read_excel(archivo, engine="openpyxl")
+                df_comp.columns = [c.lower().strip().replace(" ", "_") for c in df_comp.columns]
+
+                # Detectar columnas
+                col_desc  = next((c for c in df_comp.columns if "desc" in c or "nombre" in c or "model" in c), None)
+                col_precio = next((c for c in df_comp.columns if "prec" in c or "price" in c or "valor" in c), None)
+                col_comp  = next((c for c in df_comp.columns if "comp" in c or "vend" in c or "tienda" in c), None)
+                col_link  = next((c for c in df_comp.columns if "link" in c or "url" in c or "pub" in c), None)
+
+                if not col_desc or not col_precio:
+                    st.error(f"No encontré columnas de descripción/precio. Columnas: {list(df_comp.columns)}")
+                else:
+                    df_comp["_descripcion"] = df_comp[col_desc].astype(str)
+                    df_comp["_precio"]      = pd.to_numeric(df_comp[col_precio], errors="coerce").fillna(0)
+                    df_comp["_competidor"]  = df_comp[col_comp].astype(str) if col_comp else "Competidor"
+                    df_comp["_link"]        = df_comp[col_link].astype(str) if col_link else ""
+
+                    df_comp = df_comp[df_comp["_precio"] > 0]
+                    st.success(f"✅ {len(df_comp)} registros encontrados")
+                    st.dataframe(df_comp[["_descripcion","_precio","_competidor","_link"]].head(10),
+                                  hide_index=True)
+
+                    if st.button("💾 Importar precios", type="primary"):
+                        ok = 0
+                        for _, row in df_comp.iterrows():
+                            execute_query("""
+                                INSERT OR REPLACE INTO ml_precios_competencia
+                                (descripcion, precio_ars, competidor, link, fecha_carga)
+                                VALUES (?,?,?,?,date('now'))
+                            """, (row["_descripcion"], float(row["_precio"]),
+                                  row["_competidor"], row["_link"]), fetch=False)
+                            ok += 1
+                        st.success(f"✅ {ok} precios de competidores importados")
+                        st.rerun()
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+    # ── Sub-tab: Ver comparación ──────────────────────────────
+    with sub_tabs[1]:
+        tasa = float(get_config("tasa_usd_ars", float) or 1420)
+
+        df_comp_db = query_to_df("""
+            SELECT descripcion, precio_ars, competidor, link, fecha_carga
+            FROM ml_precios_competencia
+            ORDER BY fecha_carga DESC, descripcion
+        """)
+
+        if df_comp_db.empty:
+            st.info("Sin precios de competidores cargados. Usá la pestaña **Cargar precios**.")
+        else:
+            st.metric("Productos competencia", len(df_comp_db))
+
+            # Buscar equivalente en nuestro catálogo por nombre similar
+            df_nuestros = query_to_df("""
+                SELECT a.descripcion as desc_nuestro, p.lista_1 as l1_usd,
+                       p.lista_4 as l4_ars, a.codigo
+                FROM precios p JOIN articulos a ON p.codigo=a.codigo
+                WHERE p.lista_4 > 0
+            """)
+
+            if not df_nuestros.empty:
+                # Match fuzzy simple por palabras clave
+                comparaciones = []
+                for _, comp_row in df_comp_db.iterrows():
+                    desc_comp = str(comp_row["descripcion"]).upper()
+                    mejor_match = None
+                    mejor_score = 0
+                    for _, nuestro_row in df_nuestros.iterrows():
+                        desc_n = str(nuestro_row["desc_nuestro"]).upper()
+                        # Score: palabras en común
+                        words_c = set(desc_comp.split())
+                        words_n = set(desc_n.split())
+                        comunes = len(words_c & words_n)
+                        score = comunes / max(len(words_c), len(words_n), 1) * 100
+                        if score > mejor_score:
+                            mejor_score = score
+                            mejor_match = nuestro_row
+
+                    if mejor_match is not None and mejor_score > 40:
+                        nuestro_precio = float(mejor_match.get("l4_ars") or 0)
+                        comp_precio = float(comp_row["precio_ars"])
+                        diff_pct = ((comp_precio - nuestro_precio) / nuestro_precio * 100
+                                    if nuestro_precio > 0 else 0)
+                        comparaciones.append({
+                            "Competidor": comp_row["competidor"],
+                            "Producto Competidor": comp_row["descripcion"][:40],
+                            "Precio Competidor ARS": comp_precio,
+                            "Nuestro Código": mejor_match["codigo"],
+                            "Nuestro Producto": str(mejor_match["desc_nuestro"])[:40],
+                            "Nuestro L4 ARS": nuestro_precio,
+                            "Diferencia %": round(diff_pct, 1),
+                            "Score match": round(mejor_score),
+                            "Link": comp_row.get("link",""),
+                        })
+
+                if comparaciones:
+                    df_comp_result = pd.DataFrame(comparaciones)
+                    # Colorear diferencia
+                    st.dataframe(
+                        df_comp_result,
+                        hide_index=True,
+                        use_container_width=True,
+                        column_config={
+                            "Precio Competidor ARS": st.column_config.NumberColumn(format="$%,.0f"),
+                            "Nuestro L4 ARS":        st.column_config.NumberColumn(format="$%,.0f"),
+                            "Diferencia %":          st.column_config.NumberColumn(format="%.1f%%"),
+                            "Score match":           st.column_config.NumberColumn(format="%d%%"),
+                        }
+                    )
+                    buf = BytesIO()
+                    with pd.ExcelWriter(buf, engine="openpyxl") as w:
+                        df_comp_result.to_excel(w, index=False, sheet_name="Competencia")
+                    buf.seek(0)
+                    st.download_button("📥 Exportar comparación",
+                                        data=buf, file_name="competencia_ml.xlsx",
+                                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            else:
+                st.dataframe(df_comp_db, hide_index=True)
+
+    # ── Sub-tab: Editar manual ────────────────────────────────
+    with sub_tabs[2]:
+        df_edit_db = query_to_df("""
+            SELECT id, descripcion, precio_ars, competidor, link
+            FROM ml_precios_competencia ORDER BY descripcion LIMIT 100
+        """)
+        if df_edit_db.empty:
+            st.info("Sin datos. Cargá primero desde la pestaña Cargar precios.")
+        else:
+            df_ed = st.data_editor(
+                df_edit_db,
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "id":          st.column_config.NumberColumn("ID", disabled=True),
+                    "descripcion": st.column_config.TextColumn("Descripción"),
+                    "precio_ars":  st.column_config.NumberColumn("Precio ARS", format="$%,.0f"),
+                    "competidor":  st.column_config.TextColumn("Competidor"),
+                    "link":        st.column_config.TextColumn("Link ML"),
+                },
+                key="editor_competencia"
+            )
+            if st.button("💾 Guardar cambios"):
+                for _, row in df_ed.iterrows():
+                    execute_query(
+                        "UPDATE ml_precios_competencia SET descripcion=?, precio_ars=?, competidor=?, link=? WHERE id=?",
+                        (row["descripcion"], float(row["precio_ars"]), row["competidor"], row["link"], int(row["id"])),
+                        fetch=False
+                    )
+                st.success("✅ Guardado")
+                st.rerun()
+
+
+def _init_tabla_competencia():
+    """Crea tabla de precios de competencia si no existe."""
+    execute_query("""
+        CREATE TABLE IF NOT EXISTS ml_precios_competencia (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            descripcion TEXT NOT NULL,
+            precio_ars  REAL DEFAULT 0,
+            competidor  TEXT,
+            link        TEXT,
+            fecha_carga TEXT DEFAULT (date('now')),
+            UNIQUE(descripcion, competidor)
+        )
+    """, fetch=False)
+
+
+# ─────────────────────────────────────────────────────────────
+# TAB 4 — IMPORTAR MLA IDs
 # ─────────────────────────────────────────────────────────────
 def _tab_importar_mla():
     st.markdown("### 📥 Importar MLA IDs desde Excel")
@@ -381,7 +595,7 @@ def _tab_importar_mla():
 
 
 # ─────────────────────────────────────────────────────────────
-# TAB 4 — REPORTE ACUMULATIVO
+# TAB 5 — REPORTE ACUMULATIVO
 # ─────────────────────────────────────────────────────────────
 def _tab_reporte():
     st.markdown("### 📈 Reporte de comparaciones guardadas")

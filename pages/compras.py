@@ -37,12 +37,51 @@ def render():
             st.markdown("### Configurar lote")
             nombre_lote = st.text_input("Nombre del lote", value=f"Lote {datetime.now().strftime('%d/%m/%Y')}")
             proveedor = st.selectbox("Proveedor", ["TODOS", "MECÁNICO", "FR (AITECH)", "AI-TECH", "Otro"])
-            tope_usd = st.number_input(
-                "Tope USD",
-                min_value=0,
-                max_value=100000,
-                value=TOPE_USD_DEFAULT.get("Lote 1", 5000),
-                step=500,
+
+            # ── Presupuesto total y subdivisión ──────────────────
+            tope_total = st.number_input(
+                "Presupuesto total USD",
+                min_value=0, max_value=999999,
+                value=100000, step=5000,
+                help="Presupuesto máximo para este pedido"
+            )
+
+            usar_sublotes = st.checkbox("✂️ Dividir en sublotes", value=False,
+                                         help="Dividir el presupuesto en partes (ej: 60% mecánicos, 40% FR)")
+            sublotes = []
+            if usar_sublotes:
+                n_sublotes = st.number_input("¿En cuántas partes?", min_value=2, max_value=5, value=3, step=1)
+                st.markdown("**Distribución (debe sumar 100%):**")
+                pcts = []
+                nombres_sub = []
+                for i in range(int(n_sublotes)):
+                    c_n, c_p = st.columns([3, 2])
+                    nombre_sub = c_n.text_input(f"Nombre parte {i+1}", value=f"Sublote {i+1}", key=f"sub_n_{i}")
+                    pct_sub = c_p.number_input(f"%", min_value=1, max_value=99,
+                                                value=int(100 // n_sublotes), key=f"sub_p_{i}")
+                    pcts.append(pct_sub)
+                    nombres_sub.append(nombre_sub)
+                total_pct = sum(pcts)
+                if total_pct != 100:
+                    st.warning(f"⚠️ La distribución suma {total_pct}% (debe ser 100%)")
+                else:
+                    for i in range(int(n_sublotes)):
+                        monto = tope_total * pcts[i] / 100
+                        sublotes.append({"nombre": nombres_sub[i], "pct": pcts[i], "monto": monto})
+                        st.markdown(f"  → *{nombres_sub[i]}*: **USD {monto:,.0f}** ({pcts[i]}%)")
+                tope_usd = tope_total
+            else:
+                tope_usd = tope_total
+
+            # ── Lead time (días de tránsito) ──────────────────────
+            st.markdown("---")
+            from database import get_config as _gc
+            lead_default = int(_gc("lead_time_dias", int) or 30)
+            lead_time = st.number_input(
+                "⏱️ Lead time (días de tránsito)",
+                min_value=1, max_value=365,
+                value=lead_default, step=5,
+                help="Días que tarda en llegar el pedido desde China"
             )
 
             incluir = st.multiselect(
@@ -57,14 +96,28 @@ def render():
                 index=0,
             )
 
-            if st.button("⚡ Generar sugerencias", width="stretch", type="primary"):
-                st.session_state["generar_lote"] = {
-                    "nombre": nombre_lote,
-                    "proveedor": proveedor,
-                    "tope": tope_usd,
-                    "incluir": incluir,
-                    "modo_ia": modo_ia,
-                }
+            if st.button("⚡ Generar sugerencias", use_container_width=True, type="primary"):
+                if usar_sublotes and sublotes:
+                    # Generar múltiples lotes
+                    st.session_state["generar_lote"] = {
+                        "nombre": nombre_lote,
+                        "proveedor": proveedor,
+                        "tope": tope_usd,
+                        "incluir": incluir,
+                        "modo_ia": modo_ia,
+                        "lead_time": lead_time,
+                        "sublotes": sublotes,
+                    }
+                else:
+                    st.session_state["generar_lote"] = {
+                        "nombre": nombre_lote,
+                        "proveedor": proveedor,
+                        "tope": tope_usd,
+                        "incluir": incluir,
+                        "modo_ia": modo_ia,
+                        "lead_time": lead_time,
+                        "sublotes": [],
+                    }
 
         with col_prev:
             if "generar_lote" in st.session_state:
