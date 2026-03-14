@@ -3,10 +3,24 @@ ROKER NEXUS — Control de versiones
 Cada entrada = un deploy con cambios reales.
 """
 
-APP_VERSION = "v1.7.1"
-APP_BUILD   = "2026-03-13"
+APP_VERSION = "v1.8.0"
+APP_BUILD   = "2026-03-14"
 
 CHANGELOG = [
+    {
+        "version": "v1.8.0",
+        "fecha": "2026-03-14",
+        "cambios": [
+            "✈️ Módulo Cotizaciones/Tránsito — pedidos a China AI-TECH",
+            "📥 Importador Order List — detecta AI-TECH por nombre de archivo",
+            "🔍 Fuzzy matching automático contra artículos Flexxus",
+            "✅ Estados PENDIENTE → EN TRÁNSITO → INGRESADO con fechas",
+            "📦 Ingreso parcial por ítems",
+            "📤 Exportar para Diego con C/MARCO → W/F automático",
+            "🗄️ Schema DB extendido — cotizacion_items con todos los campos",
+            "🧭 Navegación: nueva tab ✈️ Cotizaciones en barra principal",
+        ]
+    },
     {
         "version": "v1.7.1",
         "fecha": "2026-03-13",
@@ -28,7 +42,7 @@ CHANGELOG = [
         ]
     },
     {
-        "version": "v1.7.1",
+        "version": "v1.6.0",
         "fecha": "2026-03-13",
         "cambios": [
             "🎨 Diseño One UI 8 completo — paleta Samsung auténtica",
@@ -42,7 +56,7 @@ CHANGELOG = [
         ]
     },
     {
-        "version": "v1.7.1",
+        "version": "v1.0.0",
         "fecha": "2026-03-13",
         "cambios": [
             "🚀 Sistema Roker Nexus lanzado",

@@ -173,27 +173,53 @@ CREATE TABLE IF NOT EXISTS remitos_internos (
 -- Cotizaciones de proveedores
 CREATE TABLE IF NOT EXISTS cotizaciones (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    proveedor       TEXT NOT NULL,
+    proveedor       TEXT NOT NULL DEFAULT 'AI-TECH',
     invoice_id      TEXT,
+    filename        TEXT,
     fecha           TEXT NOT NULL,
     total_usd       REAL DEFAULT 0,
     estado          TEXT DEFAULT 'pendiente',
+    fecha_pendiente TEXT DEFAULT (datetime('now')),
+    fecha_transito  TEXT,
+    fecha_ingresado TEXT,
     notas           TEXT,
     importado_en    TEXT DEFAULT (datetime('now'))
 );
 
--- Items de cada cotizacion
+-- Items de cada cotizacion (Order List de Diego)
 CREATE TABLE IF NOT EXISTS cotizacion_items (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    cotizacion_id   INTEGER REFERENCES cotizaciones(id),
-    codigo          TEXT NOT NULL,
-    descripcion     TEXT,
-    precio_usd      REAL DEFAULT 0,
-    cantidad_caja   INTEGER DEFAULT 1,
-    cantidad_sugerida INTEGER DEFAULT 0,
-    en_lista_negra  INTEGER DEFAULT 0,
-    codigo_flexxus  TEXT,
-    notas           TEXT
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    cotizacion_id       INTEGER REFERENCES cotizaciones(id) ON DELETE CASCADE,
+    -- Datos del Order List
+    brand               TEXT,
+    codigo_proveedor    TEXT NOT NULL,
+    modelo_universal    TEXT,
+    modelo_sticker      TEXT,
+    specification       TEXT,
+    type_lcd            TEXT,
+    quality             TEXT,
+    colour              TEXT,
+    seccion             TEXT,
+    -- Cantidades
+    cantidad_pedida     INTEGER DEFAULT 0,
+    cantidad_recibida   INTEGER DEFAULT 0,
+    -- Precios
+    precio_usd          REAL DEFAULT 0,
+    subtotal_usd        REAL DEFAULT 0,
+    -- Matching Flexxus
+    codigo_flexxus      TEXT,
+    descripcion_flexxus TEXT,
+    match_score         INTEGER DEFAULT 0,
+    match_confirmado    INTEGER DEFAULT 0,
+    -- Estado del ítem
+    estado_item         TEXT DEFAULT 'pendiente',
+    -- Legacy (mantener compatibilidad)
+    descripcion         TEXT,
+    precio_usd_legacy   REAL DEFAULT 0,
+    cantidad_caja       INTEGER DEFAULT 1,
+    cantidad_sugerida   INTEGER DEFAULT 0,
+    en_lista_negra      INTEGER DEFAULT 0,
+    notas               TEXT
 );
 
 -- Lotes de pedido (batches de compra)

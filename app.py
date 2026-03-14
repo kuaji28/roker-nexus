@@ -168,9 +168,10 @@ hr{border-color:var(--line)!important;margin:24px 0!important}
 from database import init_db, get_resumen_stats
 from utils.horarios import label_horario, ahora
 from utils.helpers import check_apis, fmt_usd, fmt_ars, fmt_num
-import pages.importar   as pg_importar
-import pages.compras    as pg_compras
-import pages.inventario as pg_inventario
+import pages.importar     as pg_importar
+import pages.compras      as pg_compras
+import pages.cotizaciones as pg_cotizaciones
+import pages.inventario   as pg_inventario
 import pages.precios    as pg_precios
 import pages.dashboard  as pg_dashboard
 import pages.asistente  as pg_asistente
@@ -189,13 +190,14 @@ sistema_ok = apis.get("supabase", False) and apis.get("claude", False)
 
 # ── Top Navigation Bar ────────────────────────────────────────
 paginas = [
-    ("📊", "Dashboard",  "Dashboard"),
-    ("📥", "Cargar",     "Importar"),
-    ("🛒", "Compras",    "Compras"),
-    ("📦", "Inventario", "Inventario"),
-    ("💰", "Precios",    "Precios"),
-    ("🤖", "IA",         "Asistente"),
-    ("🔌", "Sistema",    "Sistema"),
+    ("📊", "Dashboard",    "Dashboard"),
+    ("📥", "Cargar",       "Importar"),
+    ("🛒", "Compras",      "Compras"),
+    ("✈️", "Cotizaciones", "Cotizaciones"),
+    ("📦", "Inventario",   "Inventario"),
+    ("💰", "Precios",      "Precios"),
+    ("🤖", "IA",           "Asistente"),
+    ("🔌", "Sistema",      "Sistema"),
 ]
 
 p_actual = st.session_state.pagina
@@ -222,12 +224,13 @@ st.markdown('<div class="nx-content">', unsafe_allow_html=True)
 
 # ── Ruteo ─────────────────────────────────────────────────────
 p = st.session_state.pagina
-if   p == "Dashboard":  pg_dashboard.render()
-elif p == "Importar":   pg_importar.render()
-elif p == "Compras":    pg_compras.render()
-elif p == "Inventario": pg_inventario.render()
-elif p == "Precios":    pg_precios.render()
-elif p == "Asistente":  pg_asistente.render()
-elif p == "Sistema":    pg_sistema.render()
+if   p == "Dashboard":    pg_dashboard.render()
+elif p == "Importar":     pg_importar.render()
+elif p == "Compras":      pg_compras.render()
+elif p == "Cotizaciones": pg_cotizaciones.render()
+elif p == "Inventario":   pg_inventario.render()
+elif p == "Precios":      pg_precios.render()
+elif p == "Asistente":    pg_asistente.render()
+elif p == "Sistema":      pg_sistema.render()
 
 st.markdown('</div>', unsafe_allow_html=True)
