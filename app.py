@@ -7,7 +7,7 @@ import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 
 APP_VERSION = "v2.1.0"
-APP_BUILD   = "2026-03-14"
+APP_BUILD   = "2026-03-14-b"  # force clean redeploy
 
 st.set_page_config(
     page_title="Roker Nexus",
