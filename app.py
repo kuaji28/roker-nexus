@@ -181,6 +181,7 @@ except Exception as _init_err:
 
 import pages.importar     as pg_importar
 import pages.compras      as pg_compras
+import pages.borrador     as pg_borrador
 import pages.cotizaciones    as pg_cotizaciones
 import pages.mercadolibre   as pg_mercadolibre
 import pages.inventario   as pg_inventario
@@ -205,6 +206,7 @@ paginas = [
     ("📊", "Dashboard",    "Dashboard"),
     ("📥", "Cargar",       "Importar"),
     ("🛒", "Compras",      "Compras"),
+    ("📝", "Borrador",     "Borrador"),
     ("✈️", "Cotizaciones", "Cotizaciones"),
     ("🛒", "ML",           "MercadoLibre"),
     ("📦", "Inventario",   "Inventario"),
@@ -240,6 +242,7 @@ p = st.session_state.pagina
 if   p == "Dashboard":    pg_dashboard.render()
 elif p == "Importar":     pg_importar.render()
 elif p == "Compras":      pg_compras.render()
+elif p == "Borrador":     pg_borrador.render()
 elif p == "Cotizaciones": pg_cotizaciones.render()
 elif p == "Inventario":   pg_inventario.render()
 elif p == "Precios":      pg_precios.render()

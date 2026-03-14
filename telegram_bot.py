@@ -74,8 +74,12 @@ async def _enviar_menu_principal(msg, edit=False):
             InlineKeyboardButton("📊 Resumen",     callback_data="menu_resumen"),
         ],
         [
-            InlineKeyboardButton("💵 Tipo de cambio", callback_data="menu_dolar"),
+            InlineKeyboardButton("📝 Borrador pedido", callback_data="menu_borrador"),
             InlineKeyboardButton("🤖 Preguntarle a IA", callback_data="menu_ia"),
+        ],
+        [
+            InlineKeyboardButton("💵 Tipo de cambio", callback_data="menu_dolar"),
+            InlineKeyboardButton("📊 KPIs", callback_data="menu_kpis_fast"),
         ],
     ]
     markup = InlineKeyboardMarkup(keyboard)
@@ -1087,6 +1091,58 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown"
         )
 
+    elif data == "menu_borrador":
+        _set_estado(query.from_user.id, "borrador_buscar")
+        kb = [[InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")]]
+        await query.message.edit_text(
+            "📝 *Borrador de pedido*\n\nEscribí el nombre del modelo que querés agregar:",
+            parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb)
+        )
+
+    elif data == "borrador_ver":
+        df_b = query_to_df("SELECT descripcion, cantidad, precio_usd, estado FROM borrador_pedido WHERE estado!='descartado' ORDER BY estado,descripcion LIMIT 20")
+        if df_b.empty:
+            await query.message.edit_text("📝 Borrador vacío.")
+        else:
+            lineas = ["📝 *Borrador actual:*\n"]
+            for _, r in df_b.iterrows():
+                e = "✅" if r["estado"]=="confirmado" else "⏳"
+                lineas.append(f"{e} {str(r.get('descripcion',''))[:35]} | {int(r.get('cantidad',0))} u | USD {float(r.get('precio_usd',0)):.0f}")
+            await query.message.edit_text("\n".join(lineas), parse_mode="Markdown")
+
+    elif data == "borrador_matching":
+        await query.message.reply_text("🔍 Usá la app web para completar el matching de ítems pendientes.")
+
+    elif data.startswith("bor_add_"):
+        # bor_add_CODIGO_QUERY
+        resto = data.replace("bor_add_", "")
+        partes = resto.split("_", 1)
+        codigo = partes[0]
+        query_orig = partes[1] if len(partes) > 1 else codigo
+        df_art = query_to_df("SELECT descripcion, lista_1 as precio FROM precios p JOIN articulos a ON p.codigo=a.codigo WHERE a.codigo=? LIMIT 1", (codigo,))
+        desc = df_art.iloc[0]["descripcion"] if not df_art.empty else codigo
+        precio = float(df_art.iloc[0]["precio"] or 0) if not df_art.empty else 0
+        from database import execute_query as _eq2
+        _eq2("""INSERT INTO borrador_pedido
+                (texto_original, codigo_flexxus, descripcion, tipo_codigo,
+                 cantidad, precio_usd, subtotal_usd, match_confirmado, estado, origen)
+                VALUES (?,?,?,'mecanico',1,?,?,1,'confirmado','telegram')""",
+             (query_orig, codigo, desc, precio, precio), fetch=False)
+        await query.message.edit_text(
+            f"✅ *{desc[:40]}* agregado al borrador.\n`{codigo}` | USD {precio:.2f}\n\n"
+            f"Usá `/borrador` para ver el borrador completo.",
+            parse_mode="Markdown"
+        )
+
+    elif data.startswith("bor_sinc_"):
+        query_orig = data.replace("bor_sinc_", "")
+        from database import execute_query as _eq3
+        _eq3("""INSERT INTO borrador_pedido
+                (texto_original, descripcion, estado, origen)
+                VALUES (?,?,'pendiente','telegram')""",
+             (query_orig, query_orig.upper()), fetch=False)
+        await query.message.edit_text(f"📝 *{query_orig}* agregado como pendiente.\nCompletá el código desde la app web.", parse_mode="Markdown")
+
     elif data == "sinstock_mov":
         await _mostrar_sinstock(query.message, con_mov=True)
     elif data == "sinstock_sinmov":
@@ -1612,6 +1668,125 @@ async def _mostrar_sinstock(message, con_mov: bool = None):
     await message.reply_text("\n".join(lineas), parse_mode="Markdown")
 
 
+
+
+# ── /borrador — Agregar modelos al borrador de pedido ─────────────────────────
+@auth_required
+async def cmd_borrador(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Agrega un modelo al borrador de pedido desde Telegram."""
+    args = context.args
+    if not args:
+        # Sin args: mostrar resumen del borrador actual
+        df = query_to_df("""
+            SELECT COUNT(*) as total,
+                   SUM(CASE WHEN estado='confirmado' THEN 1 ELSE 0 END) as confirmados,
+                   SUM(CASE WHEN estado='pendiente' THEN 1 ELSE 0 END) as pendientes,
+                   SUM(CASE WHEN estado='confirmado' THEN subtotal_usd ELSE 0 END) as total_usd
+            FROM borrador_pedido WHERE estado != 'descartado'
+        """)
+        if df.empty or int(df.iloc[0].get("total") or 0) == 0:
+            await update.message.reply_text(
+                "📝 *Borrador vacío*\n\n"
+                "Usá `/borrador moto g13` para agregar un modelo.\n"
+                "Podés escribir el nombre como lo conocés.",
+                parse_mode="Markdown"
+            )
+        else:
+            r = df.iloc[0]
+            total = int(r.get("total") or 0)
+            conf  = int(r.get("confirmados") or 0)
+            pend  = int(r.get("pendientes") or 0)
+            usd   = float(r.get("total_usd") or 0)
+            kb = [[
+                InlineKeyboardButton("📋 Ver borrador completo", callback_data="borrador_ver"),
+                InlineKeyboardButton("🔍 Hacer matching", callback_data="borrador_matching"),
+            ]]
+            await update.message.reply_text(
+                f"📝 *Borrador de pedido*\n\n"
+                f"📦 Total ítems: *{total}*\n"
+                f"✅ Confirmados: *{conf}*\n"
+                f"⏳ Pendientes: *{pend}*\n"
+                f"💰 Total: *USD {usd:,.0f}*\n\n"
+                f"Usá `/borrador [modelo]` para agregar más.",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(kb)
+            )
+        return
+
+    # Con args: buscar el modelo y agregar
+    query = " ".join(args).strip()
+    _set_estado(update.effective_user.id, "borrador_cant", {"query": query})
+    
+    # Buscar candidatos mecánicos
+    from rapidfuzz import fuzz, process as rfp
+    df_arts = query_to_df("""
+        SELECT a.codigo, a.descripcion, COALESCE(s.stock,0) as stock,
+               COALESCE(p.lista_1,0) as precio_usd
+        FROM articulos a
+        LEFT JOIN (SELECT codigo, SUM(stock) as stock FROM stock_snapshots
+                   JOIN (SELECT codigo,MAX(fecha) mf FROM stock_snapshots GROUP BY codigo) lx
+                   ON stock_snapshots.codigo=lx.codigo AND stock_snapshots.fecha=lx.mf
+                   GROUP BY codigo) s ON a.codigo=s.codigo
+        LEFT JOIN precios p ON a.codigo=p.codigo
+        WHERE UPPER(a.descripcion) LIKE 'MODULO%'
+          AND COALESCE(a.en_lista_negra,0)=0
+    """)
+    df_arts = df_arts[df_arts["codigo"].apply(lambda c: str(c)[0:1].isdigit())]
+
+    if df_arts.empty:
+        # Guardar como pendiente sin código
+        from database import execute_query as _eq
+        _eq("""INSERT INTO borrador_pedido
+               (texto_original, descripcion, estado, origen, sesion_id)
+               VALUES (?,?,'pendiente','telegram',?)""",
+            (query, query.upper(), str(update.effective_user.id)), fetch=False)
+        await update.message.reply_text(
+            f"📝 *{query}* agregado como pendiente.\n"
+            "Completá el código desde la app web.",
+            parse_mode="Markdown"
+        )
+        return
+
+    descs = df_arts["descripcion"].tolist()
+    matches = rfp.extract(query.upper(), descs, scorer=fuzz.token_set_ratio,
+                           limit=5, score_cutoff=40)
+
+    if not matches:
+        from database import execute_query as _eq
+        _eq("""INSERT INTO borrador_pedido
+               (texto_original, descripcion, estado, origen, sesion_id)
+               VALUES (?,?,'pendiente','telegram',?)""",
+            (query, query.upper(), str(update.effective_user.id)), fetch=False)
+        await update.message.reply_text(
+            f"❓ No encontré mecánico para *{query}*.\n"
+            "Agregado como pendiente — completá desde la app.",
+            parse_mode="Markdown"
+        )
+        return
+
+    # Mostrar candidatos como botones
+    lineas = [f"🔍 Encontré {len(matches)} opciones para _{query}_:\n"]
+    keyboard = []
+    for desc, score, idx in matches:
+        row = df_arts.iloc[idx]
+        stk = int(row.get("stock") or 0)
+        precio = float(row.get("precio_usd") or 0)
+        stk_e = "🔴" if stk == 0 else ("🟡" if stk < 5 else "🟢")
+        lineas.append(f"{stk_e} `{row['codigo']}` {desc[:35]} | USD {precio:.0f}")
+        keyboard.append([InlineKeyboardButton(
+            f"{row['codigo']} — {desc[:30]}",
+            callback_data=f"bor_add_{row['codigo']}_{query[:20]}"
+        )])
+    keyboard.append([InlineKeyboardButton("📝 Agregar sin código", callback_data=f"bor_sinc_{query[:30]}")])
+    keyboard.append([InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")])
+
+    await update.message.reply_text(
+        "\n".join(lineas),
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
 # ── Alerta programada de quiebres ─────────────────────────────
 async def alerta_quiebres(context: ContextTypes.DEFAULT_TYPE):
     """Se ejecuta automáticamente a las 13:00 Lun-Vie."""
@@ -1730,6 +1905,7 @@ def main():
     app.add_handler(CommandHandler("ia",        cmd_ia))
     app.add_handler(CommandHandler("tasa",      cmd_tasa))
     app.add_handler(CommandHandler("ia2",       cmd_ia2))
+    app.add_handler(CommandHandler("borrador",  cmd_borrador))
     app.add_handler(CommandHandler("criticos",  cmd_criticos))
     app.add_handler(CommandHandler("urgentes",  cmd_urgentes))
     app.add_handler(CommandHandler("kpis",      cmd_kpis))

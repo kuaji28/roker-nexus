@@ -307,6 +307,39 @@ CREATE TABLE IF NOT EXISTS configuracion (
     actualizado_en TEXT DEFAULT (datetime('now'))
 );
 
+
+-- Borrador de pedido (anotaciones conversacionales sin código todavía)
+CREATE TABLE IF NOT EXISTS borrador_pedido (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- Input del usuario (puede ser texto libre)
+    texto_original  TEXT NOT NULL,
+    -- Resultado del matching
+    codigo_flexxus  TEXT,        -- NULL si todavía no se confirmó
+    descripcion     TEXT,
+    tipo_codigo     TEXT,        -- 'fr' | 'mecanico' | NULL
+    match_score     INTEGER DEFAULT 0,
+    match_confirmado INTEGER DEFAULT 0,
+    -- Negocio
+    cantidad        INTEGER DEFAULT 0,
+    precio_usd      REAL DEFAULT 0,
+    subtotal_usd    REAL DEFAULT 0,
+    -- Alerta FR: si el modelo tiene stock FR disponible
+    stock_fr_disponible INTEGER DEFAULT 0,
+    codigo_fr_alternativo TEXT,
+    -- Estado del item
+    estado          TEXT DEFAULT 'pendiente',  -- pendiente | confirmado | descartado
+    notas           TEXT,
+    -- Origen: 'web' | 'telegram'
+    origen          TEXT DEFAULT 'web',
+    sesion_id       TEXT,
+    creado_en       TEXT DEFAULT (datetime('now')),
+    actualizado_en  TEXT DEFAULT (datetime('now'))
+);
+
+-- Índice para búsqueda por sesión
+CREATE INDEX IF NOT EXISTS idx_borrador_sesion ON borrador_pedido(sesion_id);
+CREATE INDEX IF NOT EXISTS idx_borrador_estado ON borrador_pedido(estado);
+
 -- Indices para performance
 CREATE INDEX IF NOT EXISTS idx_stock_codigo ON stock_snapshots(codigo);
 CREATE INDEX IF NOT EXISTS idx_stock_fecha ON stock_snapshots(fecha);
@@ -420,6 +453,22 @@ def _migrar_db():
             competidor TEXT, link TEXT,
             fecha_carga TEXT DEFAULT (date('now')),
             UNIQUE(descripcion, competidor)
+        )""",
+        # Borrador de pedido
+        """CREATE TABLE IF NOT EXISTS borrador_pedido (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            texto_original TEXT NOT NULL,
+            codigo_flexxus TEXT, descripcion TEXT,
+            tipo_codigo TEXT, match_score INTEGER DEFAULT 0,
+            match_confirmado INTEGER DEFAULT 0,
+            cantidad INTEGER DEFAULT 0, precio_usd REAL DEFAULT 0,
+            subtotal_usd REAL DEFAULT 0,
+            stock_fr_disponible INTEGER DEFAULT 0,
+            codigo_fr_alternativo TEXT,
+            estado TEXT DEFAULT 'pendiente',
+            notas TEXT, origen TEXT DEFAULT 'web', sesion_id TEXT,
+            creado_en TEXT DEFAULT (datetime('now')),
+            actualizado_en TEXT DEFAULT (datetime('now'))
         )""",
         # ML reporte (tabla completa si no existe)
         """CREATE TABLE IF NOT EXISTS ml_reporte_comparaciones (
