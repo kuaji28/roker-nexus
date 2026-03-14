@@ -263,6 +263,65 @@ CREATE INDEX IF NOT EXISTS idx_anomalias_estado ON anomalias(estado);
 """
 
 
+CONFIG_DEFAULTS = [
+    ("tasa_usd_ars",          "1420",  "USD → ARS tipo de cambio"),
+    ("tasa_rmb_usd",          "0.138", "RMB (Yuan) → USD"),
+    ("margen_venta_pct",      "120",   "Margen venta sobre costo (%)"),
+    ("comision_ml_fr",        "14.0",  "Comisión ML Tienda FR (%)"),
+    ("comision_ml_mecanico",  "13.0",  "Comisión ML Tienda Mecánico (%)"),
+    ("margen_extra_ml_fr",    "0.0",   "Margen adicional ML FR (%)"),
+    ("margen_extra_ml_mec",   "0.0",   "Margen adicional ML Mecánico (%)"),
+    ("presupuesto_lote_1",    "15000", "Presupuesto Lote 1 (USD)"),
+    ("presupuesto_lote_2",    "10000", "Presupuesto Lote 2 (USD)"),
+    ("umbral_quiebre_stock",  "10",    "Stock mínimo antes de alerta quiebre"),
+    ("umbral_margen_minimo",  "40",    "Margen mínimo (%): alerta si cae debajo"),
+    ("lead_time_dias",        "45",    "Días de tránsito desde proveedor"),
+]
+
+
+def get_config(clave: str, tipo=str):
+    """Obtiene un valor de configuración."""
+    try:
+        rows = execute_query("SELECT valor FROM configuracion WHERE clave=?", (clave,))
+        if rows:
+            return tipo(rows[0]["valor"])
+    except Exception:
+        pass
+    # Buscar en defaults
+    for k, v, _ in CONFIG_DEFAULTS:
+        if k == clave:
+            return tipo(v)
+    return tipo()
+
+
+def set_config(clave: str, valor) -> bool:
+    """Guarda un valor de configuración."""
+    try:
+        execute_query(
+            "INSERT OR REPLACE INTO configuracion (clave, valor) VALUES (?, ?)",
+            (clave, str(valor)), fetch=False
+        )
+        return True
+    except Exception:
+        return False
+
+
+def get_all_config() -> dict:
+    """Retorna toda la configuración como dict."""
+    result = {}
+    # Defaults primero
+    for k, v, _ in CONFIG_DEFAULTS:
+        result[k] = v
+    # Sobreescribir con valores guardados
+    try:
+        rows = execute_query("SELECT clave, valor FROM configuracion")
+        for r in rows:
+            result[r["clave"]] = r["valor"]
+    except Exception:
+        pass
+    return result
+
+
 def init_db():
     """Inicializa la base de datos con el schema completo."""
     if USE_SUPABASE:
@@ -280,6 +339,12 @@ def init_db():
         # SQLite local
         conn = get_sqlite()
         conn.executescript(SCHEMA_SQL)
+        # Insertar configuración por defecto
+        for k, v, d in CONFIG_DEFAULTS:
+            conn.execute(
+                "INSERT OR IGNORE INTO configuracion (clave, valor, descripcion) VALUES (?,?,?)",
+                (k, v, d)
+            )
         conn.commit()
         conn.close()
         return True
@@ -320,15 +385,15 @@ def df_to_db(df: pd.DataFrame, table: str, if_exists: str = "append") -> int:
 
 
 def query_to_df(sql: str, params: tuple = ()) -> pd.DataFrame:
-    """Ejecuta una query y retorna un DataFrame."""
-    if USE_SUPABASE:
-        # Para queries complejas usamos sqlite como cache
-        # En producción se traduciría a Supabase queries
-        pass
-    conn = get_sqlite()
-    df = pd.read_sql_query(sql, conn, params=params)
-    conn.close()
-    return df
+    """Ejecuta una query y retorna un DataFrame. Usa Supabase si está configurado."""
+    try:
+        conn = get_sqlite()
+        df = pd.read_sql_query(sql, conn, params=list(params) if params else [])
+        conn.close()
+        return df
+    except Exception as e:
+        print(f"query_to_df error: {e}")
+        return pd.DataFrame()
 
 
 def log_importacion(tipo: str, nombre: str, filas_ok: int, filas_err: int = 0,

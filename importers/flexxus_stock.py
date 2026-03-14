@@ -20,65 +20,92 @@ class ImportadorStock(ImportadorBase):
     COLUMNAS_REQUERIDAS = ["Código", "Stock"]
 
     def _transformar(self, df: pd.DataFrame, uploaded_file=None) -> pd.DataFrame:
-        # Deduplicar columnas por si Flexxus repite nombres
-        df = df.loc[:, ~df.columns.duplicated()].copy()
+        """
+        Formato real Flexxus Planilla de Stock:
+        Filas 0-7: cabecera con filtros aplicados
+        Fila 8 (y repetida cada ~54 filas): headers = Código,,Artículo,,,Rubro,,,Stock,S. Mínimo,S. Máximo,S. Optimo
+        Fila N+: datos  col0=código, col2=artículo, col5=rubro, col8=stock, col9=s.min, col10=s.max, col11=s.opt
+        """
         nombre = getattr(uploaded_file, "name", "") if uploaded_file else ""
-        deposito = detectar_deposito_del_nombre(nombre) or "DESCONOCIDO"
+        deposito = detectar_deposito_del_nombre(nombre) or "GENERAL"
 
-        col_map = self._mapear_columnas(df)
+        HEADER_MARKER = "Código"
+        registros = []
+        en_datos = False
 
-        df_out = pd.DataFrame()
-        df_out["codigo"]       = df[col_map["codigo"]].astype(str).str.strip()
-        df_out["deposito"]     = deposito
-        df_out["stock"]        = pd.to_numeric(df.get(col_map.get("stock"), 0), errors="coerce").fillna(0)
-        df_out["stock_minimo"] = pd.to_numeric(df.get(col_map.get("s_min"), 0), errors="coerce").fillna(0)
-        df_out["stock_optimo"] = pd.to_numeric(df.get(col_map.get("s_opt"), 0), errors="coerce").fillna(0)
-        df_out["stock_maximo"] = pd.to_numeric(df.get(col_map.get("s_max"), 0), errors="coerce").fillna(0)
-        df_out["fecha"]        = datetime.now().date().isoformat()
+        for i, row in df.iterrows():
+            val0 = str(row.iloc[0]).strip() if len(row) > 0 else ""
 
-        # Actualizar catálogo si hay descripción
-        if col_map.get("descripcion"):
-            df_out["_descripcion"] = df[col_map["descripcion"]].astype(str)
-            self._upsert_articulos(df_out)
-            df_out = df_out.drop(columns=["_descripcion"], errors="ignore")
+            # Detectar fila de headers
+            if val0 == HEADER_MARKER:
+                en_datos = True
+                continue
 
-        df_out = df_out[df_out["codigo"].str.len() > 1]
-        df_out = df_out[df_out["codigo"] != "nan"]
+            if not en_datos:
+                continue
 
-        self._deposito_detectado = deposito
+            # Saltar filas de fecha/totales/vacías
+            if not val0 or val0.startswith("13/") or val0.startswith("Cantidad"):
+                continue
+
+            # Extraer campos por posición
+            try:
+                codigo = val0
+                articulo = str(row.iloc[2]).strip() if len(row) > 2 else ""
+                rubro    = str(row.iloc[5]).strip() if len(row) > 5 else ""
+                stock    = pd.to_numeric(row.iloc[8],  errors="coerce") if len(row) > 8  else 0
+                s_min    = pd.to_numeric(row.iloc[9],  errors="coerce") if len(row) > 9  else 0
+                s_max    = pd.to_numeric(row.iloc[10], errors="coerce") if len(row) > 10 else 0
+                s_opt    = pd.to_numeric(row.iloc[11], errors="coerce") if len(row) > 11 else 0
+
+                if pd.isna(stock): stock = 0
+                if pd.isna(s_min): s_min = 0
+                if pd.isna(s_max): s_max = 0
+                if pd.isna(s_opt): s_opt = 0
+
+                if not codigo or codigo == "nan":
+                    continue
+
+                registros.append({
+                    "codigo":        codigo,
+                    "deposito":      deposito,
+                    "descripcion":   articulo,
+                    "rubro":         rubro,
+                    "stock":         float(stock),
+                    "stock_minimo":  float(s_min),
+                    "stock_maximo":  float(s_max),
+                    "stock_optimo":  float(s_opt),
+                    "fecha":         datetime.now().date().isoformat(),
+                    "fecha_snapshot": datetime.now().isoformat(),
+                })
+            except Exception:
+                continue
+
+        if not registros:
+            return pd.DataFrame()
+
+        df_out = pd.DataFrame(registros)
+        # Actualizar catálogo de artículos
+        self._upsert_articulos(df_out)
         return df_out
 
-    def _mapear_columnas(self, df: pd.DataFrame) -> dict:
-        cols = {c.upper(): c for c in df.columns}
-        def find(*keywords):
-            for kw in keywords:
-                for cu, co in cols.items():
-                    if kw.upper() in cu:
-                        return co
-            return None
-
-        return {
-            "codigo":      find("CÓDIGO", "CODIGO") or df.columns[0],
-            "descripcion": find("ARTÍCULO", "ARTICULO", "DESCRIPCION"),
-            "stock":       find("STOCK", "S. ACTUAL"),
-            "s_min":       find("S.MÍNIMO", "S. MÍNIMO", "MÍNIMO", "MINIMO"),
-            "s_opt":       find("S.ÓPTIMO", "S. ÓPTIMO", "ÓPTIMO", "OPTIMO"),
-            "s_max":       find("S.MÁXIMO", "S. MÁXIMO", "MÁXIMO", "MAXIMO"),
-        }
-
     def _upsert_articulos(self, df: pd.DataFrame):
-        conn = sqlite3.connect("roker_nexus.db")
-        for _, row in df.iterrows():
-            codigo = str(row["codigo"]).strip()
-            desc = str(row.get("_descripcion", "")).strip()
-            if not codigo or codigo == "nan":
-                continue
-            conn.execute(
-                "INSERT OR IGNORE INTO articulos (codigo, descripcion) VALUES (?, ?)",
-                (codigo, desc)
-            )
-        conn.commit()
-        conn.close()
+        from utils.matching import tipo_codigo
+        try:
+            conn = __import__('sqlite3').connect("roker_nexus.db")
+            for _, row in df.iterrows():
+                cod  = str(row.get("codigo","")).strip()
+                desc = str(row.get("descripcion","")).strip()
+                if not cod or cod == "nan": continue
+                conn.execute(
+                    "INSERT OR IGNORE INTO articulos (codigo, descripcion) VALUES (?, ?)",
+                    (cod, desc)
+                )
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+
 
     def _guardar(self, df: pd.DataFrame) -> int:
         conn = sqlite3.connect("roker_nexus.db")
