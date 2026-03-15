@@ -90,14 +90,49 @@ def detectar_tipo_flexxus(nombre_archivo: str) -> Optional[str]:
 
 
 def detectar_deposito_del_nombre(nombre: str) -> Optional[str]:
-    """Detecta el depósito por el nombre del archivo de stock."""
+    """Detecta el depósito por el nombre del archivo de stock.
+
+    Soporta dos formatos:
+      1. Prefijo corto al inicio (nuevo): "SJ Planilla de Stock_15-03-2026 14-42-37.xlsx"
+         Códigos: SJ, LAR, SAR, FML, DML, MER, RMA, MUE
+      2. Palabra clave en cualquier parte (legado): "Planilla Stock San Jose.xls"
+    """
+    # ── 1. Prefijo corto al inicio del nombre ─────────────────────────────
+    # Formato: "SJ Planilla de Stock..." o "SJ_Planilla_de_Stock..."
+    PREFIJOS = {
+        "SJ":  "SJ",
+        "LAR": "LAR",
+        "SAR": "SAR",
+        "FML": "FML",
+        "DML": "DML",
+        "MER": "MER",
+        "RMA": "RMA",
+        "MUE": "MUE",
+        "UI":  "UI",
+    }
+    nombre_base = nombre.split("/")[-1].split("\\")[-1]  # solo filename, sin path
+    nombre_upper = nombre_base.upper()
+    for prefijo, codigo in PREFIJOS.items():
+        if nombre_upper.startswith(prefijo + " ") or nombre_upper.startswith(prefijo + "_"):
+            return codigo
+
+    # ── 2. Palabras clave en cualquier parte (compatibilidad legado) ────────
     nombre_up = nombre.upper()
     if "SAN" in nombre_up and "JOSE" in nombre_up:
-        return "SAN_JOSE"
+        return "SJ"
     if "LARREA" in nombre_up:
-        return "LARREA"
+        return "LAR"
+    if "SARMIENTO" in nombre_up:
+        return "SAR"
     if "LOCAL" in nombre_up or "ES_LOCAL" in nombre_up:
-        return "ES_LOCAL"
+        return "LAR"   # ES LOCAL = LARREA en la mayoría de los casos
+    if "FULL" in nombre_up and "ML" in nombre_up:
+        return "FML"
+    if "MERMA" in nombre_up:
+        return "MER"
+    if "MUESTRA" in nombre_up:
+        return "MUE"
+
     return None
 
 
