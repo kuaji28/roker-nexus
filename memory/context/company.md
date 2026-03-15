@@ -52,3 +52,25 @@ Roker puede agregar/modificar durante los 15 días de armado.
 ## Tipo de cambio (al 15/03/2026)
 - USD/ARS: 1.415 (dólar blue) — auto-fetch dolarapi.com, override manual
 - USD/RMB: 6.9 (tasa del cambista) — siempre manual
+
+## Migración de códigos (agosto-septiembre 2025)
+**Contexto crítico para el análisis de stock:**
+
+Hasta agosto/septiembre 2025, todos los proveedores usaban códigos genéricos numéricos (ej: 2401251379). A partir de esa fecha se empezó a separar por proveedor:
+- Productos AITECH → código nuevo empieza con letra (MSAMA02S, AICP..., etc.)
+- Mecánicos/otros → código original numérico o con punto
+
+**Efecto en el stock:**
+- El mismo módulo físico puede aparecer bajo DOS códigos distintos en Flexxus
+- Stock fragmentado entre código viejo y código nuevo hasta que se complete la migración
+- El inventario de diciembre 2025 dejó remanentes sin migrar
+- Los ajustes CS "STOCK ACTUAL" de enero 2026 en adelante son en parte migraciones de código
+
+**Ejemplo documentado:**
+- Código viejo: 2401251379 (SAM A02S mecánico)
+- Código nuevo: MSAMA02S (SAM A02S AITECH)
+- EFIRMAPAZ migró 20 unidades el 26/01/2026 con CS 0000-00212070
+
+**Impacto en análisis de stockouts:**
+Los "101 módulos con stock=0" pueden estar subestimados o sobreestimados según qué código se mire.
+El sistema DEBE consolidar aliases para dar stock real por producto físico.
