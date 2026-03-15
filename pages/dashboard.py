@@ -196,6 +196,9 @@ def render():
         if st.button("🔄", help="Actualizar"):
             st.rerun()
 
+    # ── Panel salud de datos (compacto) ───────────────────────
+    _panel_salud_datos()
+
     kpis = _get_kpis(filtro_prov)
 
     if not kpis.get("ok"):

@@ -295,31 +295,64 @@ def _mostrar_metadata(meta: dict, tipo: str):
 
 
 def _checklist_archivos():
-    """Muestra qué archivos cargar y con qué frecuencia."""
-    items = [
-        ("📦", "Stock SAN JOSE",    "Planilla_de_Stock_SANJOSE.XLS",    "Semanal",  True),
-        ("📦", "Stock LARREA",      "Planilla_de_Stock_LARREA.XLS",     "Semanal",  True),
-        ("📦", "Stock ES LOCAL",    "Planilla_de_Stock_ESLOCAL.XLS",    "Semanal",  True),
-        ("📊", "Optimización",      "Optimizacin_de_Stock_FECHA.XLS",   "Mensual",  False),
-        ("💰", "Lista de Precios",  "Lista de Precios_FECHA.XLS",       "Al cambiar", False),
-        ("📈", "Ventas",            "...Resumida_FECHA.XLS",            "Mensual",  False),
-        ("🛍️", "Compras",          "...por Marca_FECHA.XLS",           "Mensual",  False),
-        ("🏭", "Cotización AITECH", "cotizacion_XXX.xlsx",              "Al recibirla", False),
-        ("📋", "Archivo Mariano",   "optimizacion_FECHA.xlsx",          "Mensual",  False),
-    ]
-    html = '<div style="font-size:12px">'
-    for icono, titulo, archivo, freq, urgente in items:
-        border = "var(--nx-red)" if urgente else "var(--nx-border)"
-        badge = '<span style="background:rgba(255,82,82,.15);color:var(--nx-red);font-size:10px;padding:1px 6px;border-radius:8px;margin-left:6px">URGENTE</span>' if urgente else ""
-        html += f"""
-        <div style="display:flex;align-items:center;gap:10px;padding:6px 0;
-                    border-bottom:1px solid var(--nx-border)">
-            <span style="font-size:16px">{icono}</span>
-            <div style="flex:1">
-                <b style="color:var(--nx-text)">{titulo}</b>{badge}
-                <div style="font-family:monospace;font-size:10px;color:var(--nx-text3)">{archivo}</div>
+    """Panel dinámico de salud de datos — lee el archivo_tracker de la DB."""
+    from database import get_file_health
+
+    slots = get_file_health()
+    total = len(slots)
+    ok    = sum(1 for s in slots if s["estado"] == "ok")
+    pct   = int(ok / total * 100) if total else 0
+
+    # ── Barra de progreso ──
+    color_barra = "#34C759" if pct >= 80 else ("#FF9F0A" if pct >= 40 else "#FF3B30")
+    st.markdown(
+        f"""<div style="margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <span style="font-size:13px;font-weight:600">📁 Salud de datos</span>
+                <span style="font-size:13px;color:{color_barra};font-weight:700">{ok}/{total} archivos al día</span>
             </div>
-            <span style="font-size:10px;color:var(--nx-text2)">{freq}</span>
+            <div style="background:var(--nx-bg2,#2c2c2e);border-radius:4px;height:6px">
+                <div style="width:{pct}%;background:{color_barra};height:6px;border-radius:4px;transition:width .3s"></div>
+            </div>
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
+    # ── Tabla de slots ──
+    COLORES = {
+        "ok":      ("#34C759", "🟢", "Al día"),
+        "stale":   ("#FF9F0A", "🟡", "Actualizar pronto"),
+        "critico": ("#FF3B30", "🔴", "Desactualizado"),
+        "nunca":   ("#8E8E93", "⚫", "Nunca cargado"),
+    }
+
+    html = '<div style="font-size:12px">'
+    for s in slots:
+        color, dot, estado_label = COLORES.get(s["estado"], ("#8E8E93", "⚫", "?"))
+        badge_critico = (
+            '<span style="background:rgba(255,59,48,.15);color:#FF3B30;font-size:10px;'
+            'padding:1px 6px;border-radius:8px;margin-left:6px">CRÍTICO</span>'
+            if s["critico"] else ""
+        )
+        if s["dias_sin_cargar"] is not None:
+            dias_txt = f"hace {s['dias_sin_cargar']}d" if s["dias_sin_cargar"] > 0 else "hoy"
+        else:
+            dias_txt = "—"
+
+        filas_txt = f"{s['filas']:,} filas" if s["filas"] else ""
+
+        html += f"""
+        <div style="display:flex;align-items:center;gap:10px;padding:7px 0;
+                    border-bottom:1px solid var(--nx-border,#3a3a3c)">
+            <span style="font-size:18px;min-width:24px;text-align:center">{s['icono']}</span>
+            <div style="flex:1;min-width:0">
+                <b style="color:var(--nx-text,#fff)">{s['label']}</b>{badge_critico}
+                <div style="font-size:10px;color:var(--nx-text3,#888);margin-top:1px">{filas_txt}</div>
+            </div>
+            <div style="text-align:right;white-space:nowrap">
+                <div style="color:{color};font-size:12px;font-weight:600">{dot} {dias_txt}</div>
+                <div style="font-size:10px;color:var(--nx-text3,#888)">{estado_label}</div>
+            </div>
         </div>"""
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
