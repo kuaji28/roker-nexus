@@ -61,7 +61,7 @@
 - Stock módulos a costo: U$S 517.620 | a Lista 1: U$S 826.265
 - Margen promedio módulos: 118% (sobre Lista 1)
 - Pérdida total RMA (2.5 meses): U$S 24.708 → proyección anual U$S 118.601
-- Presupuesto actual módulos: U$S 250.000/mes (recortado desde dic 2024)
+- Presupuesto actual módulos: U$S 250.000/mes (recortado desde dic 2025)
 - 101 módulos con demanda>0 y stock=0 (stockout por presupuesto)
 - Remitos internos: 504 ítems, TODOS con Entregada=0 (nunca confirmados)
 - Último inventario: diciembre 2025 → base para historial
@@ -71,8 +71,8 @@
 |---------|----------|
 | Antes de ago 2025 | Todos los productos bajo código "mecánico" (numérico). Sin separación AITECH. |
 | Ago-sep 2025 | Ramificación de códigos: AITECH pasa a códigos con letra (MS..., MM..., MX...). Mecánicos mantienen código numérico. |
-| **Diciembre 2024** | **Mariano ingresa como sub-gerente.** Baseline "sin Mariano" = antes de esta fecha. |
-| Diciembre 2024 | Recorte de presupuesto módulos (desde cuándo no confirmado, pero referencia diciembre 2024). |
+| **Diciembre 2025** | **Mariano ingresa como sub-gerente.** Baseline "sin Mariano" = ene-nov 2025. |
+| Diciembre 2025 | Recorte de presupuesto módulos a U$S 250.000/mes (coincide con ingreso Mariano). |
 | Enero 2026 | Liquidación masiva MSAMA02S (7.384 uds vendidas). Stock → 0. |
 | 15/03/2026 | Fecha de relevamiento actual. |
 
@@ -83,8 +83,8 @@
 - Productos discontinuados: aquellos que no tuvieron buen desempeño o calidad deficiente → no reordenar (Lista Negra)
 
 ## Estrategia auditoría silenciosa
-- **Baseline:** métricas pre-diciembre 2024 (antes de Mariano)
-- **Comparación:** dic 2024 - mar 2026 (gestión Mariano+Pablo)
+- **Baseline:** métricas ene–nov 2025 (antes de Mariano, con códigos ya separados)
+- **Comparación:** dic 2025 - mar 2026 (gestión Mariano+Pablo, solo 3-4 meses)
 - **Palancas:** stockouts de módulos, RMA losses, remitos sin confirmar, mermas inexplicadas
 - **Destinatarios finales:** Diego y Walter (dueños) — sin pasar por Pablo ni Mariano
 - **Objetivo de Roker:** mostrar que su análisis es irremplazable → negociar aumento de honorarios
