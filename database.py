@@ -389,6 +389,32 @@ CREATE TABLE IF NOT EXISTS borrador_pedido (
 CREATE INDEX IF NOT EXISTS idx_borrador_sesion ON borrador_pedido(sesion_id);
 CREATE INDEX IF NOT EXISTS idx_borrador_estado ON borrador_pedido(estado);
 
+-- Tracker de archivos cargados (sistema de salud de datos)
+-- Una fila por tipo_archivo+deposito. Se actualiza en cada carga exitosa.
+CREATE TABLE IF NOT EXISTS archivo_tracker (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    tipo_archivo     TEXT NOT NULL,    -- 'stock','optimizacion','ventas','lista_precios','cotizacion_aitech'
+    deposito         TEXT NOT NULL DEFAULT '',  -- 'SJ','LAR','SAR','FML','DML','MER','RMA','MUE' o '' si aplica a todo
+    label            TEXT NOT NULL,
+    ultima_carga     TEXT,             -- datetime ISO de la última carga exitosa
+    filas_importadas INTEGER DEFAULT 0,
+    archivo_nombre   TEXT,             -- nombre original del archivo
+    UNIQUE(tipo_archivo, deposito)
+);
+
+-- Alias de códigos (ej: 2401251379 ↔ MSAMA02S)
+-- Para que el sistema sume stock/demanda del código viejo + nuevo
+CREATE TABLE IF NOT EXISTS codigo_aliases (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo_old  TEXT NOT NULL,   -- código numérico viejo (mecánico)
+    codigo_new  TEXT NOT NULL,   -- código letra nuevo (AITECH)
+    descripcion TEXT,
+    fecha_migracion TEXT,
+    confirmado  INTEGER DEFAULT 1,
+    notas       TEXT,
+    UNIQUE(codigo_old, codigo_new)
+);
+
 -- Indices para performance
 CREATE INDEX IF NOT EXISTS idx_stock_codigo ON stock_snapshots(codigo);
 CREATE INDEX IF NOT EXISTS idx_stock_fecha ON stock_snapshots(fecha);
