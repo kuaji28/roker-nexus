@@ -10,11 +10,21 @@
 - [ ] Captura configuración de usuarios/permisos en Flexxus
 - [ ] Exportar Histórico de Artículos para Top 20 módulos (desde dic 2025)
 
-## 🟡 FASE 2 — Rediseño Nexus v2.0
-- [ ] Diseñar esquema completo de base de datos (10 tablas nuevas)
-- [ ] Presentar plan completo a Roker para aprobación antes de codear
-- [ ] Migrar/adaptar importadores existentes al nuevo esquema
-- [ ] Crear importadores faltantes: ventas, compras, remitos, histórico artículos
+## 🟡 FASE 2 — Rediseño Nexus v2.2 (EN PROGRESO)
+- [x] ~~Diseñar esquema completo~~ → Plan de rediseño completo aprobado 15/03
+- [x] Tabla `archivo_tracker` agregada a database.py (+ `codigo_aliases`)
+- [x] Funciones `update_archivo_tracker()` + `get_file_health()` implementadas
+- [x] `_checklist_archivos()` en importar.py → dinámico (lee DB, semáforo 🟢🟡🔴)
+- [x] `_panel_salud_datos()` agregado al Dashboard (compacto, expandible)
+- [x] Bug `archivo.name` → `f.name` corregido en importar.py
+- [x] NEXUS_META reader en flexxus_stock.py (detecta depósito desde etiquetar.py)
+- [x] cotizaciones.py root deprecado (versión activa = pages/cotizaciones.py)
+- [ ] Integrar Demanda Manual como tab en Inventario (eliminar página standalone)
+- [ ] Integrar Ghost SKUs en Borrador (eliminar página standalone)
+- [ ] Navegación rediseñada (grupos: Análisis / Operaciones / Auditoría / Sistema)
+- [ ] Gestor de Alias de Códigos (tabla codigo_aliases ya creada, falta UI)
+- [ ] Módulo Defensa de Presupuesto (curva antes/después Mariano dic 2025)
+- [ ] Clasificador Barco vs. Avión en tabla articulos
 
 ## 🟡 FASE 3 — Bot de Telegram
 - [ ] Setup bot en @BotFather y configurar token
