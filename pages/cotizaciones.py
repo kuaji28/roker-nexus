@@ -323,7 +323,7 @@ def _panel_items(cot_id: int, estado: str):
                codigo_flexxus, match_score, match_confirmado, estado_item
         FROM cotizacion_items
         WHERE cotizacion_id = ?
-        ORDER BY seccion, rowid
+        ORDER BY seccion, id
     """, (cot_id,))
 
     if df_items.empty:
@@ -603,11 +603,12 @@ def _tab_historial():
 # HELPERS
 # ─────────────────────────────────────────────────────────────
 def _guardar_cotizacion(datos: dict, items: list):
-    """Guarda la cotización y sus ítems en la base de datos."""
+    """Guarda la cotización y sus ítems en la base de datos (bulk insert)."""
+    from database import df_to_db
     now = datetime.now().isoformat()
 
-    # Insertar cotización
-    result = execute_query(
+    # Insertar cotización principal
+    execute_query(
         """INSERT INTO cotizaciones
            (proveedor, invoice_id, filename, fecha, total_usd, estado, fecha_pendiente)
            VALUES (?, ?, ?, ?, ?, 'pendiente', ?)""",
@@ -631,38 +632,30 @@ def _guardar_cotizacion(datos: dict, items: list):
         return
     cot_id = rows[0]["id"]
 
-    # Insertar ítems
-    for item in items:
-        execute_query(
-            """INSERT INTO cotizacion_items
-               (cotizacion_id, brand, codigo_proveedor, modelo_universal, modelo_sticker,
-                specification, type_lcd, quality, colour, seccion,
-                cantidad_pedida, cantidad_recibida, precio_usd, subtotal_usd,
-                codigo_flexxus, descripcion_flexxus, match_score, match_confirmado,
-                estado_item)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,0,?,?,?,?,?,?,?)""",
-            (
-                cot_id,
-                item.get("brand", ""),
-                item.get("codigo_proveedor", ""),
-                item.get("modelo_universal", ""),
-                item.get("modelo_sticker", ""),
-                item.get("specification", ""),
-                item.get("type", ""),
-                item.get("quality", ""),
-                item.get("colour", ""),
-                item.get("seccion", ""),
-                item.get("cantidad_pedida", 0),
-                item.get("precio_usd", 0.0),
-                item.get("subtotal_usd", 0.0),
-                item.get("codigo_flexxus"),
-                item.get("descripcion_flexxus"),
-                item.get("match_score", 0),
-                1 if item.get("match_confirmado") else 0,
-                "pendiente",
-            ),
-            fetch=False
-        )
+    # Insertar ítems en un solo bulk (df_to_db usa execute_batch de psycopg2)
+    if items:
+        df_items = pd.DataFrame([{
+            "cotizacion_id":     cot_id,
+            "brand":             item.get("brand", ""),
+            "codigo_proveedor":  item.get("codigo_proveedor", ""),
+            "modelo_universal":  item.get("modelo_universal", ""),
+            "modelo_sticker":    item.get("modelo_sticker", ""),
+            "specification":     item.get("specification", ""),
+            "type_lcd":          item.get("type", ""),
+            "quality":           item.get("quality", ""),
+            "colour":            item.get("colour", ""),
+            "seccion":           item.get("seccion", ""),
+            "cantidad_pedida":   item.get("cantidad_pedida", 0),
+            "cantidad_recibida": 0,
+            "precio_usd":        item.get("precio_usd", 0.0),
+            "subtotal_usd":      item.get("subtotal_usd", 0.0),
+            "codigo_flexxus":    item.get("codigo_flexxus"),
+            "descripcion_flexxus": item.get("descripcion_flexxus"),
+            "match_score":       item.get("match_score", 0),
+            "match_confirmado":  1 if item.get("match_confirmado") else 0,
+            "estado_item":       "pendiente",
+        } for item in items])
+        df_to_db(df_items, "cotizacion_items")
 
 
 def _cambiar_estado(cot_id: int, nuevo_estado: str):
