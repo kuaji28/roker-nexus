@@ -4,6 +4,55 @@
 
 ---
 
+## ⚠️ PROBLEMA DE NAMING — FLEXXUS NO IDENTIFICA EL DEPÓSITO
+
+**El problema:** Flexxus siempre genera el **mismo nombre** para todos los exports de stock:
+```
+Planilla de Stock_15-03-2026 15-06-26.xlsx
+```
+Esto es así **sin importar qué depósito hayas seleccionado**. El archivo tampoco dice adentro de qué depósito viene.
+
+### SOLUCIÓN — 2 capas de protección
+
+**Capa 1 — Script etiquetar.py (hacer esto inmediatamente después de cada descarga)**
+
+1. Abrí `etiquetar.py` (doble clic o `python etiquetar.py`)
+2. El script detecta automáticamente los xlsx recientes en Descargas
+3. Te pregunta qué depósito y qué tipo de reporte
+4. Renombra el archivo y **lo copia a `exports_flexxus/`** con nombre correcto
+5. **Inyecta el depósito DENTRO del archivo** (fila amarilla visible + celda oculta parseable)
+
+**Resultado:** `exports_flexxus/SJ_stock_2026-03-15.xlsx` — el archivo sabe lo que es.
+
+**Capa 2 — Convención de nombres estricta**
+
+Si no usás el script, usa esta convención al guardar manualmente:
+
+| Código | Depósito completo |
+|--------|------------------|
+| `SJ`  | SAN JOSE (hub principal) |
+| `LAR` | LARREA (local al público) |
+| `SAR` | SARMIENTO NUEVO2 |
+| `FML` | FULL ML (MercadoLibre Fulfillment) |
+| `DML` | DEPÓSITO MERCADO LIBRE |
+| `MER` | MERMAS GENERALES |
+| `RMA` | DEP. TRANSITORIO RMA |
+| `MUE` | MUESTRAS |
+| `UI`  | USO INTERNO |
+
+**Formato del nombre:** `[CODIGO]_[tipo]_YYYY-MM-DD.xlsx`
+- Stock: `SJ_stock_2026-03-15.xlsx`
+- Histórico: `historico_MSAMA02S_2026-03-15.xlsx`
+- Ventas mensuales: `ventas_2025.xlsx`
+
+### REGLA DE ORO
+> 🔴 **Nunca subas a Nexus un archivo sin etiqueta** — si no sabés de qué depósito es, no sirve.
+> Exportá de a uno, etiquetá, después exportás el siguiente.
+
+---
+
+---
+
 ## 1. ESTRUCTURA DE CARPETAS
 
 ```
