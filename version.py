@@ -1,8 +1,19 @@
 """ROKER NEXUS — Control de versiones"""
-APP_VERSION = "v2.0.0"
-APP_BUILD   = "2026-03-14"
+APP_VERSION = "v2.0.2"
+APP_BUILD   = "2026-03-15"
 
 CHANGELOG = [
+    {
+        "version": "v2.0.2",
+        "fecha": "2026-03-15",
+        "cambios": [
+            "🐛 Fix Dashboard: tránsito mostraba 0 (campo codigo_flexxus corregido)",
+            "📊 Dashboard: default filtro cambiado a Mecánico",
+            "📊 Dashboard: Top 30 y Top 50 agregados al selector",
+            "🗄️ DB: Soporte PostgreSQL directo vía DATABASE_URL (Supabase)",
+            "📦 requirements: psycopg2-binary para conexión Supabase",
+        ]
+    },
     {
         "version": "v2.0.0",
         "fecha": "2026-03-14",

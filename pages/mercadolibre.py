@@ -817,38 +817,64 @@ def _parsear_item_ml(item: dict) -> dict:
 
 
 def _mostrar_resultados_ml(resultados: list, precio_propio: float, codigo: str, tienda: str):
-    """Muestra tabla de comparación con botón para agregar al reporte."""
-    st.markdown(f"#### Resultados en ML — {len(resultados)} encontrados")
+    """Muestra resultados ML con diseño de tarjetas y análisis de competencia."""
+    st.markdown(f"#### 🔍 {len(resultados)} resultado(s) en ML")
+    if precio_propio > 0:
+        st.markdown(f"Nuestro precio (Lista 4): **ARS ${precio_propio:,.0f}**")
 
-    for r in resultados:
-        precio_comp = r["precio"]
-        vendedor = r["vendedor"]
-        link = r.get("link", "")
-        es_nuestro = tienda.upper() in vendedor.upper()
+    for i, r in enumerate(resultados):
+        precio_comp = r.get("precio", 0)
+        vendedor    = str(r.get("vendedor", "?"))
+        link        = r.get("link", "")
+        mla_id      = r.get("mla_id", "")
+        titulo      = str(r.get("titulo", ""))[:70]
+        es_nuestro  = tienda.upper() in vendedor.upper()
 
         if precio_propio > 0 and precio_comp > 0:
             diff_pct = (precio_comp - precio_propio) / precio_propio * 100
-            diff_str = f"{'🟢' if diff_pct >= 0 else '🔴'} {diff_pct:+.1f}%"
+            if diff_pct > 5:
+                sem = "🟢"; estado = f"Somos más baratos ({diff_pct:+.1f}%)"
+                bg = "rgba(50,215,75,.08)"; brd = "rgba(50,215,75,.25)"
+            elif diff_pct < -5:
+                sem = "🔴"; estado = f"Nos superan ({diff_pct:+.1f}%)"
+                bg = "rgba(255,55,95,.08)"; brd = "rgba(255,55,95,.25)"
+            else:
+                sem = "🟡"; estado = f"Precio similar ({diff_pct:+.1f}%)"
+                bg = "rgba(255,159,10,.08)"; brd = "rgba(255,159,10,.25)"
         else:
-            diff_pct = 0
-            diff_str = "—"
+            sem = "⚪"; estado = "Sin precio propio para comparar"
+            bg = "rgba(142,142,147,.08)"; brd = "rgba(142,142,147,.2)"
 
-        icon = "✅" if es_nuestro else "❌"
-        link_str = f"[🔗 Ver]({link})" if link else "Sin link"
+        if es_nuestro:
+            bg = "rgba(10,132,255,.1)"; brd = "rgba(10,132,255,.35)"
 
-        col_info, col_accion = st.columns([5, 1])
-        with col_info:
-            st.markdown(
-                f"**{icon} {vendedor}** — "
-                f"**${precio_comp:,.0f}** ARS · "
-                f"vs nuestro ${precio_propio:,.0f} → {diff_str} · "
-                f"{link_str}",
-                unsafe_allow_html=False
-            )
-        with col_accion:
-            if st.button("✅ Guardar", key=f"rep_{codigo}_{precio_comp}_{vendedor[:5]}"):
-                _guardar_en_reporte(codigo, tienda, r, precio_propio, diff_pct)
-                st.success("Guardado en reporte")
+        link_html = f'<a href="{link}" target="_blank" style="color:#0a84ff;font-size:11px">🔗 Ver en ML</a>' if link else ""
+        nuestro_badge = '<span style="background:rgba(10,132,255,.2);color:#64b5ff;padding:2px 6px;border-radius:4px;font-size:10px;margin-left:6px">NUESTRA TIENDA</span>' if es_nuestro else ""
+
+        st.markdown(f"""
+        <div style="background:{bg};border:1px solid {brd};border-radius:10px;
+                    padding:10px 14px;margin:5px 0">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                    <span style="font-size:11px;color:var(--nx-text3)">{titulo}</span>
+                    <div style="font-size:13px;font-weight:600;color:var(--nx-text);margin-top:2px">
+                        {sem} {vendedor}{nuestro_badge}
+                    </div>
+                </div>
+                <div style="text-align:right">
+                    <div style="font-size:18px;font-weight:700;color:var(--nx-text)">
+                        ARS ${precio_comp:,.0f}</div>
+                    <div style="font-size:11px;color:var(--nx-text3)">{estado}</div>
+                </div>
+            </div>
+            <div style="margin-top:6px;font-size:11px">{link_html}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if st.button("📊 Guardar en reporte", key=f"rep_{codigo}_{i}"):
+            _guardar_en_reporte(codigo, tienda, r, precio_propio,
+                                (precio_comp-precio_propio)/precio_propio*100 if precio_propio>0 else 0)
+            st.success("✅ Guardado en reporte")
 
 
 def _init_tabla_reporte():

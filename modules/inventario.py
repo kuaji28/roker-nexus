@@ -58,7 +58,6 @@ def detectar_quiebres(umbral: int = STOCK_QUIEBRE_UMBRAL,
         LEFT JOIN precios p ON s.codigo=p.codigo
         WHERE s.stock <= {umbral}
           AND COALESCE(a.en_lista_negra, 0) = 0
-          AND UPPER(COALESCE(a.descripcion, s.descripcion, '')) LIKE 'MODULO%'
           {dep_filter}
         ORDER BY s.stock ASC, a.marca
     """)

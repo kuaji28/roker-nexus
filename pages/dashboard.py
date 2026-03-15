@@ -24,13 +24,13 @@ def _get_transito_por_codigo() -> dict:
     """Lee ítems en tránsito desde cotizacion_items (fuente real)."""
     try:
         df = query_to_df("""
-            SELECT ci.descripcion_flexxus as codigo, SUM(ci.cantidad_pedida - COALESCE(ci.cantidad_recibida,0)) as en_transito
+            SELECT ci.codigo_flexxus as codigo, SUM(ci.cantidad_pedida - COALESCE(ci.cantidad_recibida,0)) as en_transito
             FROM cotizacion_items ci
             JOIN cotizaciones c ON ci.cotizacion_id = c.id
             WHERE c.estado = 'en_transito'
-              AND ci.descripcion_flexxus IS NOT NULL
-              AND ci.descripcion_flexxus != ''
-            GROUP BY ci.descripcion_flexxus
+              AND ci.codigo_flexxus IS NOT NULL
+              AND ci.codigo_flexxus != ''
+            GROUP BY ci.codigo_flexxus
             HAVING en_transito > 0
         """)
         if df.empty:
@@ -176,10 +176,10 @@ def render():
         <p style="color:var(--nx-text2);font-size:12px;margin:0">Vista ejecutiva de módulos — FR + Mecánico</p>
         """, unsafe_allow_html=True)
     with c_f1:
-        filtro_prov = st.selectbox("Proveedor", ["Ambos","FR","Mecánico"], key="dash_prov",
+        filtro_prov = st.selectbox("Proveedor", ["Ambos","FR","Mecánico"], index=2, key="dash_prov",
                                     label_visibility="collapsed")
     with c_f2:
-        top_n = st.selectbox("Top", [5,10,15,20], index=1, key="dash_topn",
+        top_n = st.selectbox("Top", [5,10,15,20,30,50], index=1, key="dash_topn",
                               label_visibility="collapsed",
                               format_func=lambda x: f"Top {x}")
     with c_ref:

@@ -19,14 +19,24 @@ st.set_page_config(
 st.markdown("""
 <style>
 /* FIX Streamlit 1.55: elimina "arröw_right/down" en expanders */
-[data-testid="stExpander"] details>summary>span:nth-child(1){display:none!important}
-[data-testid="stExpander"] details>summary>span:nth-child(2){display:none!important}
-[data-testid="stExpander"] details>summary{padding-left:0!important}
-[data-testid="stExpander"] details>summary::before{
-    font-size:10px;opacity:.6;margin-right:6px;
-    content:"▶";transition:transform .2s
+[data-testid="stExpander"] details>summary>div:first-child{display:none!important}
+[data-testid="stExpander"] details>summary p{display:none!important}
+[data-testid="stExpander"] details>summary [data-testid]{display:none!important}
+[data-testid="stExpander"] summary{list-style:none}
+[data-testid="stExpander"] summary::-webkit-details-marker{display:none}
+[data-testid="stExpander"] summary::before{
+    content:"▶ ";font-size:9px;opacity:.55;margin-right:4px
 }
-[data-testid="stExpander"] details[open]>summary::before{content:"▼"}
+[data-testid="stExpander"] details[open] summary::before{content:"▼ "}
+
+/* Sidebar siempre visible y bien formateado */
+[data-testid="stSidebar"]{
+    min-width:240px!important;max-width:280px!important;
+    background:#1c1c1e!important;
+    border-right:.5px solid rgba(255,255,255,.08)!important;
+}
+[data-testid="stSidebar"] .stExpander{border:1px solid rgba(255,255,255,.07)!important;border-radius:10px!important;margin-bottom:6px!important}
+[data-testid="stSidebar"] .stNumberInput input{background:#2c2c2e!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:8px!important}
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 :root {
     --bg:#1C1C1E;--bg2:#161618;--card:#2C2C2E;--card2:#3A3A3C;--card3:#48484A;
@@ -357,6 +367,7 @@ elif p == "Borrador":     pg_borrador.render()
 elif p == "Cotizaciones": pg_cotizaciones.render()
 elif p == "Inventario":   pg_inventario.render()
 elif p == "Precios":      pg_precios.render()
+elif p == "ML":           pg_mercadolibre.render()
 elif p == "Asistente":    pg_asistente.render()
 elif p == "Sistema":        pg_sistema.render()
 elif p == "Demanda Manual" and _PAGES_EXTRA: pg_demanda.render()

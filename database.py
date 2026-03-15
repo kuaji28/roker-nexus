@@ -37,6 +37,13 @@ USE_SUPABASE = SUPABASE_AVAILABLE and bool(SUPABASE_URL) and bool(SUPABASE_KEY)
 import os as _os
 SQLITE_PATH = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "roker_nexus.db")
 
+# ── PostgreSQL directo (Supabase connection string) ──────────
+# Más robusto que el cliente REST: soporta todas las queries existentes.
+# Configurar con: DATABASE_URL = "postgresql://postgres:[PASS]@db.xxx.supabase.co:5432/postgres"
+import re as _re_db
+DATABASE_URL = _env("DATABASE_URL")
+USE_POSTGRES = bool(DATABASE_URL)
+
 _supabase: Optional[object] = None
 
 
@@ -51,6 +58,31 @@ def get_sqlite() -> sqlite3.Connection:
     conn = sqlite3.connect(SQLITE_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def get_pg_conn():
+    """Conexión directa a PostgreSQL (Supabase). Requiere DATABASE_URL."""
+    import psycopg2
+    return psycopg2.connect(DATABASE_URL)
+
+
+def _sql_pg(sql: str) -> str:
+    """Convierte SQL SQLite a PostgreSQL: placeholders y conflictos."""
+    # ? → %s  (estilo psycopg2)
+    sql = sql.replace('?', '%s')
+    # INSERT OR IGNORE → INSERT ... ON CONFLICT DO NOTHING
+    if _re_db.search(r'INSERT\s+OR\s+IGNORE', sql, _re_db.IGNORECASE):
+        sql = _re_db.sub(r'INSERT\s+OR\s+IGNORE\s+INTO', 'INSERT INTO', sql, flags=_re_db.IGNORECASE)
+        sql = sql.rstrip().rstrip(';') + ' ON CONFLICT DO NOTHING'
+    # INSERT OR REPLACE → ON CONFLICT DO UPDATE
+    if _re_db.search(r'INSERT\s+OR\s+REPLACE', sql, _re_db.IGNORECASE):
+        sql = _re_db.sub(r'INSERT\s+OR\s+REPLACE\s+INTO', 'INSERT INTO', sql, flags=_re_db.IGNORECASE)
+        if 'configuracion' in sql.lower():
+            sql = (sql.rstrip().rstrip(';')
+                   + ' ON CONFLICT (clave) DO UPDATE SET valor=EXCLUDED.valor, actualizado_en=now()')
+        else:
+            sql = sql.rstrip().rstrip(';') + ' ON CONFLICT DO NOTHING'
+    return sql
 
 
 # ── Schema SQL ────────────────────────────────────────────────
@@ -533,53 +565,100 @@ def _migrar_db():
 
 def init_db():
     """Inicializa la base de datos con el schema completo."""
+    if USE_POSTGRES:
+        # PostgreSQL directo: schema ya fue creado en Supabase SQL Editor.
+        # Solo necesitamos sembrar la configuración por defecto.
+        try:
+            import psycopg2
+            conn = get_pg_conn()
+            cur = conn.cursor()
+            for k, v, d in CONFIG_DEFAULTS:
+                cur.execute(
+                    "INSERT INTO configuracion (clave, valor, descripcion) VALUES (%s, %s, %s) "
+                    "ON CONFLICT (clave) DO NOTHING",
+                    (k, v, d)
+                )
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            if DEBUG:
+                print(f"PostgreSQL init_db error: {e}, cayendo a SQLite")
+            # Fall through a SQLite como fallback de emergencia
+
     if USE_SUPABASE:
-        # Con Supabase: verificar conexión y crear tablas si no existen
+        # Con Supabase REST: verificar conexión y crear tablas si no existen
         try:
             sb = get_supabase()
             sb.table("articulos").select("count", count="exact").execute()
             return True
         except Exception as e:
-            # Supabase falló → caer a SQLite como fallback
             if DEBUG:
                 print(f"Supabase error, usando SQLite: {e}")
-            # Continuar con SQLite (no return False)
-    else:
-        # SQLite local
-        conn = get_sqlite()
-        # Ejecutar schema completo
-        try:
-            conn.executescript(SCHEMA_SQL)
-        except Exception as e:
-            # Fallback: sentencia por sentencia
-            for stmt in SCHEMA_SQL.split(';'):
-                stmt = stmt.strip()
-                if stmt:
-                    try:
-                        conn.execute(stmt)
-                    except Exception:
-                        pass
-            conn.commit()
-        # Insertar configuración por defecto (tabla ya creada por schema)
-        try:
-            for k, v, d in CONFIG_DEFAULTS:
-                conn.execute(
-                    "INSERT OR IGNORE INTO configuracion (clave, valor, descripcion) VALUES (?,?,?)",
-                    (k, v, d)
-                )
-            conn.commit()
-        except Exception as e:
-            print(f"Config defaults warning: {e}")
-        conn.close()
-        try:
-            _migrar_db()
-        except Exception:
-            pass
-        return True
+
+    # SQLite local
+    conn = get_sqlite()
+    # Ejecutar schema completo
+    try:
+        conn.executescript(SCHEMA_SQL)
+    except Exception as e:
+        # Fallback: sentencia por sentencia
+        for stmt in SCHEMA_SQL.split(';'):
+            stmt = stmt.strip()
+            if stmt:
+                try:
+                    conn.execute(stmt)
+                except Exception:
+                    pass
+        conn.commit()
+    # Insertar configuración por defecto (tabla ya creada por schema)
+    try:
+        for k, v, d in CONFIG_DEFAULTS:
+            conn.execute(
+                "INSERT OR IGNORE INTO configuracion (clave, valor, descripcion) VALUES (?,?,?)",
+                (k, v, d)
+            )
+        conn.commit()
+    except Exception as e:
+        print(f"Config defaults warning: {e}")
+    conn.close()
+    try:
+        _migrar_db()
+    except Exception:
+        pass
+    return True
 
 
 def execute_query(sql: str, params: tuple = (), fetch: bool = True):
-    """Ejecuta una query en SQLite."""
+    """Ejecuta una query en PostgreSQL o SQLite según configuración."""
+    if USE_POSTGRES:
+        pg_conn = None
+        try:
+            import psycopg2
+            import psycopg2.extras
+            pg_conn = get_pg_conn()
+            cur = pg_conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute(_sql_pg(sql), params if params else None)
+            if fetch:
+                rows = [dict(r) for r in cur.fetchall()]
+                pg_conn.close()
+                return rows
+            else:
+                pg_conn.commit()
+                rowcount = cur.rowcount
+                pg_conn.close()
+                return rowcount
+        except Exception as e:
+            if DEBUG:
+                print(f"PostgreSQL execute_query error: {e}")
+            try:
+                if pg_conn:
+                    pg_conn.close()
+            except Exception:
+                pass
+            return [] if fetch else 0
+
+    # SQLite
     conn = get_sqlite()
     try:
         cur = conn.execute(sql, params)
@@ -603,36 +682,53 @@ def execute_query(sql: str, params: tuple = (), fetch: bool = True):
 
 
 def df_to_db(df: pd.DataFrame, table: str, if_exists: str = "append") -> int:
-    """Inserta un DataFrame en la base de datos. Usa OR IGNORE para evitar UNIQUE errors."""
-    if USE_SUPABASE:
-        try:
-            import math
-            # Limpiar NaN/Inf antes de enviar a Supabase
-            df_clean = df.copy()
-            for col in df_clean.select_dtypes(include=['float','float64']).columns:
-                df_clean[col] = df_clean[col].apply(
-                    lambda x: None if (x is None or (isinstance(x, float) and (math.isnan(x) or math.isinf(x)))) else x
-                )
-            records = df_clean.where(df_clean.notna(), None).to_dict("records")
-            sb = get_supabase()
-            result = sb.table(table).upsert(records).execute()
-            return len(result.data)
-        except Exception as e:
-            print(f"Supabase df_to_db error: {e}, cayendo a SQLite")
+    """Inserta un DataFrame en la base de datos. Usa ON CONFLICT DO NOTHING para evitar UNIQUE errors."""
+    import math
 
+    # Limpiar NaN/Inf (aplica a todos los backends)
+    df_clean = df.copy()
+    for col in df_clean.select_dtypes(include=['float', 'float64']).columns:
+        df_clean[col] = df_clean[col].apply(
+            lambda x: None if (x is None or (isinstance(x, float) and (math.isnan(x) or math.isinf(x)))) else x
+        )
+    df_clean = df_clean.where(df_clean.notna(), None)
+
+    if USE_POSTGRES:
+        pg_conn = None
+        try:
+            import psycopg2
+            import psycopg2.extras
+            pg_conn = get_pg_conn()
+            cur = pg_conn.cursor()
+            cols = ", ".join(df_clean.columns)
+            phs = ", ".join(["%s"] * len(df_clean.columns))
+            sql = f"INSERT INTO {table} ({cols}) VALUES ({phs}) ON CONFLICT DO NOTHING"
+            records = [tuple(r) for r in df_clean.itertuples(index=False, name=None)]
+            psycopg2.extras.execute_batch(cur, sql, records, page_size=500)
+            pg_conn.commit()
+            count = len(records)
+            pg_conn.close()
+            return count
+        except Exception as e:
+            print(f"PostgreSQL df_to_db error: {e}, cayendo a SQLite")
+            try:
+                if pg_conn:
+                    pg_conn.close()
+            except Exception:
+                pass
+
+    # SQLite
     conn = sqlite3.connect(SQLITE_PATH)
     try:
-        # Usar INSERT OR IGNORE via método chunk para evitar UNIQUE constraint
-        cols = ", ".join(df.columns)
-        placeholders = ", ".join(["?" for _ in df.columns])
+        cols = ", ".join(df_clean.columns)
+        placeholders = ", ".join(["?" for _ in df_clean.columns])
         sql = f"INSERT OR IGNORE INTO {table} ({cols}) VALUES ({placeholders})"
-        data = [tuple(row) for row in df.itertuples(index=False, name=None)]
+        data = [tuple(row) for row in df_clean.itertuples(index=False, name=None)]
         conn.executemany(sql, data)
         conn.commit()
         count = len(data)
     except Exception as e:
         print(f"df_to_db fallback error: {e}")
-        # Último recurso: to_sql normal
         try:
             df.to_sql(table, conn, if_exists=if_exists, index=False, method="multi")
             conn.commit()
@@ -645,7 +741,22 @@ def df_to_db(df: pd.DataFrame, table: str, if_exists: str = "append") -> int:
 
 
 def query_to_df(sql: str, params: tuple = ()) -> pd.DataFrame:
-    """Ejecuta una query y retorna un DataFrame. Usa Supabase si está configurado."""
+    """Ejecuta una query y retorna un DataFrame. Usa PostgreSQL si DATABASE_URL está configurado."""
+    if USE_POSTGRES:
+        try:
+            import psycopg2
+            import warnings
+            pg_conn = get_pg_conn()
+            pg_sql = _sql_pg(sql)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                df = pd.read_sql_query(pg_sql, pg_conn, params=list(params) if params else None)
+            pg_conn.close()
+            return df
+        except Exception as e:
+            if DEBUG:
+                print(f"PostgreSQL query_to_df error: {e}")
+    # SQLite
     try:
         conn = get_sqlite()
         df = pd.read_sql_query(sql, conn, params=list(params) if params else [])

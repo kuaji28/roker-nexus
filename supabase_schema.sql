@@ -261,3 +261,73 @@ CREATE TABLE IF NOT EXISTS ml_precios_competencia (
     fecha_carga DATE DEFAULT CURRENT_DATE,
     UNIQUE(descripcion, competidor)
 );
+
+-- TABLAS v2.0 (borrador, demanda manual, ghost SKUs, historial)
+
+CREATE TABLE IF NOT EXISTS borrador_pedido (
+    id SERIAL PRIMARY KEY,
+    texto_original TEXT NOT NULL,
+    codigo_flexxus TEXT,
+    descripcion TEXT,
+    tipo_codigo TEXT,
+    match_score INTEGER DEFAULT 0,
+    match_confirmado INTEGER DEFAULT 0,
+    cantidad INTEGER DEFAULT 0,
+    precio_usd REAL DEFAULT 0,
+    subtotal_usd REAL DEFAULT 0,
+    stock_fr_disponible INTEGER DEFAULT 0,
+    codigo_fr_alternativo TEXT,
+    estado TEXT DEFAULT 'pendiente',
+    notas TEXT,
+    origen TEXT DEFAULT 'web',
+    sesion_id TEXT,
+    creado_en TIMESTAMPTZ DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS demanda_manual (
+    codigo TEXT PRIMARY KEY,
+    demanda_manual REAL NOT NULL,
+    nota TEXT,
+    actualizado TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ghost_skus (
+    id SERIAL PRIMARY KEY,
+    modelo_descripcion TEXT NOT NULL,
+    proveedor_tipo TEXT DEFAULT 'MECÁNICO',
+    cantidad_estimada REAL DEFAULT 0,
+    estado TEXT DEFAULT 'PENDIENTE',
+    codigo_vinculado TEXT DEFAULT '',
+    notas TEXT DEFAULT '',
+    origen TEXT DEFAULT 'WEB',
+    fecha_creacion TIMESTAMPTZ DEFAULT NOW(),
+    fecha_vinculacion TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS historial_stock (
+    id SERIAL PRIMARY KEY,
+    codigo TEXT NOT NULL,
+    deposito TEXT NOT NULL DEFAULT 'GENERAL',
+    stock REAL DEFAULT 0,
+    demanda REAL DEFAULT 0,
+    fecha TEXT NOT NULL,
+    fecha_carga TIMESTAMPTZ DEFAULT NOW(),
+    tipo_proveedor TEXT DEFAULT 'mecanico',
+    UNIQUE(codigo, deposito, fecha)
+);
+
+CREATE INDEX IF NOT EXISTS idx_hist_codigo ON historial_stock(codigo);
+CREATE INDEX IF NOT EXISTS idx_hist_fecha ON historial_stock(fecha);
+
+-- lista_negra (tabla separada usada desde Dashboard)
+CREATE TABLE IF NOT EXISTS lista_negra (
+    id SERIAL PRIMARY KEY,
+    codigo TEXT UNIQUE NOT NULL,
+    descripcion TEXT,
+    notas TEXT,
+    agregado_en TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Columna kodigo_flexxus en cotizacion_items (si no fue agregada)
+ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS codigo_flexxus TEXT;
