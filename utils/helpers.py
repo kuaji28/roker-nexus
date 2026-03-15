@@ -165,13 +165,27 @@ def severidad_badge(sev: str) -> str:
 # ── Estado de APIs ────────────────────────────────────────────
 
 def check_apis() -> dict:
-    """Verifica qué APIs están configuradas."""
+    """Verifica qué APIs están configuradas (env/secrets → DB fallback)."""
     from config import ANTHROPIC_API_KEY, GEMINI_API_KEY, TELEGRAM_TOKEN, SUPABASE_URL
+    claude_ok  = bool(ANTHROPIC_API_KEY)
+    gemini_ok  = bool(GEMINI_API_KEY)
+    # Fallback: buscar en la tabla configuracion (guardadas desde el sidebar)
+    if not claude_ok or not gemini_ok:
+        try:
+            from database import get_config
+            if not claude_ok:
+                k = get_config("claude_api_key") or get_config("anthropic_api_key")
+                claude_ok = bool(k and str(k).strip())
+            if not gemini_ok:
+                k = get_config("gemini_api_key")
+                gemini_ok = bool(k and str(k).strip())
+        except Exception:
+            pass
     return {
-        "claude":    bool(ANTHROPIC_API_KEY),
-        "gemini":    bool(GEMINI_API_KEY),
-        "telegram":  bool(TELEGRAM_TOKEN),
-        "supabase":  bool(SUPABASE_URL),
+        "claude":   claude_ok,
+        "gemini":   gemini_ok,
+        "telegram": bool(TELEGRAM_TOKEN),
+        "supabase": bool(SUPABASE_URL),
     }
 
 
