@@ -64,6 +64,31 @@
 - Remitos internos: 504 ítems, TODOS con Entregada=0 (nunca confirmados)
 - Último inventario: diciembre 2025 → base para historial
 
+## Mapa de depósitos relevado (15/03/2026)
+| Depósito | Código | SKUs | Unidades | Notas |
+|----------|--------|------|----------|-------|
+| SAN JOSE | SJ | 1.948 | 639.078 | Hub. Módulos: 360 SKUs / 51.687 uds |
+| LARREA | LAR | pendiente | pendiente | Local público |
+| SARMIENTO | SAR | — | ~3 módulos | Solo accesorios |
+| FULL ML | FML | 79 | 9.592 | Stock protegido ML Fulfillment |
+| DEP. ML | DML | 79 | 9.592 | Idéntico a FML (mismo export posible) |
+| MERMAS GENERALES | MER | — | 18.644 | Incl. 1.862 módulos — parte migración |
+| DEP. TRANSITORIO RMA | RMA | — | 1.080 | Parlantes defecto fábrica |
+| MUESTRAS | MUE | — | 990 | Muestras exhibición |
+
+## MSAMA02S (SAM A02S/A03/A04E) — módulo top ventas
+- Migración confirmada: CS 212070+212071 el 26/01/2026 por EFIRMAPAZ (limpio)
+- Enero 2026: liquidación total — 6.313 → -8 (FLOTOM SAS compró 1.884 uds)
+- Stock actual 15/03: 7 uds totales — CRÍTICO
+- Patrón histórico: vende en compromiso (457 filas saldo negativo en historial)
+
+## Problema naming Flexxus — RESUELTO con etiquetar.py
+- Flexxus: siempre genera "Planilla de Stock_DD-MM-YYYY HH-MM-SS.xlsx" sin importar depósito
+- El archivo no dice adentro qué depósito es
+- Solución: script etiquetar.py — renombra + inyecta fila amarilla en el xlsx
+- Convención: [CODIGO]_stock_YYYY-MM-DD.xlsx (ej: SJ_stock_2026-03-15.xlsx)
+- Carpeta destino: exports_flexxus/
+
 ## Preferencias del sistema
 - Precios en USD como moneda base
 - Mostrar siempre: P.Comp / Lista 1 / Lista 4 (ML)
