@@ -176,7 +176,7 @@ def render():
         <p style="color:var(--nx-text2);font-size:12px;margin:0">Vista ejecutiva de módulos — AI-TECH + Mecánico</p>
         """, unsafe_allow_html=True)
     with c_f1:
-        filtro_prov = st.selectbox("Proveedor", ["Ambos","AI-TECH","Mecánico"], index=2, key="dash_prov",
+        filtro_prov = st.selectbox("Proveedor", ["Ambos","AI-TECH","Mecánico"], index=0, key="dash_prov",
                                     label_visibility="collapsed")
     with c_f2:
         top_n = st.selectbox("Top", [5,10,15,20,30,50], index=1, key="dash_topn",
