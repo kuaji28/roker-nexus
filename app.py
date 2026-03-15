@@ -402,6 +402,13 @@ except ImportError:
     _HAS_ALERTAS = False
     pg_auditoria = None
 
+try:
+    import pages.calidad_datos as pg_calidad
+    _HAS_CALIDAD = True
+except ImportError:
+    _HAS_CALIDAD = False
+    pg_calidad = None
+
 if "pagina" not in st.session_state:
     st.session_state.pagina = "Dashboard"
 if "chat_history" not in st.session_state:
@@ -425,6 +432,7 @@ paginas = [
     ("📊", "Dashboard",          "Dashboard"),
     (f"🔔", f"Alertas{_alerta_badge}", "Alertas"),
     ("🔍", "Auditoría",          "Auditoria"),
+    ("🧹", "Calidad de Datos",   "Calidad"),
     ("📦", "Inventario",         "Inventario"),
     ("✏️", "Demanda Manual",     "Demanda Manual"),
     ("📝", "Borrador",           "Borrador"),
@@ -465,6 +473,7 @@ elif p == "Asistente":    pg_asistente.render()
 elif p == "Sistema":        pg_sistema.render()
 elif p == "Alertas"   and _HAS_ALERTAS:              pg_alertas.render()
 elif p == "Auditoria" and pg_auditoria is not None:  pg_auditoria.render()
+elif p == "Calidad"   and _HAS_CALIDAD:              pg_calidad.render()
 elif p == "Demanda Manual" and _PAGES_EXTRA: pg_demanda.render()
 elif p == "Ghost SKUs" and _PAGES_EXTRA:     pg_ghost.render()
 elif p == "Lista Negra" and _PAGES_EXTRA:    pg_lista_negra.render()

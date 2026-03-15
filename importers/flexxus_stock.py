@@ -176,6 +176,7 @@ class ImportadorStock(ImportadorBase):
     def _metadata(self, df: pd.DataFrame) -> dict:
         dep = getattr(self, "_deposito_detectado", "?")
         alertas = getattr(self, "_resultado_alertas", {})
+        calidad = getattr(self, "_resultado_calidad", {})
         meta = {
             "deposito":    dep,
             "total":       len(df),
@@ -184,7 +185,10 @@ class ImportadorStock(ImportadorBase):
             "stock_total": round(float(df["stock"].sum()), 0),
         }
         if alertas.get("total_alertas", 0) > 0:
-            meta["alertas_generadas"] = alertas["total_alertas"]
+            meta["alertas_generadas"]   = alertas["total_alertas"]
             meta["aumentos_detectados"] = alertas.get("aumentos", 0)
             meta["quiebres_nuevos"]     = alertas.get("quiebres", 0)
+        if calidad.get("detectados", 0) > 0:
+            meta["calidad_errores_detectados"] = calidad["detectados"]
+            meta["calidad_errores_nuevos"]     = calidad["nuevos"]
         return meta
