@@ -192,10 +192,20 @@ CREATE TABLE IF NOT EXISTS configuracion (
 
 -- Datos iniciales
 INSERT INTO configuracion (clave, valor, descripcion) VALUES
-    ('tasa_usd_ars', '1420', 'USD a ARS'),
-    ('tasa_rmb_usd', '6.9', 'RMB a ARS'),
-    ('umbral_quiebre_stock', '10', 'Stock minimo alerta'),
-    ('lead_time_dias', '45', 'Dias transito China')
+    ('tasa_usd_ars',         '1420',  'USD a ARS'),
+    ('tasa_rmb_usd',         '6.9',   'RMB a USD'),
+    ('lead_time_dias',       '45',    'Dias transito China'),
+    ('presupuesto_lote_1',   '15000', 'Presupuesto Lote 1 USD'),
+    ('presupuesto_lote_2',   '10000', 'Presupuesto Lote 2 USD'),
+    ('presupuesto_lote_3',   '8000',  'Presupuesto Lote 3 USD'),
+    ('coef_stock_min',       '1.0',   'Coeficiente stock minimo'),
+    ('coef_stock_opt',       '1.2',   'Coeficiente stock optimo'),
+    ('coef_stock_max',       '1.4',   'Coeficiente stock maximo'),
+    ('comision_ml_fr',       '14.0',  'Comision ML FR %'),
+    ('comision_ml_mecanico', '13.0',  'Comision ML Mecanico %'),
+    ('margen_extra_ml_fr',   '0.0',   'Margen extra ML FR %'),
+    ('margen_extra_ml_mec',  '0.0',   'Margen extra ML Mecanico %'),
+    ('umbral_quiebre_stock', '10',    'Stock minimo alerta')
 ON CONFLICT (clave) DO NOTHING;
 
 -- TABLAS NUEVAS v1.8+ (agregar si no existen)
