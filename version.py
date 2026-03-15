@@ -11,6 +11,8 @@ CHANGELOG = [
             "✈️ Cotizaciones: tab 'SKUs en Tránsito' con detalle por código + exportar CSV",
             "🧮 ML Calculadora: selector de producto desde DB (Lista 1 se autocompleta)",
             "🧮 ML Calculadora: comparación vs Lista 4 actual + detector comisión auto-completa",
+            "🚀 Fix carga: importadores reemplazados con bulk insert — sin loops individuales",
+            "🚀 Fix: _upsert_articulos en Lista Precios y Stock escribe a PostgreSQL correctamente",
         ]
     },
     {
