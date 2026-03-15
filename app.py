@@ -344,8 +344,6 @@ try:
 except ImportError:
     _PAGES_EXTRA = False
 
-init_db()
-
 if "pagina" not in st.session_state:
     st.session_state.pagina = "Dashboard"
 if "chat_history" not in st.session_state:
@@ -389,7 +387,7 @@ elif p == "Borrador":     pg_borrador.render()
 elif p == "Cotizaciones": pg_cotizaciones.render()
 elif p == "Inventario":   pg_inventario.render()
 elif p == "Precios":      pg_precios.render()
-elif p == "ML":           pg_mercadolibre.render()
+elif p == "MercadoLibre": pg_mercadolibre.render()
 elif p == "Asistente":    pg_asistente.render()
 elif p == "Sistema":        pg_sistema.render()
 elif p == "Demanda Manual" and _PAGES_EXTRA: pg_demanda.render()
