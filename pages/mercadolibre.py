@@ -552,7 +552,7 @@ def _tab_importar_mla():
     st.markdown(
         "<span style='font-size:13px;color:var(--nx-text2)'>"
         "Subí un Excel con columnas: **codigo** y **mla_id** (ej: MLA1234567). "
-        "El sistema detecta automáticamente si es de tienda FR o Mecánico según el código Flexxus.</span>",
+        "El sistema detecta automáticamente si es de tienda AI-TECH o Mecánico según el código Flexxus.</span>",
         unsafe_allow_html=True
     )
 
