@@ -253,8 +253,8 @@ def _tab_editor_masivo():
         return
 
     # Clasificar
-    df["tipo"] = df["codigo"].apply(lambda c: "FR" if str(c)[0:1].isalpha() else "MECÁNICO")
-    df["comision"] = df["tipo"].apply(lambda t: com_fr if t == "FR" else com_mec)
+    df["tipo"] = df["codigo"].apply(lambda c: "AI-TECH" if str(c)[0:1].isalpha() else "MECÁNICO")
+    df["comision"] = df["tipo"].apply(lambda t: com_fr if t == "AI-TECH" else com_mec)
     df["lista_1_ars"] = (df["lista_1_usd"] * tasa).round(0)
     df["precio_sugerido"] = (df["lista_1_ars"] / (1 - df["comision"])).round(0)
     df["precio_nuevo"] = df["lista_4_ars"]  # editable
@@ -262,8 +262,8 @@ def _tab_editor_masivo():
     # Filtrar
     if filtro == "Con stock":
         df = df[df["stock"] > 0]
-    elif filtro == "Solo FR":
-        df = df[df["tipo"] == "FR"]
+    elif filtro == "Solo AI-TECH":
+        df = df[df["tipo"] == "AI-TECH"]
     elif filtro == "Solo Mecánico":
         df = df[df["tipo"] == "MECÁNICO"]
 
@@ -574,7 +574,7 @@ def _tab_importar_mla():
             df_mla["codigo"] = df_mla[col_cod].astype(str).str.strip()
             df_mla["mla_id"] = df_mla[col_mla].astype(str).str.strip().str.upper()
             df_mla = df_mla[df_mla["codigo"].str.len() > 1]
-            df_mla["tipo"] = df_mla["codigo"].apply(lambda c: "FR" if c[0:1].isalpha() else "MECÁNICO")
+            df_mla["tipo"] = df_mla["codigo"].apply(lambda c: "AI-TECH" if c[0:1].isalpha() else "MECÁNICO")
 
             st.success(f"✅ {len(df_mla)} registros encontrados")
             st.dataframe(df_mla[["codigo", "tipo", "mla_id"]].head(20), hide_index=True)
@@ -585,7 +585,7 @@ def _tab_importar_mla():
                     cod = row["codigo"]
                     mla = row["mla_id"]
                     tipo = row["tipo"]
-                    if tipo == "FR":
+                    if tipo == "AI-TECH":
                         execute_query("UPDATE articulos SET mla_id_fr=? WHERE codigo=?",
                                       (mla, cod), fetch=False)
                     else:
@@ -683,15 +683,15 @@ def _cargar_tabla_precios(tasa: float, filtro_tipo: str, filtro_stock: str, top_
     if df.empty:
         return df
 
-    df["tipo"] = df["codigo"].apply(lambda c: "FR" if str(c)[0:1].isalpha() else "MECÁNICO")
+    df["tipo"] = df["codigo"].apply(lambda c: "AI-TECH" if str(c)[0:1].isalpha() else "MECÁNICO")
     df["lista_1_ars"] = (df["lista_1_usd"] * tasa).round(0)
     df["mla_id"] = df.apply(
-        lambda r: r["mla_id_fr"] if r["tipo"] == "FR" else r["mla_id_mec"], axis=1
+        lambda r: r["mla_id_fr"] if r["tipo"] == "AI-TECH" else r["mla_id_mec"], axis=1
     )
 
     # Filtros
-    if "FR" in filtro_tipo:
-        df = df[df["tipo"] == "FR"]
+    if "AI-TECH" in filtro_tipo:
+        df = df[df["tipo"] == "AI-TECH"]
     elif "MECÁNICO" in filtro_tipo:
         df = df[df["tipo"] == "MECÁNICO"]
     if filtro_stock == "Con stock":
