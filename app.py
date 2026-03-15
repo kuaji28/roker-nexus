@@ -55,16 +55,27 @@ html,body,.stApp{background:var(--bg)!important}
 .main .block-container{padding:0 0 28px 0!important;max-width:100%!important}
 #MainMenu,footer,header,[data-testid="stToolbar"],.stDeployButton{display:none!important}
 
-/* Sidebar visible y colapsable */
+/* ── Sidebar: siempre visible, con botón toggle funcional ── */
 [data-testid="stSidebar"]{
     min-width:260px!important;max-width:300px!important;
     background:#1c1c1e!important;
     border-right:.5px solid rgba(255,255,255,.08)!important;
+    display:block!important;
+    visibility:visible!important;
 }
-[data-testid="collapsedControl"]{
+/* Botón para colapsar/expandir sidebar (todas las variantes según versión de Streamlit) */
+[data-testid="collapsedControl"],
+[data-testid="stSidebarCollapsedControl"],
+button[data-testid="baseButton-header"],
+section[data-testid="stSidebar"] + div > button,
+.st-emotion-cache-1tpl0xr {
     display:flex!important;
-    background:#1c1c1e!important;
+    visibility:visible!important;
+    opacity:1!important;
+    pointer-events:auto!important;
+    background:#2c2c2e!important;
     border-right:.5px solid rgba(255,255,255,.08)!important;
+    z-index:999!important;
 }
 [data-testid="stSidebar"] .stExpander{
     border:1px solid rgba(255,255,255,.07)!important;
@@ -198,8 +209,9 @@ hr{border-color:var(--line)!important;margin:24px 0!important}
 .nx-badge-amber{background:var(--amber-bg);color:var(--amber)}
 .nx-badge-red{background:var(--red-bg);color:var(--red)}
 
-        /* Navbar compacto — menos espacio arriba */
-        header[data-testid="stHeader"] { display: none !important; }
+        /* Navbar compacto — ocultar SOLO el contenido del header, no el header entero */
+        header[data-testid="stHeader"] { height: 0 !important; min-height: 0 !important; overflow: visible !important; }
+        header[data-testid="stHeader"] > * { display: none !important; }
         .main .block-container { padding-top: 0.5rem !important; padding-bottom: 1rem !important; }
         div[data-testid="stHorizontalBlock"] { gap: 4px !important; }
         .nx-nav-btn { padding: 6px 10px !important; font-size: 12px !important; }
