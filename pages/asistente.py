@@ -161,27 +161,98 @@ def render():
     with tabs[2]:
         st.markdown("### ⚙️ Configuración del motor de IA")
 
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("**Estado actual:**")
-            claude_ok = motor_ia.claude_disponible
-            gemini_ok = motor_ia.gemini_disponible
-            st.markdown(f"{'🟢' if claude_ok else '🔴'} Claude API — {'Configurado' if claude_ok else 'No configurado'}")
-            st.markdown(f"{'🟢' if gemini_ok else '🔴'} Gemini API — {'Configurado' if gemini_ok else 'No configurado'}")
+        from database import get_config, set_config
 
-        with col2:
-            st.markdown("**Modo activo:**")
-            modo_actual = MODO_IA
-            st.markdown(f"Motor principal: **{modo_actual.upper()}**")
-            if not claude_ok and not gemini_ok:
-                st.error("⚠️ Configurá al menos una API en el archivo .env")
+        claude_ok = motor_ia.claude_disponible
+        gemini_ok = motor_ia.gemini_disponible
+
+        # Estado
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            color_c = "#32d74b" if claude_ok else "#ff375f"
+            st.markdown(f"""<div style="background:rgba(50,215,75,.07) if {claude_ok} else rgba(255,55,95,.07);
+                border:1px solid {color_c}40;border-radius:10px;padding:12px 14px">
+                <div style="font-size:11px;color:{color_c};font-weight:700">CLAUDE</div>
+                <div style="font-size:14px;font-weight:600">{'🟢 Conectado' if claude_ok else '🔴 Sin key'}</div>
+            </div>""", unsafe_allow_html=True)
+        with c2:
+            color_g = "#32d74b" if gemini_ok else "#ff9f0a"
+            st.markdown(f"""<div style="border:1px solid {color_g}40;border-radius:10px;padding:12px 14px">
+                <div style="font-size:11px;color:{color_g};font-weight:700">GEMINI</div>
+                <div style="font-size:14px;font-weight:600">{'🟢 Conectado' if gemini_ok else '🟡 Sin key'}</div>
+            </div>""", unsafe_allow_html=True)
+        with c3:
+            st.markdown(f"""<div style="border:1px solid rgba(10,132,255,.3);border-radius:10px;padding:12px 14px">
+                <div style="font-size:11px;color:#0a84ff;font-weight:700">MODO</div>
+                <div style="font-size:14px;font-weight:600">{MODO_IA.upper()}</div>
+            </div>""", unsafe_allow_html=True)
+
+        st.markdown("---")
+        st.markdown("#### 🔑 Ingresar API Keys")
+        st.markdown("""<div style="background:rgba(10,132,255,.07);border:1px solid rgba(10,132,255,.2);
+            border-radius:10px;padding:12px 16px;font-size:13px;margin-bottom:16px">
+            💡 Podés guardar las keys acá o desde el panel lateral <strong>🧠 Inteligencia IA</strong>.<br>
+            Para Streamlit Cloud también podés agregarlas en <strong>Settings → Secrets</strong> como
+            <code>ANTHROPIC_API_KEY</code> y <code>GEMINI_API_KEY</code>.
+        </div>""", unsafe_allow_html=True)
+
+        # Leer keys actuales (enmascaradas)
+        key_claude_actual = get_config("claude_api_key") or ""
+        key_gemini_actual = get_config("gemini_api_key") or ""
+
+        col_k1, col_k2 = st.columns(2)
+        with col_k1:
+            st.markdown("**Claude (Anthropic)**")
+            nueva_claude = st.text_input(
+                "Claude API Key",
+                value=key_claude_actual,
+                type="password",
+                placeholder="sk-ant-api03-...",
+                key="ia_cfg_claude_key",
+                label_visibility="collapsed"
+            )
+            if st.button("💾 Guardar key Claude", key="ia_save_claude", use_container_width=True):
+                set_config("claude_api_key", nueva_claude.strip())
+                # Invalidar el cliente cacheado para que lo recree
+                motor_ia._claude_client = None
+                st.success("✅ Key Claude guardada"); st.rerun()
+
+        with col_k2:
+            st.markdown("**Gemini (Google)**")
+            nueva_gemini = st.text_input(
+                "Gemini API Key",
+                value=key_gemini_actual,
+                type="password",
+                placeholder="AIzaSy...",
+                key="ia_cfg_gemini_key",
+                label_visibility="collapsed"
+            )
+            if st.button("💾 Guardar key Gemini", key="ia_save_gemini", use_container_width=True):
+                set_config("gemini_api_key", nueva_gemini.strip())
+                motor_ia._gemini_model = None
+                st.success("✅ Key Gemini guardada"); st.rerun()
 
         # Test rápido
         st.markdown("---")
-        if st.button("🧪 Probar conexión con Claude"):
-            with st.spinner("Probando..."):
-                resp = motor_ia.consultar("Respondé solo con: 'Roker Nexus operativo ✅'")
-            st.success(resp)
+        col_t1, col_t2 = st.columns(2)
+        with col_t1:
+            if st.button("🧪 Probar Claude", use_container_width=True, type="primary"):
+                motor_ia._claude_client = None  # forzar recreación con key actualizada
+                with st.spinner("Conectando con Claude..."):
+                    resp = motor_ia.consultar("Respondé solo: 'Roker Nexus con Claude ✅'", modo="claude")
+                if "Error" in resp or "⚠️" in resp:
+                    st.error(resp)
+                else:
+                    st.success(resp)
+        with col_t2:
+            if st.button("🧪 Probar Gemini", use_container_width=True):
+                motor_ia._gemini_model = None  # forzar recreación
+                with st.spinner("Conectando con Gemini..."):
+                    resp = motor_ia.consultar("Respondé solo: 'Roker Nexus con Gemini ✅'", modo="gemini")
+                if "Error" in resp or "⚠️" in resp:
+                    st.error(resp)
+                else:
+                    st.success(resp)
 
 
 def _actualizar_config(clave: str, valor):
