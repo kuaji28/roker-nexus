@@ -1,8 +1,18 @@
 """ROKER NEXUS — Control de versiones"""
-APP_VERSION = "v2.0.2"
+APP_VERSION = "v2.0.3"
 APP_BUILD   = "2026-03-15"
 
 CHANGELOG = [
+    {
+        "version": "v2.0.3",
+        "fecha": "2026-03-15",
+        "cambios": [
+            "📊 Dashboard: Críticos y Urgentes ahora como tabla con multiselect bulk actions",
+            "✈️ Cotizaciones: tab 'SKUs en Tránsito' con detalle por código + exportar CSV",
+            "🧮 ML Calculadora: selector de producto desde DB (Lista 1 se autocompleta)",
+            "🧮 ML Calculadora: comparación vs Lista 4 actual + detector comisión auto-completa",
+        ]
+    },
     {
         "version": "v2.0.2",
         "fecha": "2026-03-15",

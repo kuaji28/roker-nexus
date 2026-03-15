@@ -914,7 +914,7 @@ def _guardar_en_reporte(codigo: str, tienda: str, resultado: dict, precio_propio
 
 
 def _tab_calculadora():
-    """Calculadora de precios ML paso a paso con detector de comisión implícita."""
+    """Calculadora de precios ML paso a paso — selector de producto desde la DB."""
     st.markdown("### 🧮 Calculadora de Precios ML")
 
     if not _MOTOR_OK:
@@ -930,18 +930,95 @@ def _tab_calculadora():
     st.markdown(f"""
     <div style="background:rgba(10,132,255,.08);border:1px solid rgba(10,132,255,.2);
                 border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:13px">
-        💡 Tienda <strong>FR</strong>: comisión {com_fr}% + margen extra {m_fr}% &nbsp;|&nbsp;
-        Tienda <strong>Mecánico</strong>: comisión {com_mec}% + margen extra {m_mec}% &nbsp;|&nbsp;
+        💡 <strong>FR</strong>: comisión {com_fr}% + margen {m_fr}% &nbsp;|&nbsp;
+        <strong>Mecánico</strong>: comisión {com_mec}% + margen {m_mec}% &nbsp;|&nbsp;
         Tasa: ${tasa:,.0f} ARS/USD
     </div>
     """, unsafe_allow_html=True)
 
+    # ── Selector de producto desde la DB ─────────────────────
+    st.markdown("#### 1️⃣ Seleccioná el producto")
+
+    df_prods = query_to_df("""
+        SELECT o.codigo,
+               COALESCE(a.descripcion, o.descripcion) AS descripcion,
+               COALESCE(p.lista_1, 0)  AS lista_1,
+               COALESCE(p.lista_4, 0)  AS lista_4,
+               o.stock_actual,
+               o.demanda_promedio,
+               o.costo_reposicion
+        FROM optimizacion o
+        LEFT JOIN articulos a ON o.codigo = a.codigo
+        LEFT JOIN precios p ON o.codigo = p.codigo
+        WHERE COALESCE(a.en_lista_negra, 0) = 0
+        ORDER BY o.codigo
+    """)
+
+    # Estado inicial del selector
+    if "calc_prod_idx" not in st.session_state:
+        st.session_state["calc_prod_idx"] = 0
+
+    lista1_usd_default = 0.0
+    prod_stock   = 0
+    prod_dem     = 0.0
+    prod_costo   = 0.0
+    prod_lista4  = 0.0
+    prod_desc    = ""
+
+    if not df_prods.empty:
+        opciones = ["— Ingreso manual —"] + [
+            f"{r['codigo']}  ·  {str(r['descripcion'])[:55]}  ·  USD {r['lista_1']:.2f}"
+            for _, r in df_prods.iterrows()
+        ]
+        sel_prod = st.selectbox(
+            "Producto (código · descripción · Lista 1)",
+            opciones,
+            key="calc_prod_sel",
+            help="Buscá por código o descripción. Si no aparece, usá ingreso manual."
+        )
+
+        if sel_prod and sel_prod != "— Ingreso manual —":
+            cod_sel = sel_prod.split("·")[0].strip()
+            row_sel = df_prods[df_prods["codigo"] == cod_sel]
+            if not row_sel.empty:
+                r = row_sel.iloc[0]
+                lista1_usd_default = float(r["lista_1"])
+                prod_stock  = int(r["stock_actual"] or 0)
+                prod_dem    = float(r["demanda_promedio"] or 0)
+                prod_costo  = float(r["costo_reposicion"] or lista1_usd_default)
+                prod_lista4 = float(r["lista_4"] or 0)
+                prod_desc   = str(r["descripcion"])[:60]
+
+                # Info del producto seleccionado
+                dias_cob = round(prod_stock / (prod_dem / 30)) if prod_dem > 0 else 0
+                st.markdown(f"""
+                <div style="background:rgba(50,215,75,.07);border:1px solid rgba(50,215,75,.2);
+                            border-radius:10px;padding:10px 16px;margin-bottom:12px;font-size:13px">
+                    <strong>{prod_desc}</strong><br>
+                    <span style="color:var(--nx-text2)">
+                        Stock: <strong>{prod_stock}</strong> u. &nbsp;|&nbsp;
+                        Dem/mes: <strong>{prod_dem:.1f}</strong> &nbsp;|&nbsp;
+                        Cobertura: <strong>{dias_cob} días</strong> &nbsp;|&nbsp;
+                        Costo rep.: <strong>USD {prod_costo:.2f}</strong>
+                    </span>
+                </div>
+                """, unsafe_allow_html=True)
+    else:
+        st.info("Sin productos en la DB. Cargá Optimización y Lista de Precios primero.")
+
+    st.markdown("#### 2️⃣ Configurá los parámetros")
     col1, col2 = st.columns([1, 1.2])
 
     with col1:
-        st.markdown("**Ingresá el precio de Lista 1**")
-        lista1_usd = st.number_input("Lista 1 (USD)", min_value=0.0, value=0.0,
-                                      step=1.0, format="%.2f", key="calc_l1_usd")
+        lista1_usd = st.number_input(
+            "Lista 1 (USD)",
+            min_value=0.0,
+            value=lista1_usd_default,
+            step=1.0,
+            format="%.2f",
+            key="calc_l1_usd",
+            help="Se completa automáticamente al seleccionar un producto"
+        )
         lista1_ars = lista1_usd * tasa if lista1_usd > 0 else 0
 
         tipo_tienda = st.radio("Tienda", ["FR (aitech)", "Mecánico"],
@@ -970,6 +1047,17 @@ def _tab_calculadora():
                 ("✅ Ganancia neta",            f"ARS ${cal['ganancia_neta_ars']:,.0f}", ""),
                 ("📊 Margen real sobre L1",    f"{cal['margen_real_pct']}%", ""),
             ]
+            # Comparación con Lista 4 si está disponible
+            if prod_lista4 > 0:
+                dif = cal["precio_ml_redondeado"] - prod_lista4
+                dif_pct = round(dif / prod_lista4 * 100, 1) if prod_lista4 else 0
+                color_dif = "#32d74b" if dif >= 0 else "#ff375f"
+                filas.append((
+                    "📌 vs. Lista 4 actual",
+                    f"<span style='color:{color_dif}'>{'+' if dif>=0 else ''}{dif_pct}%</span>",
+                    f"L4 actual: ARS ${prod_lista4:,.0f}"
+                ))
+
             for lbl, val, nota in filas:
                 st.markdown(f"""
                 <div style="display:flex;justify-content:space-between;padding:6px 0;
@@ -980,7 +1068,7 @@ def _tab_calculadora():
                 </div>
                 """, unsafe_allow_html=True)
         else:
-            st.info("Ingresá el precio de Lista 1 en USD para ver el desglose.")
+            st.info("Seleccioná un producto o ingresá el precio de Lista 1 en USD para ver el desglose.")
 
     st.markdown("---")
     st.markdown("#### 🔍 ¿Qué comisión está usando la empresa?")
@@ -989,7 +1077,8 @@ def _tab_calculadora():
     with ci1:
         precio_pub = st.number_input("Precio publicado en ML (ARS)", 0.0, step=100.0, key="calc_pub")
     with ci2:
-        l1_check = st.number_input("Lista 1 (ARS)", 0.0, step=100.0, key="calc_l1_check")
+        l1_default_ars = round(lista1_usd_default * tasa) if lista1_usd_default > 0 else 0.0
+        l1_check = st.number_input("Lista 1 (ARS)", 0.0, step=100.0, value=float(l1_default_ars), key="calc_l1_check")
     if precio_pub > 0 and l1_check > 0:
         com_imp = calcular_comision_implicita(precio_pub, l1_check)
         color = "#ff375f" if com_imp > 20 else "#ff9f0a" if com_imp > 15 else "#32d74b"
