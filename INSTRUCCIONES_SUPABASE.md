@@ -105,3 +105,43 @@ Si DATABASE_URL NO está configurado → cae a SQLite local (modo desarrollo).
 
 ---
 *Actualizado: 2026-03-15*
+
+---
+
+## TABLAS NUEVAS — Ejecutar en Supabase SQL Editor
+
+Copiá y pegá esto en el SQL Editor de Supabase para crear las tablas nuevas:
+
+```sql
+-- Tabla de ingresos de mercadería (packing China vs Flexxus)
+CREATE TABLE IF NOT EXISTS ingresos_mercaderia (
+    id SERIAL PRIMARY KEY,
+    lote_id INTEGER,
+    invoice_id TEXT,
+    codigo TEXT NOT NULL,
+    descripcion TEXT,
+    cantidad_pedida INTEGER DEFAULT 0,
+    cantidad_ingresada INTEGER DEFAULT 0,
+    diferencia INTEGER DEFAULT 0,
+    fecha_ingreso TEXT,
+    fecha_flexxus TEXT,
+    confirmado INTEGER DEFAULT 0,
+    notas TEXT,
+    creado_en TIMESTAMPTZ DEFAULT now()
+);
+
+-- Tabla de alertas de stock (subidas y caídas detectadas al importar)
+CREATE TABLE IF NOT EXISTS stock_alertas (
+    id SERIAL PRIMARY KEY,
+    codigo TEXT NOT NULL,
+    descripcion TEXT,
+    deposito TEXT,
+    stock_anterior REAL DEFAULT 0,
+    stock_nuevo REAL DEFAULT 0,
+    diferencia REAL DEFAULT 0,
+    tipo_alerta TEXT NOT NULL,
+    severidad TEXT DEFAULT 'info',
+    visto INTEGER DEFAULT 0,
+    fecha TIMESTAMPTZ DEFAULT now()
+);
+```
