@@ -234,6 +234,10 @@ def render():
     except Exception as e:
         st.info("Sin datos de importaciones.")
 
+    # ── Backup & Restore ──
+    st.markdown("---")
+    _seccion_backup_restore()
+
 
 def _estado_card(nombre: str, ok: bool, detalle: str, variable: str):
     color  = "#32D74B" if ok else "#FF375F"
