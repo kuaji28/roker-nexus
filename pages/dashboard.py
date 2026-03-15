@@ -66,7 +66,7 @@ def _get_kpis(filtro_prov: str = "Ambos") -> dict:
         df["tipo"] = df["codigo"].apply(_tipo)
 
         # Aplicar filtro proveedor
-        if filtro_prov == "FR":
+        if filtro_prov == "AI-TECH":
             df = df[df["tipo"] == "fr"]
         elif filtro_prov == "Mecánico":
             df = df[df["tipo"] == "mecanico"]
@@ -173,7 +173,7 @@ def render():
     with c_h:
         st.markdown("""
         <h1 style="margin:0 0 2px;font-size:24px;font-weight:700">📊 Dashboard</h1>
-        <p style="color:var(--nx-text2);font-size:12px;margin:0">Vista ejecutiva de módulos — FR + Mecánico</p>
+        <p style="color:var(--nx-text2);font-size:12px;margin:0">Vista ejecutiva de módulos — AI-TECH + Mecánico</p>
         """, unsafe_allow_html=True)
     with c_f1:
         filtro_prov = st.selectbox("Proveedor", ["Ambos","AI-TECH","Mecánico"], index=2, key="dash_prov",
@@ -228,7 +228,7 @@ def render():
 
     # ── 6 KPIs operativos ────────────────────────────────────
     k1,k2,k3,k4,k5,k6 = st.columns(6)
-    with k1: _kpi("Total", kpis["total_mods"], "FR + Mecánico", "azul")
+    with k1: _kpi("Total", kpis["total_mods"], "AI-TECH + Mecánico", "azul")
     with k2: _kpi("Sin Stock", kpis["fr_sin"]+kpis["mec_sin"], "Acción inmediata", "rojo")
     with k3: _kpi("Bajo Mínimo", kpis["fr_bajo"]+kpis["mec_bajo"], "Próxima compra", "amarillo")
     with k4: _kpi("✈️ En Tránsito", kpis["en_transito_items"], "SKUs con pedido", "teal")
@@ -248,8 +248,8 @@ def render():
 
     st.markdown("---")
 
-    # ── FR vs Mecánico ─────────────────────────────────────
-    st.markdown("### 📊 FR vs Mecánico")
+    # ── AI-TECH vs Mecánico ─────────────────────────────────
+    st.markdown("### 📊 AI-TECH vs Mecánico")
     col_fr, col_mec = st.columns(2)
     with col_fr:
         ok_fr = kpis["fr_total"] - kpis["fr_sin"] - kpis["fr_bajo"]
