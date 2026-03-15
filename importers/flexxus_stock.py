@@ -127,7 +127,16 @@ class ImportadorStock(ImportadorBase):
                 "stock","stock_minimo","stock_maximo","stock_optimo",
                 "fecha","fecha_snapshot"]
         df_save = df[[c for c in cols if c in df.columns]]
-        return df_to_db(df_save, "stock_snapshots")
+        n = df_to_db(df_save, "stock_snapshots")
+
+        # ── Alertas de stock ──────────────────────────────────────────────────
+        try:
+            from modules.stock_alertas import analizar_y_alertar
+            self._resultado_alertas = analizar_y_alertar(df, deposito)
+        except Exception:
+            self._resultado_alertas = {}
+
+        return n
     def _metadata(self, df: pd.DataFrame) -> dict:
         dep = getattr(self, "_deposito_detectado", "?")
         return {
