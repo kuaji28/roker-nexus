@@ -397,7 +397,157 @@ def _panel_ingreso_parcial(cot_id: int):
 
 
 # ─────────────────────────────────────────────────────────────
-# TAB 3 — HISTORIAL
+# TAB 3 — SKUs EN TRÁNSITO (tabla detallada por código)
+# ─────────────────────────────────────────────────────────────
+def _tab_skus_transito():
+    """Tabla detallada: cada SKU en tránsito con stock real, precio, demanda e inversión."""
+    st.markdown("### 📊 SKUs en Tránsito — detalle por código")
+    st.markdown(
+        "<span style='font-size:13px;color:var(--nx-text2)'>"
+        "Ítems de cotizaciones con estado <strong>en_transito</strong> y cantidad pendiente > 0. "
+        "Cruzado con stock actual, precios y demanda del ERP.</span>",
+        unsafe_allow_html=True
+    )
+
+    # SKUs en tránsito con cantidad pendiente de recibir
+    df_tr = query_to_df("""
+        SELECT
+            ci.codigo_flexxus                                          AS codigo,
+            ci.descripcion_flexxus                                     AS descripcion_flexxus,
+            ci.modelo_universal                                        AS modelo_proveedor,
+            SUM(ci.cantidad_pedida - COALESCE(ci.cantidad_recibida,0)) AS en_transito,
+            AVG(ci.precio_usd)                                         AS precio_usd,
+            c.invoice_id,
+            c.fecha_transito
+        FROM cotizacion_items ci
+        JOIN cotizaciones c ON ci.cotizacion_id = c.id
+        WHERE c.estado = 'en_transito'
+          AND ci.codigo_flexxus IS NOT NULL
+          AND ci.codigo_flexxus != ''
+        GROUP BY ci.codigo_flexxus, ci.descripcion_flexxus, ci.modelo_universal,
+                 c.invoice_id, c.fecha_transito
+        HAVING en_transito > 0
+        ORDER BY en_transito DESC
+    """)
+
+    if df_tr.empty:
+        st.info("No hay SKUs en tránsito actualmente. Cuando cargues un Order List y lo marques como **En Tránsito**, aparecerá acá.")
+        return
+
+    # Cruzar con stock actual (tabla optimizacion)
+    df_opt = query_to_df("""
+        SELECT codigo, COALESCE(descripcion,'') as descripcion,
+               stock_actual, stock_optimo, demanda_promedio, costo_reposicion
+        FROM optimizacion
+    """)
+
+    # Cruzar con precios Lista 1
+    df_prec = query_to_df("SELECT codigo, lista_1 FROM precios")
+
+    if not df_opt.empty:
+        df_tr = df_tr.merge(df_opt, on="codigo", how="left")
+    else:
+        df_tr["descripcion"]     = df_tr["descripcion_flexxus"].fillna(df_tr["modelo_proveedor"])
+        df_tr["stock_actual"]    = 0
+        df_tr["stock_optimo"]    = 0
+        df_tr["demanda_promedio"]= 0
+        df_tr["costo_reposicion"]= df_tr["precio_usd"]
+
+    if not df_prec.empty:
+        df_tr = df_tr.merge(df_prec, on="codigo", how="left")
+    else:
+        df_tr["lista_1"] = 0
+
+    # Completar nulos
+    df_tr["stock_actual"]     = df_tr["stock_actual"].fillna(0)
+    df_tr["demanda_promedio"] = df_tr["demanda_promedio"].fillna(0)
+    df_tr["costo_reposicion"] = df_tr["costo_reposicion"].fillna(df_tr["precio_usd"].fillna(0))
+    df_tr["lista_1"]          = df_tr["lista_1"].fillna(0)
+    df_tr["en_transito"]      = df_tr["en_transito"].fillna(0)
+
+    # Stock real = actual + tránsito
+    df_tr["stock_real"] = df_tr["stock_actual"] + df_tr["en_transito"]
+
+    # Días de cobertura con tránsito incluido
+    df_tr["dias_cob"] = df_tr.apply(
+        lambda r: round(r["stock_real"] / (r["demanda_promedio"] / 30))
+        if r["demanda_promedio"] > 0 else 0, axis=1
+    )
+
+    # Inversión estimada (precio costo × en_transito)
+    df_tr["inversion_usd"] = (df_tr["en_transito"] * df_tr["costo_reposicion"]).round(0)
+
+    # Descripción limpia (preferir flexxus, si no modelo proveedor)
+    df_tr["desc"] = df_tr.apply(
+        lambda r: str(r.get("descripcion") or r.get("descripcion_flexxus") or r.get("modelo_proveedor") or "")[:50],
+        axis=1
+    )
+
+    # Resumen arriba
+    total_skus = len(df_tr["codigo"].unique())
+    total_inv  = df_tr.groupby("codigo")["inversion_usd"].first().sum()
+    total_uds  = df_tr.groupby("codigo")["en_transito"].sum().sum()
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("SKUs en tránsito", total_skus)
+    c2.metric("Unidades totales", int(total_uds))
+    c3.metric("Inversión estimada", fmt_usd(total_inv))
+
+    st.markdown("---")
+
+    # Agrupar por codigo (puede haber múltiples invoices)
+    df_show = df_tr.groupby("codigo").agg(
+        Descripción=("desc", "first"),
+        Stock=("stock_actual", "first"),
+        Tránsito=("en_transito", "sum"),
+        StockReal=("stock_real", "first"),
+        DíasCob=("dias_cob", "first"),
+        DemMes=("demanda_promedio", "first"),
+        PrecioUSD=("precio_usd", "mean"),
+        InvUSD=("inversion_usd", "sum"),
+        Lista1=("lista_1", "first"),
+        Invoice=("invoice_id", lambda x: ", ".join(x.dropna().astype(str).unique())),
+    ).reset_index()
+
+    df_show["Stock"]    = df_show["Stock"].astype(int)
+    df_show["Tránsito"] = df_show["Tránsito"].astype(int)
+    df_show["StockReal"]= df_show["StockReal"].astype(int)
+    df_show["DíasCob"]  = df_show["DíasCob"].astype(int)
+    df_show["DemMes"]   = df_show["DemMes"].round(1)
+    df_show["PrecioUSD"]= df_show["PrecioUSD"].round(2)
+    df_show["InvUSD"]   = df_show["InvUSD"].round(0)
+
+    st.dataframe(
+        df_show[["codigo","Descripción","Stock","Tránsito","StockReal","DíasCob","DemMes","PrecioUSD","InvUSD","Invoice"]],
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "codigo":      st.column_config.TextColumn("Código",      width="small"),
+            "Descripción": st.column_config.TextColumn("Descripción"),
+            "Stock":       st.column_config.NumberColumn("Stock",     format="%d"),
+            "Tránsito":    st.column_config.NumberColumn("✈️ Tráns.", format="%d"),
+            "StockReal":   st.column_config.NumberColumn("Stock Real",format="%d"),
+            "DíasCob":     st.column_config.NumberColumn("Días cob.", format="%d"),
+            "DemMes":      st.column_config.NumberColumn("Dem/mes",   format="%.1f"),
+            "PrecioUSD":   st.column_config.NumberColumn("USD costo", format="$%.2f"),
+            "InvUSD":      st.column_config.NumberColumn("Inv. USD",  format="$%.0f"),
+            "Invoice":     st.column_config.TextColumn("Invoice(s)",  width="small"),
+        }
+    )
+
+    # Exportar CSV
+    csv = df_show.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        "⬇️ Exportar CSV",
+        data=csv,
+        file_name=f"skus_transito_{pd.Timestamp.now().strftime('%Y%m%d')}.csv",
+        mime="text/csv",
+        key="dl_skus_transito"
+    )
+
+
+# ─────────────────────────────────────────────────────────────
+# TAB 4 — HISTORIAL
 # ─────────────────────────────────────────────────────────────
 def _tab_historial():
     df = query_to_df("""
