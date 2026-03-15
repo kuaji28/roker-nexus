@@ -64,34 +64,61 @@ EXPORTS_DIR.mkdir(exist_ok=True)
 # ─────────────────────────────────────────────
 #  BUSCAR ARCHIVOS RECIENTES EN DESCARGAS
 # ─────────────────────────────────────────────
-def buscar_descargas_recientes(minutos=120):
-    """Busca xlsx descargados en los últimos N minutos."""
+def buscar_descargas_recientes(minutos=180):
+    """Busca xlsx de Flexxus descargados en los últimos N minutos.
+
+    Flexxus genera SIEMPRE estos patrones de nombre:
+      • Planilla de Stock_DD-MM-YYYY HH-MM-SS.xlsx       (stock por depósito)
+      • Listado Histórico de Artículos_...xlsx            (histórico)
+      • Venta x Artículo x Mes_...xlsx                    (ventas mensuales)
+      • Listado de Stock por Casilleros_...xlsx            (casilleros)
+    Si no hay coincidencia exacta, muestra TODOS los xlsx recientes.
+    """
+    PATRONES_FLEXXUS = [
+        "Planilla de Stock",
+        "Listado Hist",          # Histórico de Artículos
+        "Venta x Art",           # Venta x Artículo x Mes
+        "Listado de Stock",      # por Casilleros
+        "Listado Stock",
+        "Listado General",
+    ]
+
     posibles_dirs = [
         Path.home() / "Downloads",
         Path.home() / "Descargas",
-        Path("C:/Users") / os.getlogin() / "Downloads",
     ]
+    try:
+        posibles_dirs.append(Path("C:/Users") / os.getlogin() / "Downloads")
+    except Exception:
+        pass
 
-    archivos = []
-    ahora = datetime.now()
+    archivos_flexxus = []
+    archivos_otros   = []
+    ahora  = datetime.now()
     limite = ahora - timedelta(minutes=minutos)
 
     for carpeta in posibles_dirs:
-        if carpeta.exists():
-            for f in carpeta.glob("*.xlsx"):
-                mtime = datetime.fromtimestamp(f.stat().st_mtime)
-                if mtime > limite:
-                    archivos.append((f, mtime))
+        if not carpeta.exists():
+            continue
+        for f in carpeta.glob("*.xlsx"):
+            mtime = datetime.fromtimestamp(f.stat().st_mtime)
+            if mtime < limite:
+                continue
+            es_flexxus = any(p.lower() in f.name.lower() for p in PATRONES_FLEXXUS)
+            if es_flexxus:
+                archivos_flexxus.append((f, mtime))
+            else:
+                archivos_otros.append((f, mtime))
 
-    # También buscar en el directorio actual
+    # También directorio actual
     for f in Path(".").glob("*.xlsx"):
         mtime = datetime.fromtimestamp(f.stat().st_mtime)
         if mtime > limite:
-            archivos.append((f, mtime))
+            archivos_flexxus.append((f, mtime))
 
-    # Ordenar por más reciente primero
-    archivos.sort(key=lambda x: x[1], reverse=True)
-    return archivos
+    resultado = archivos_flexxus if archivos_flexxus else archivos_otros
+    resultado.sort(key=lambda x: x[1], reverse=True)
+    return resultado, bool(archivos_flexxus)
 
 # ─────────────────────────────────────────────
 #  INYECTAR ETIQUETA DENTRO DEL XLSX
@@ -142,12 +169,13 @@ def main():
     print("=" * 60)
 
     # 1. Buscar archivos recientes
-    print("\n🔍 Buscando xlsx recientes en Descargas...")
-    archivos = buscar_descargas_recientes(minutos=180)
+    print("\n🔍 Buscando exports de Flexxus en Descargas...")
+    print(f"   (patrón: 'Planilla de Stock', 'Listado Histórico', etc.)")
+    archivos, son_flexxus = buscar_descargas_recientes(minutos=180)
 
     if not archivos:
-        print("\n⚠️  No encontré xlsx recientes.")
-        print("   Opción A: Arrastrá el archivo sobre esta ventana")
+        print("\n⚠️  No encontré xlsx recientes en Descargas.")
+        print("   Opción A: Arrastrá el archivo sobre esta ventana y presioná Enter")
         print("   Opción B: Escribí la ruta completa del archivo")
         ruta = input("\n📂 Ruta del archivo: ").strip().strip('"')
         if not ruta or not Path(ruta).exists():
@@ -155,6 +183,11 @@ def main():
             input("\nPresioná Enter para cerrar...")
             return
         archivos = [(Path(ruta), datetime.fromtimestamp(Path(ruta).stat().st_mtime))]
+        son_flexxus = False
+
+    if not son_flexxus:
+        print("\n   ⚠️  No encontré archivos con nombre típico de Flexxus.")
+        print("   Mostrando todos los xlsx recientes:\n")
 
     # 2. Mostrar lista
     print(f"\n📄 Encontré {len(archivos)} archivo(s) reciente(s):\n")
