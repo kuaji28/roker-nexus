@@ -230,7 +230,9 @@ def _render_sidebar():
         cfg = get_all_config()
         def v(k, t=float, d=0):
             try: return t(cfg.get(k, {}).get("valor", d) or d)
-            except: return d
+            except:
+                try: return t(d)
+                except: return d
 
         with st.expander("🚚 Logística", expanded=False):
             lt = st.number_input("Lead Time (días)", 1, 365, int(v("lead_time_dias",float,30)), key="sb_lt")
@@ -250,7 +252,7 @@ def _render_sidebar():
                 st.success("✓")
 
         with st.expander("💱 Tasas de cambio", expanded=True):
-            ars = st.number_input("USD → ARS", 100.0, 99999.0, v("tasa_usd_ars",float,1420), step=10.0, format="%.0f", key="sb_ars")
+            ars = st.number_input("USD → ARS", 100.0, 99999.0, v("tasa_usd_ars",float,1420.0), step=10.0, format="%.0f", key="sb_ars")
             rmb = st.number_input("RMB → USD", .01, 99.0, v("tasa_rmb_usd",float,7.3), step=.01, format="%.4f", key="sb_rmb")
             if st.button("💾 Guardar", key="sb_fx_s"):
                 set_config("tasa_usd_ars", ars)
