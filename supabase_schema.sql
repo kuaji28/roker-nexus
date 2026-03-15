@@ -248,6 +248,19 @@ ALTER TABLE articulos ADD COLUMN IF NOT EXISTS mla_id_mec TEXT;
 ALTER TABLE articulos ADD COLUMN IF NOT EXISTS ml_termino_busqueda TEXT;
 ALTER TABLE articulos ADD COLUMN IF NOT EXISTS ml_termino_anclado INTEGER DEFAULT 0;
 
+-- Archivo de Mariano (referencia de auditoría — no afecta cálculos del sistema)
+CREATE TABLE IF NOT EXISTS mariano_repuestos (
+    id SERIAL PRIMARY KEY,
+    codigo TEXT NOT NULL,
+    descripcion TEXT,
+    demanda_total REAL DEFAULT 0,
+    demanda_prom REAL DEFAULT 0,
+    stock_actual REAL DEFAULT 0,
+    a_pedir REAL DEFAULT 0,
+    stock_optimo REAL DEFAULT 0,
+    importado_en TIMESTAMPTZ DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS ml_reporte_comparaciones (
     id SERIAL PRIMARY KEY,
     codigo TEXT,

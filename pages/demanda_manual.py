@@ -35,7 +35,7 @@ def render():
             SELECT o.codigo, COALESCE(a.descripcion, o.descripcion) as articulo,
                    o.demanda_promedio as dem_erp, o.stock_actual,
                    COALESCE(dm.demanda_manual, 0) as dem_manual,
-                   CASE WHEN o.codigo GLOB '[0-9]*' THEN 'Mecánico' ELSE 'FR' END as proveedor
+                   CASE WHEN SUBSTR(o.codigo,1,1) BETWEEN '0' AND '9' THEN 'Mecánico' ELSE 'FR' END as proveedor
             FROM optimizacion o
             LEFT JOIN articulos a ON o.codigo=a.codigo
             LEFT JOIN demanda_manual dm ON o.codigo=dm.codigo
