@@ -53,8 +53,30 @@ st.markdown("""
 *,*::before,*::after{font-family:'Inter',-apple-system,sans-serif!important;-webkit-font-smoothing:antialiased!important}
 html,body,.stApp{background:var(--bg)!important}
 .main .block-container{padding:0 0 28px 0!important;max-width:100%!important}
-#MainMenu,footer,header,[data-testid="stToolbar"],.stDeployButton,
-[data-testid="stSidebar"],[data-testid="collapsedControl"]{display:none!important}
+#MainMenu,footer,header,[data-testid="stToolbar"],.stDeployButton{display:none!important}
+
+/* Sidebar visible y colapsable */
+[data-testid="stSidebar"]{
+    min-width:260px!important;max-width:300px!important;
+    background:#1c1c1e!important;
+    border-right:.5px solid rgba(255,255,255,.08)!important;
+}
+[data-testid="collapsedControl"]{
+    display:flex!important;
+    background:#1c1c1e!important;
+    border-right:.5px solid rgba(255,255,255,.08)!important;
+}
+[data-testid="stSidebar"] .stExpander{
+    border:1px solid rgba(255,255,255,.07)!important;
+    border-radius:10px!important;margin-bottom:6px!important;
+}
+[data-testid="stSidebar"] .stNumberInput input{
+    background:#2c2c2e!important;
+    border:1px solid rgba(255,255,255,.12)!important;
+    border-radius:8px!important;
+}
+[data-testid="stSidebar"] label{color:#8e8e93!important;font-size:11px!important}
+[data-testid="stSidebar"] h1,[data-testid="stSidebar"] h2,[data-testid="stSidebar"] h3{font-size:13px!important}
 
 /* ── TOPBAR ── */
 .nx-topbar{
@@ -289,6 +311,9 @@ try:
     init_db()
 except Exception as _init_err:
     pass  # Tablas ya existen o Supabase activo
+
+# Sidebar de configuración — siempre visible
+_render_sidebar()
 
 import pages.importar     as pg_importar
 import pages.compras      as pg_compras
