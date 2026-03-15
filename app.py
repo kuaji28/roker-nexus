@@ -260,10 +260,10 @@ def _render_sidebar():
                 st.success("✓")
 
         with st.expander("🛒 Comisiones ML", expanded=False):
-            cf  = st.number_input("FR (%)",              0.0, 50.0, v("comision_ml_fr",float,14.0),        .5, "%.1f", key="sb_cf")
-            cm_ = st.number_input("Mecánico (%)",        0.0, 50.0, v("comision_ml_mecanico",float,13.0),  .5, "%.1f", key="sb_cm")
-            mf  = st.number_input("Margen extra FR (%)", 0.0, 50.0, v("margen_extra_ml_fr",float,0.0),   1.0, "%.1f", key="sb_mf")
-            mm  = st.number_input("Margen extra MEC (%)",0.0, 50.0, v("margen_extra_ml_mec",float,0.0),  1.0, "%.1f", key="sb_mm")
+            cf  = st.number_input("AI-TECH (%)",              0.0, 50.0, v("comision_ml_fr",float,14.0),        .5, "%.1f", key="sb_cf")
+            cm_ = st.number_input("Mecánico (%)",             0.0, 50.0, v("comision_ml_mecanico",float,13.0),  .5, "%.1f", key="sb_cm")
+            mf  = st.number_input("Margen extra AI-TECH (%)", 0.0, 50.0, v("margen_extra_ml_fr",float,0.0),   1.0, "%.1f", key="sb_mf")
+            mm  = st.number_input("Margen extra MEC (%)",     0.0, 50.0, v("margen_extra_ml_mec",float,0.0),  1.0, "%.1f", key="sb_mm")
             if st.button("💾 Guardar", key="sb_ml_s"):
                 for k,val in [("comision_ml_fr",cf),("comision_ml_mecanico",cm_),
                                ("margen_extra_ml_fr",mf),("margen_extra_ml_mec",mm)]:
