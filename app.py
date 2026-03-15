@@ -428,11 +428,23 @@ if _HAS_ALERTAS:
 else:
     _n_alertas = 0
 
+# Badge de errores de calidad pendientes
+_calidad_badge = ""
+if _HAS_CALIDAD:
+    try:
+        from database import execute_query as _eq
+        _rows = _eq("SELECT COUNT(*) as c FROM anomalias WHERE estado='abierta'", fetch=True)
+        _n_calidad = _rows[0]["c"] if _rows else 0
+        if _n_calidad > 0:
+            _calidad_badge = f" ({_n_calidad})"
+    except Exception:
+        _n_calidad = 0
+
 paginas = [
     ("📊", "Dashboard",          "Dashboard"),
     (f"🔔", f"Alertas{_alerta_badge}", "Alertas"),
     ("🔍", "Auditoría",          "Auditoria"),
-    ("🧹", "Calidad de Datos",   "Calidad"),
+    ("🧹", f"Calidad{_calidad_badge}", "Calidad"),
     ("📦", "Inventario",         "Inventario"),
     ("✏️", "Demanda Manual",     "Demanda Manual"),
     ("📝", "Borrador",           "Borrador"),
