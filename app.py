@@ -339,6 +339,35 @@ try:
 except Exception as _init_err:
     pass  # Tablas ya existen o Supabase activo
 
+# ── Banner crítico: advertencia de base de datos ──────────────
+from database import USE_POSTGRES
+if not USE_POSTGRES:
+    st.markdown("""
+    <div style="
+        background:linear-gradient(135deg,#7c2020,#4a1010);
+        border:1.5px solid #ff375f;border-radius:14px;
+        padding:14px 20px;margin:8px 0 12px 0;
+        display:flex;align-items:flex-start;gap:14px;
+    ">
+      <div style="font-size:22px;line-height:1.2">🔴</div>
+      <div>
+        <div style="font-weight:700;font-size:14px;color:#ff8fa3;margin-bottom:4px">
+          DATOS EN MODO LOCAL — SE PIERDEN AL REINICIAR
+        </div>
+        <div style="font-size:12px;color:#ffb3bf;line-height:1.5">
+          El sistema está usando SQLite (archivo temporal). Cuando la app se reinicia o actualiza,
+          <b>todos los datos importados desaparecen</b>. Para que los datos persistan:
+          <ol style="margin:6px 0 0 16px;padding:0">
+            <li>Andá a <b>🔌 Sistema → Backup / Restore</b></li>
+            <li>Descargá el backup de los datos actuales</li>
+            <li>Configurá <b>DATABASE_URL</b> en Streamlit Cloud → Settings → Secrets</li>
+            <li>Una vez conectado a Supabase, restaurá desde el backup</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
 # Sidebar de configuración — siempre visible
 try:
     _render_sidebar()
