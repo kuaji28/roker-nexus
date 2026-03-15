@@ -560,6 +560,20 @@ def _migrar_db():
             stock_optimo REAL DEFAULT 0,
             importado_en TEXT DEFAULT (datetime('now'))
         )""",
+        # Alertas de stock (subidas y caídas detectadas al importar)
+        """CREATE TABLE IF NOT EXISTS stock_alertas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo TEXT NOT NULL,
+            descripcion TEXT,
+            deposito TEXT,
+            stock_anterior REAL DEFAULT 0,
+            stock_nuevo REAL DEFAULT 0,
+            diferencia REAL DEFAULT 0,
+            tipo_alerta TEXT NOT NULL,
+            severidad TEXT DEFAULT 'info',
+            visto INTEGER DEFAULT 0,
+            fecha TEXT DEFAULT (datetime('now'))
+        )""",
         # ML reporte (tabla completa si no existe)
         """CREATE TABLE IF NOT EXISTS ml_reporte_comparaciones (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
