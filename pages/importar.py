@@ -232,11 +232,18 @@ def _procesar_archivo(f, forzar_tipo: str = None):
 
             if resultado.exitoso:
                 st.success(f"✅ {fmt_num(resultado.filas_ok)} filas")
+                # Registrar en file tracker
+                try:
+                    from database import update_archivo_tracker
+                    deposito = resultado.metadata.get("deposito", "") if resultado.metadata else ""
+                    update_archivo_tracker(tipo, deposito, resultado.filas_ok, f.name)
+                except Exception:
+                    pass
                 # Notificación Telegram
                 try:
                     from utils.helpers import notificar_telegram, notificar_picos_demanda
                     import threading
-                    _msg = (f"📥 *Archivo cargado*\n`{archivo.name}`\n"
+                    _msg = (f"📥 *Archivo cargado*\n`{f.name}`\n"
                             f"✅ {resultado.filas_ok} filas importadas")
                     notificar_telegram(_msg)
                     threading.Thread(target=notificar_picos_demanda, daemon=True).start()
