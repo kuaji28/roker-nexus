@@ -118,10 +118,13 @@ class ImportadorCompras(ImportadorBase):
     COLUMNAS_REQUERIDAS = ["Código", "Artículo", "Cantidad"]
 
     def _transformar(self, df: pd.DataFrame, uploaded_file=None) -> pd.DataFrame:
+        self._nombre_archivo = getattr(uploaded_file, "name", "") if uploaded_file else ""
         # Deduplicar columnas por si Flexxus repite nombres
         df = df.loc[:, ~df.columns.duplicated()].copy()
         col_map = self._mapear_columnas(df)
 
+        hoy = datetime.now()
+        fecha_desde = self._extraer_fecha_desde
         df_out = pd.DataFrame()
         df_out["codigo"]      = df[col_map["codigo"]].astype(str).str.strip()
         df_out["descripcion"] = df.get(col_map.get("descripcion"), None)
@@ -130,8 +133,8 @@ class ImportadorCompras(ImportadorBase):
         df_out["cantidad"]    = pd.to_numeric(
             df.get(col_map.get("cantidad"), 0), errors="coerce"
         ).fillna(0)
-        df_out["fecha_desde"] = "2026-01-01"
-        df_out["fecha_hasta"] = datetime.now().date().isoformat()
+        df_out["fecha_desde"] = fecha_desde
+        df_out["fecha_hasta"] = hoy.date().isoformat()
 
         df_out = df_out[df_out["codigo"].str.len() > 1]
         df_out = df_out[df_out["codigo"] != "nan"]
@@ -152,6 +155,25 @@ class ImportadorCompras(ImportadorBase):
             "rubro":       find("RUBRO"),
             "cantidad":    find("CANTIDAD"),
         }
+
+    @property
+    def _extraer_fecha_desde(self):
+        nombre = getattr(self, "_nombre_archivo", "") or ""
+        for pat in [r'(\d{4}-\d{2}-\d{2})', r'(\d{8})']:
+            m = re.search(pat, nombre)
+            if m:
+                raw = m.group(1).replace("-", "")
+                try:
+                    for fmt in ("%Y%m%d", "%d%m%Y"):
+                        try:
+                            d = datetime.strptime(raw, fmt)
+                            return d.replace(day=1).strftime("%Y-%m-%d")
+                        except ValueError:
+                            continue
+                except Exception:
+                    pass
+        hoy = datetime.now()
+        return hoy.replace(day=1).strftime("%Y-%m-%d")
 
     def _guardar(self, df: pd.DataFrame) -> int:
         from database import df_to_db, execute_query
