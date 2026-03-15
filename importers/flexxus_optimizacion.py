@@ -123,19 +123,24 @@ class ImportadorOptimizacion(ImportadorBase):
         from database import df_to_db, execute_query
         from datetime import datetime
 
-        # Guardar historial ANTES de limpiar (para detectar anomalías)
+        # Guardar historial en BULK (un solo insert, no row-by-row)
         fecha_hoy = datetime.now().strftime("%Y-%m-%d")
         try:
-            for _, row in df.iterrows():
-                cod = str(row.get("codigo","")).strip()
-                if not cod: continue
-                tipo = "fr" if (cod and cod[0].isalpha()) else "mecanico"
-                execute_query("""
-                    INSERT OR IGNORE INTO historial_stock (codigo, deposito, stock, demanda, fecha, tipo_proveedor)
-                    VALUES (?,?,?,?,?,?)
-                """, (cod, "GENERAL", float(row.get("stock_actual",0) or 0),
-                      float(row.get("demanda_promedio",0) or 0), fecha_hoy, tipo), fetch=False)
-        except Exception as _e:
+            df_hist = df[["codigo","stock_actual","demanda_promedio"]].copy()
+            df_hist = df_hist[df_hist["codigo"].str.len() > 0]
+            df_hist["deposito"]       = "GENERAL"
+            df_hist["fecha"]          = fecha_hoy
+            df_hist["tipo_proveedor"] = df_hist["codigo"].apply(
+                lambda c: "fr" if str(c)[0:1].isalpha() else "mecanico"
+            )
+            df_hist = df_hist.rename(columns={
+                "stock_actual":     "stock",
+                "demanda_promedio": "demanda",
+            })[["codigo","deposito","stock","demanda","fecha","tipo_proveedor"]]
+            df_hist["stock"]   = df_hist["stock"].fillna(0).astype(float)
+            df_hist["demanda"] = df_hist["demanda"].fillna(0).astype(float)
+            df_to_db(df_hist, "historial_stock")
+        except Exception:
             pass  # Historial no es crítico
 
         # Limpiar tabla completa antes de insertar (es un snapshot del día)
