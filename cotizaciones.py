@@ -1,4 +1,8 @@
 """
+⚠️  ARCHIVO DEPRECADO — NO USAR
+Versión antigua de cotizaciones (sin tab "SKUs en Tránsito").
+Usar: pages/cotizaciones.py  (versión activa v2)
+
 ROKER NEXUS — Módulo Cotizaciones y Tránsito
 Gestión completa de pedidos a China (AI-TECH / Diego).
 
