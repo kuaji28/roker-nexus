@@ -8,16 +8,18 @@
 ## Personas clave
 | Quién | Rol | Notas |
 |-------|-----|-------|
-| **Diego** | Dueño (co-owner) | Roker se maneja más con él. Destinatario principal de presentaciones. |
-| **Walter** | Dueño (co-owner) | Segundo dueño. Recibe las presentaciones con Diego. |
-| **Pablo** | Gerente | Puede estar mostrando números selectivos. Tiene acceso Flexxus amplio. |
-| **Mariano** | Sub-gerente | **Ingresó en diciembre 2025.** Ídem Pablo. Posible zona gris en manejo de datos. Baseline = antes de dic 2024 (sin su gestión). |
-| **Lorena Rodriguez** | Staff | Hace ajustes MD en Flexxus (inventario). |
-| **Ezequiel Firmapaz** | Staff | Hace ajustes MD en Flexxus. |
-| **Matias Toledano** | Staff | Hace ajustes MD en Flexxus. |
+| **Diego Majlis** | Dueño (co-owner) | **Contacto exclusivo de Roker.** Solo él da órdenes. Destinatario principal de todos los reportes y presentaciones. |
+| **Walter Majlis** | Dueño (co-owner) | Hermano/familia de Diego. Mismo apellido. Recibe las presentaciones junto a Diego. |
+| **Pablo Bue** | Gerente | Puede estar mostrando números selectivos. Tiene acceso Flexxus amplio. Roker puede tener que defender reportes ante él si Diego lo pide. |
+| **Mariano** | Sub-gerente | **Ingresó en diciembre 2025.** Ídem Pablo. Posible zona gris en manejo de datos. Baseline = antes de dic 2025 (sin su gestión). **Sin relación con Ezequiel Firmapaz.** |
+| **Ezequiel Firmapaz** | Staff activo | Hace ajustes MD en Flexxus. Sigue en la empresa. |
+| **Matias Toledano** | Staff — rol indefinido | Estimado: encargado depósito SAN JOSE / logística. A confirmar. |
+| **Lorena Rodriguez** | ~~Staff~~ — **YA NO ESTÁ** | Hacía ajustes MD en Flexxus. Importante: su usuario puede seguir activo en el sistema aunque ella no esté. |
 | **Rocio Sisco** | Vendedora | Vende desde LARREA. |
 | **GGARCIA** | Staff | Maneja devoluciones RMA en el sistema. |
 | **LTROVATO** | Usuario Flexxus | Aparece en facturas de LARREA. |
+
+> ⚠️ **Nota sobre personal:** Los usuarios de Flexxus no siempre se actualizan cuando alguien se va. Un usuario puede seguir activo y ser usado por otra persona. No confiar en nombres de usuario como indicador de quién realizó una operación. Por esto se han hecho múltiples inventarios. Roker se entera tarde o nunca de los cambios de personal.
 
 ## Términos clave
 | Término | Significado |
