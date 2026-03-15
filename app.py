@@ -345,10 +345,12 @@ except ImportError:
     _PAGES_EXTRA = False
 
 try:
-    import pages.alertas_stock as pg_alertas
+    import pages.alertas_stock  as pg_alertas
+    import pages.auditoria_stock as pg_auditoria
     _HAS_ALERTAS = True
 except ImportError:
     _HAS_ALERTAS = False
+    pg_auditoria = None
 
 if "pagina" not in st.session_state:
     st.session_state.pagina = "Dashboard"
@@ -372,6 +374,7 @@ else:
 paginas = [
     ("📊", "Dashboard",          "Dashboard"),
     (f"🔔", f"Alertas{_alerta_badge}", "Alertas"),
+    ("🔍", "Auditoría",          "Auditoria"),
     ("📦", "Inventario",         "Inventario"),
     ("✏️", "Demanda Manual",     "Demanda Manual"),
     ("📝", "Borrador",           "Borrador"),
@@ -410,7 +413,8 @@ elif p == "Precios":      pg_precios.render()
 elif p == "MercadoLibre": pg_mercadolibre.render()
 elif p == "Asistente":    pg_asistente.render()
 elif p == "Sistema":        pg_sistema.render()
-elif p == "Alertas" and _HAS_ALERTAS: pg_alertas.render()
+elif p == "Alertas"   and _HAS_ALERTAS:              pg_alertas.render()
+elif p == "Auditoria" and pg_auditoria is not None:  pg_auditoria.render()
 elif p == "Demanda Manual" and _PAGES_EXTRA: pg_demanda.render()
 elif p == "Ghost SKUs" and _PAGES_EXTRA:     pg_ghost.render()
 elif p == "Lista Negra" and _PAGES_EXTRA:    pg_lista_negra.render()
