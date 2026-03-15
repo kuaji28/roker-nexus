@@ -139,10 +139,16 @@ class ImportadorStock(ImportadorBase):
         return n
     def _metadata(self, df: pd.DataFrame) -> dict:
         dep = getattr(self, "_deposito_detectado", "?")
-        return {
-            "deposito":   dep,
-            "total":      len(df),
-            "sin_stock":  int((df["stock"] == 0).sum()),
-            "bajo_min":   int((df["stock"] < df["stock_minimo"]).sum()),
+        alertas = getattr(self, "_resultado_alertas", {})
+        meta = {
+            "deposito":    dep,
+            "total":       len(df),
+            "sin_stock":   int((df["stock"] == 0).sum()),
+            "bajo_min":    int((df["stock"] < df["stock_minimo"]).sum()),
             "stock_total": round(float(df["stock"].sum()), 0),
         }
+        if alertas.get("total_alertas", 0) > 0:
+            meta["alertas_generadas"] = alertas["total_alertas"]
+            meta["aumentos_detectados"] = alertas.get("aumentos", 0)
+            meta["quiebres_nuevos"]     = alertas.get("quiebres", 0)
+        return meta
