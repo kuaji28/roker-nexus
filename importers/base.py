@@ -87,6 +87,13 @@ class ImportadorBase(ABC):
             # 8. Log
             log_importacion(self.NOMBRE, nombre, filas)
 
+            # 9. Auto-backup en sesión (solo si no hay Supabase)
+            try:
+                from utils.backup import guardar_autobackup_session
+                guardar_autobackup_session()
+            except Exception:
+                pass
+
         except Exception as e:
             resultado.estado = "error"
             resultado.mensaje = str(e)
