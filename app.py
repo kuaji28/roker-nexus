@@ -314,8 +314,12 @@ def _render_sidebar():
                     st.rerun()
 
         st.markdown("---")
-        from utils.horarios import ahora
-        st.caption(f"🕐 {ahora().strftime('%d/%m %H:%M')}")
+        try:
+            from utils.horarios import ahora
+            st.caption(f"🕐 {ahora().strftime('%d/%m %H:%M')}")
+        except Exception:
+            from datetime import datetime
+            st.caption(f"🕐 {datetime.now().strftime('%d/%m %H:%M')}")
 
 
 try:
@@ -324,7 +328,12 @@ except Exception as _init_err:
     pass  # Tablas ya existen o Supabase activo
 
 # Sidebar de configuración — siempre visible
-_render_sidebar()
+try:
+    _render_sidebar()
+except Exception as _sb_err:
+    with st.sidebar:
+        st.error(f"⚠️ Error en sidebar: {_sb_err}")
+        st.caption("Recargá la página para reintentar.")
 
 import pages.importar     as pg_importar
 import pages.compras      as pg_compras
