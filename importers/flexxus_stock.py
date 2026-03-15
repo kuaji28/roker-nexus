@@ -160,6 +160,18 @@ class ImportadorStock(ImportadorBase):
         except Exception:
             self._resultado_alertas = {}
 
+        # ── Calidad de datos (auto-detección en cada importación) ─────────────
+        try:
+            from utils.calidad_datos import detectar_errores_calidad, guardar_errores_calidad
+            errores_calidad = detectar_errores_calidad(df)
+            nuevos_calidad  = guardar_errores_calidad(errores_calidad, fuente=f"importacion_{deposito}")
+            self._resultado_calidad = {
+                "detectados": len(errores_calidad),
+                "nuevos":     nuevos_calidad,
+            }
+        except Exception:
+            self._resultado_calidad = {}
+
         return n
     def _metadata(self, df: pd.DataFrame) -> dict:
         dep = getattr(self, "_deposito_detectado", "?")
