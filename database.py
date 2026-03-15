@@ -548,6 +548,18 @@ def _migrar_db():
             tipo_proveedor TEXT DEFAULT 'mecanico',
             UNIQUE(codigo, deposito, fecha)
         )""",
+        # Archivo de Mariano (referencia de auditoría — no afecta cálculos)
+        """CREATE TABLE IF NOT EXISTS mariano_repuestos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo TEXT NOT NULL,
+            descripcion TEXT,
+            demanda_total REAL DEFAULT 0,
+            demanda_prom REAL DEFAULT 0,
+            stock_actual REAL DEFAULT 0,
+            a_pedir REAL DEFAULT 0,
+            stock_optimo REAL DEFAULT 0,
+            importado_en TEXT DEFAULT (datetime('now'))
+        )""",
         # ML reporte (tabla completa si no existe)
         """CREATE TABLE IF NOT EXISTS ml_reporte_comparaciones (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
