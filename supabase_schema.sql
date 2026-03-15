@@ -247,6 +247,7 @@ ALTER TABLE articulos ADD COLUMN IF NOT EXISTS mla_id_fr TEXT;
 ALTER TABLE articulos ADD COLUMN IF NOT EXISTS mla_id_mec TEXT;
 ALTER TABLE articulos ADD COLUMN IF NOT EXISTS ml_termino_busqueda TEXT;
 ALTER TABLE articulos ADD COLUMN IF NOT EXISTS ml_termino_anclado INTEGER DEFAULT 0;
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS cantidad REAL DEFAULT 0;
 
 -- Archivo de Mariano (referencia de auditoría — no afecta cálculos del sistema)
 CREATE TABLE IF NOT EXISTS mariano_repuestos (
