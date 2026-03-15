@@ -300,7 +300,16 @@ def _render_sidebar():
                 nueva = st.text_input(f"{ico} {lbl}", value=val, type="password",
                                        placeholder=ph, key=f"sb_k_{prov}")
                 if st.button(f"💾 Guardar", key=f"sb_ks_{prov}"):
-                    set_config(kk, nueva); st.success("✓")
+                    set_config(kk, nueva.strip())
+                    # Invalidar cliente cacheado para forzar reconexión con nueva key
+                    try:
+                        from modules.ia_engine import motor_ia
+                        if prov == "claude":  motor_ia._claude_client = None
+                        if prov == "gemini":  motor_ia._gemini_model  = None
+                    except Exception:
+                        pass
+                    st.success("✅ Guardado — recargando...")
+                    st.rerun()
 
         st.markdown("---")
         from utils.horarios import ahora
