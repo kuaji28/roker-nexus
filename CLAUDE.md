@@ -3,13 +3,15 @@
 ## Yo
 **Roker** (kuaji28@gmail.com) — trabaja de forma externa para EL CELU, empresa de venta de accesorios y repuestos de celulares en Argentina. Ex-empleado reconvocado porque no pudieron reemplazar su forma de hacer los pedidos. Maneja módulos (pantallas) de Samsung, Motorola, Xiaomi y otros.
 
+**Objetivo estratégico:** Mantenerse siempre un paso adelante de Mariano (sub-gerente) y Pablo (gerente) en análisis de datos e inventario. Demostrar valor irremplazable a Diego y Walter para negociar mayores honorarios. El sistema Nexus + auditoría son su ventaja competitiva.
+
 ## Personas clave
 | Quién | Rol | Notas |
 |-------|-----|-------|
 | **Diego** | Dueño (co-owner) | Roker se maneja más con él. Destinatario principal de presentaciones. |
 | **Walter** | Dueño (co-owner) | Segundo dueño. Recibe las presentaciones con Diego. |
 | **Pablo** | Gerente | Puede estar mostrando números selectivos. Tiene acceso Flexxus amplio. |
-| **Mariano** | Sub-gerente | Ídem Pablo. Posible zona gris en manejo de datos. |
+| **Mariano** | Sub-gerente | **Ingresó en diciembre 2024.** Ídem Pablo. Posible zona gris en manejo de datos. Baseline = antes de dic 2024 (sin su gestión). |
 | **Lorena Rodriguez** | Staff | Hace ajustes MD en Flexxus (inventario). |
 | **Ezequiel Firmapaz** | Staff | Hace ajustes MD en Flexxus. |
 | **Matias Toledano** | Staff | Hace ajustes MD en Flexxus. |
