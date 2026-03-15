@@ -66,6 +66,29 @@
 - Remitos internos: 504 ítems, TODOS con Entregada=0 (nunca confirmados)
 - Último inventario: diciembre 2025 → base para historial
 
+## Timeline crítico (para análisis histórico)
+| Período | Qué pasó |
+|---------|----------|
+| Antes de ago 2025 | Todos los productos bajo código "mecánico" (numérico). Sin separación AITECH. |
+| Ago-sep 2025 | Ramificación de códigos: AITECH pasa a códigos con letra (MS..., MM..., MX...). Mecánicos mantienen código numérico. |
+| **Diciembre 2024** | **Mariano ingresa como sub-gerente.** Baseline "sin Mariano" = antes de esta fecha. |
+| Diciembre 2024 | Recorte de presupuesto módulos (desde cuándo no confirmado, pero referencia diciembre 2024). |
+| Enero 2026 | Liquidación masiva MSAMA02S (7.384 uds vendidas). Stock → 0. |
+| 15/03/2026 | Fecha de relevamiento actual. |
+
+## Lógica de importaciones (no módulos)
+- La mayoría de accesorios y electro llegan **por barco desde China** → lead time largo (30-60+ días)
+- Periodos sin stock en accesorios/electro son normales por ciclo de barco, NO necesariamente mismanagement
+- **Módulos** llegan por avión (proveedor AITECH local / mecánicos varios) → reposición más rápida
+- Productos discontinuados: aquellos que no tuvieron buen desempeño o calidad deficiente → no reordenar (Lista Negra)
+
+## Estrategia auditoría silenciosa
+- **Baseline:** métricas pre-diciembre 2024 (antes de Mariano)
+- **Comparación:** dic 2024 - mar 2026 (gestión Mariano+Pablo)
+- **Palancas:** stockouts de módulos, RMA losses, remitos sin confirmar, mermas inexplicadas
+- **Destinatarios finales:** Diego y Walter (dueños) — sin pasar por Pablo ni Mariano
+- **Objetivo de Roker:** mostrar que su análisis es irremplazable → negociar aumento de honorarios
+
 ## Mapa de depósitos relevado (15/03/2026)
 | Depósito | Código | SKUs | Unidades | Notas |
 |----------|--------|------|----------|-------|
