@@ -305,41 +305,47 @@ def render():
         if criticos.empty:
             st.success("✅ Sin críticos")
         else:
-            for _, r in criticos.iterrows():
-                desc   = str(r.get("descripcion",""))[:40]
-                cod    = r["codigo"]
-                dem    = float(r.get("demanda_promedio") or 0)
-                costo  = float(r.get("costo_reposicion") or 0)
-                tipo   = "🔵 FR" if r["tipo"]=="fr" else "🟡 MEC"
-                vp_mes = dem*costo if costo>0 else 0
-                c_a, c_b = st.columns([3,1])
-                with c_a:
-                    st.markdown(f"""<div style="padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)">
-                        <div style="display:flex;justify-content:space-between;align-items:center">
-                            <div>
-                                <span style="font-size:10px;color:var(--nx-text3)">{tipo}</span>
-                                <span style="font-size:13px;font-weight:600;margin-left:6px">{desc}</span>
-                            </div>
-                            <div style="text-align:right">
-                                <div style="font-size:12px;font-weight:600;color:#ff375f">STOCK 0</div>
-                                <div style="font-size:10px;color:var(--nx-text3)">{dem:.1f}/mes · USD {vp_mes:.0f} perdido</div>
-                            </div>
-                        </div>
-                        <code style="font-size:10px;color:var(--nx-text3)">{cod}</code>
-                    </div>""", unsafe_allow_html=True)
-                with c_b:
-                    c_ln, c_bd = st.columns(2)
-                    with c_ln:
-                        if st.button("🚫", key=f"crit_ln_{cod}", help="Lista negra"):
+            df_c = criticos.copy()
+            df_c["Tipo"]     = df_c["tipo"].map({"fr": "FR", "mecanico": "MEC"})
+            df_c["Artículo"] = df_c["descripcion"].str[:45]
+            df_c["Dem/mes"]  = df_c["demanda_promedio"].round(1)
+            df_c["Tránsito"] = df_c["en_transito"].fillna(0).astype(int)
+            df_c["USD perd"] = (df_c["demanda_promedio"] * df_c["costo_reposicion"]).round(0)
+            st.dataframe(
+                df_c[["codigo","Tipo","Artículo","Dem/mes","Tránsito","USD perd"]],
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "codigo":    st.column_config.TextColumn("Código", width="small"),
+                    "Tipo":      st.column_config.TextColumn("Tipo",   width="small"),
+                    "Artículo":  st.column_config.TextColumn("Artículo"),
+                    "Dem/mes":   st.column_config.NumberColumn("Dem/mes", format="%.1f"),
+                    "Tránsito":  st.column_config.NumberColumn("✈️ Tráns.", format="%d"),
+                    "USD perd":  st.column_config.NumberColumn("USD perdido", format="$%.0f"),
+                }
+            )
+            sel_c = st.multiselect("Seleccionar para accionar →",
+                                   criticos["codigo"].tolist(), key="crit_sel",
+                                   format_func=lambda c: f"{c} — {criticos[criticos['codigo']==c]['descripcion'].values[0][:35]}" if len(criticos[criticos['codigo']==c]) else c)
+            if sel_c:
+                ca, cb = st.columns(2)
+                with ca:
+                    if st.button("🚫 Lista negra", key="crit_ln_bulk", use_container_width=True):
+                        for cod in sel_c:
+                            desc = criticos[criticos["codigo"]==cod]["descripcion"].values[0][:40] if len(criticos[criticos["codigo"]==cod]) else cod
                             execute_query("INSERT OR IGNORE INTO lista_negra (codigo, descripcion, notas) VALUES(?,?,?)",
-                                (cod, desc, "Agregado desde Dashboard"), fetch=False)
-                            st.success("✅"); st.rerun()
-                    with c_bd:
-                        if st.button("📝", key=f"crit_bd_{cod}", help="Agregar al borrador"):
-                            execute_query("""INSERT INTO borrador_pedido (texto_original, codigo_flexxus, descripcion, tipo_codigo, estado)
-                                VALUES(?,?,?,?,?)""",
-                                (desc, cod, desc, r["tipo"], "pendiente"), fetch=False)
-                            st.success("✅"); st.rerun()
+                                (cod, desc, "Dashboard"), fetch=False)
+                        st.success(f"✅ {len(sel_c)} en lista negra"); st.rerun()
+                with cb:
+                    if st.button("📝 Al borrador", key="crit_bd_bulk", use_container_width=True):
+                        for cod in sel_c:
+                            row = criticos[criticos["codigo"]==cod]
+                            if len(row):
+                                r = row.iloc[0]
+                                desc = str(r["descripcion"])[:40]
+                                execute_query("""INSERT INTO borrador_pedido (texto_original, codigo_flexxus, descripcion, tipo_codigo, estado) VALUES(?,?,?,?,?)""",
+                                    (desc, cod, desc, r["tipo"], "pendiente"), fetch=False)
+                        st.success(f"✅ {len(sel_c)} al borrador"); st.rerun()
 
     with col_urg:
         urgentes = kpis["urgentes"].head(top_n)
