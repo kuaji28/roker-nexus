@@ -118,18 +118,66 @@ def _parsear_api(data):
     return res
 
 def _parsear_html(html, limit):
-    import re as _re, html as _html
+    """
+    Extrae resultados del HTML de ML con múltiples estrategias:
+      1. JSON embebido en el estado de la app (más confiable)
+      2. Regex sobre el HTML plano (fallback)
+    """
+    import re as _re, html as _html, json as _json
+
+    # ── Estrategia 1: JSON embebido (estado de la app) ────────────────────────
+    for pattern in [
+        r'"results"\s*:\s*(\[.*?\])\s*,\s*"paging"',
+        r'window\.__PRELOADED_STATE__\s*=\s*(\{.+?\})\s*;?\s*</script>',
+    ]:
+        m = _re.search(pattern, html, _re.DOTALL)
+        if m:
+            try:
+                raw = m.group(1)
+                if raw.startswith("["):
+                    items = _json.loads(raw)
+                else:
+                    obj   = _json.loads(raw)
+                    items = (obj.get("initialState", obj).get("results", []))
+                if items:
+                    res = []
+                    for item in items[:limit]:
+                        try:
+                            seller = item.get("seller", {})
+                            nick   = seller.get("nickname", "")
+                            res.append({
+                                "ml_id":         item.get("id", ""),
+                                "titulo":        item.get("title", ""),
+                                "precio_ars":    float(item.get("price", 0)),
+                                "vendedor_nick": nick,
+                                "tipo_tienda":   _tipo_tienda(nick),
+                                "reputacion":    item.get("seller_reputation", {}).get("level_id", ""),
+                                "link":          item.get("permalink", ""),
+                            })
+                        except Exception:
+                            continue
+                    if res:
+                        return res
+            except Exception:
+                continue
+
+    # ── Estrategia 2: Regex sobre HTML plano ─────────────────────────────────
     titulos = _re.findall(r'"title"\s*:\s*"([^"]{10,100})"', html)
     precios  = _re.findall(r'"price"\s*:\s*(\d+(?:\.\d+)?)', html)
     links    = _re.findall(r'"permalink"\s*:\s*"(https://www\.mercadolibre\.com\.ar/[^"]+)"', html)
     nicks    = _re.findall(r'"nickname"\s*:\s*"([^"]{3,40})"', html)
     res = []
-    for i in range(min(len(titulos),len(precios),limit)):
-        nick = nicks[i] if i<len(nicks) else ""
-        res.append({"ml_id":"","titulo":_html.unescape(titulos[i]),
-                    "precio_ars":float(precios[i]),"vendedor_nick":nick,
-                    "tipo_tienda":_tipo_tienda(nick),
-                    "reputacion":"","link":links[i] if i<len(links) else ""})
+    for i in range(min(len(titulos), len(precios), limit)):
+        nick = nicks[i] if i < len(nicks) else ""
+        res.append({
+            "ml_id":         "",
+            "titulo":        _html.unescape(titulos[i]),
+            "precio_ars":    float(precios[i]),
+            "vendedor_nick": nick,
+            "tipo_tienda":   _tipo_tienda(nick),
+            "reputacion":    "",
+            "link":          links[i] if i < len(links) else "",
+        })
     return res or None
 
 def _tipo_tienda(nick):
