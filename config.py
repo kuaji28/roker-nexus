@@ -81,7 +81,6 @@ MONEDA_USD_ARS = float(_get_secret("MONEDA_USD_ARS", "1420"))
 DEPOSITOS = {
     "SAN_JOSE": "San José",
     "LARREA":   "Larrea Nuevo",
-    "ES_LOCAL": "ES Local",
 }
 DEPOSITO_CENTRAL = "SAN_JOSE"
 DEPOSITO_PRINCIPAL_VENTA = "LARREA"
