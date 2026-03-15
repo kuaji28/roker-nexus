@@ -165,6 +165,7 @@ CREATE TABLE IF NOT EXISTS ventas (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     codigo          TEXT NOT NULL,
     descripcion     TEXT,
+    cantidad        REAL DEFAULT 0,
     total_venta_ars REAL DEFAULT 0,
     marca           TEXT,
     super_rubro     TEXT,
@@ -560,6 +561,8 @@ def _migrar_db():
             stock_optimo REAL DEFAULT 0,
             importado_en TEXT DEFAULT (datetime('now'))
         )""",
+        # Agregar cantidad a ventas si no existe
+        "ALTER TABLE ventas ADD COLUMN cantidad REAL DEFAULT 0",
         # Ingresos reales de mercadería (packing de China)
         """CREATE TABLE IF NOT EXISTS ingresos_mercaderia (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
