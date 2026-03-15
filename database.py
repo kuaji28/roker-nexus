@@ -263,6 +263,22 @@ CREATE TABLE IF NOT EXISTS pedidos_transito (
     notas           TEXT
 );
 
+-- Historial de stock para detectar anomalías (PERSISTE entre cargas)
+CREATE TABLE IF NOT EXISTS historial_stock (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo TEXT NOT NULL,
+    deposito TEXT NOT NULL DEFAULT 'GENERAL',
+    stock REAL DEFAULT 0,
+    demanda REAL DEFAULT 0,
+    fecha TEXT NOT NULL,
+    fecha_carga TEXT DEFAULT (datetime('now')),
+    tipo_proveedor TEXT DEFAULT 'mecanico',
+    UNIQUE(codigo, deposito, fecha)
+);
+
+CREATE INDEX IF NOT EXISTS idx_hist_codigo ON historial_stock(codigo);
+CREATE INDEX IF NOT EXISTS idx_hist_fecha ON historial_stock(fecha);
+
 -- Anomalias detectadas
 CREATE TABLE IF NOT EXISTS anomalias (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -487,6 +503,15 @@ def _migrar_db():
             codigo_vinculado TEXT DEFAULT '', notas TEXT DEFAULT '',
             origen TEXT DEFAULT 'WEB', fecha_creacion TEXT DEFAULT (datetime('now')),
             fecha_vinculacion TEXT)""",
+        # Historial stock (para anomalías)
+        """CREATE TABLE IF NOT EXISTS historial_stock (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo TEXT NOT NULL, deposito TEXT NOT NULL DEFAULT 'GENERAL',
+            stock REAL DEFAULT 0, demanda REAL DEFAULT 0, fecha TEXT NOT NULL,
+            fecha_carga TEXT DEFAULT (datetime('now')),
+            tipo_proveedor TEXT DEFAULT 'mecanico',
+            UNIQUE(codigo, deposito, fecha)
+        )""",
         # ML reporte (tabla completa si no existe)
         """CREATE TABLE IF NOT EXISTS ml_reporte_comparaciones (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

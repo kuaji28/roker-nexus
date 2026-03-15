@@ -121,7 +121,24 @@ class ImportadorOptimizacion(ImportadorBase):
 
     def _guardar(self, df: pd.DataFrame) -> int:
         from database import df_to_db, execute_query
-        # Limpiar tabla completa antes de insertar (es un snapshot)
+        from datetime import datetime
+
+        # Guardar historial ANTES de limpiar (para detectar anomalías)
+        fecha_hoy = datetime.now().strftime("%Y-%m-%d")
+        try:
+            for _, row in df.iterrows():
+                cod = str(row.get("codigo","")).strip()
+                if not cod: continue
+                tipo = "fr" if (cod and cod[0].isalpha()) else "mecanico"
+                execute_query("""
+                    INSERT OR IGNORE INTO historial_stock (codigo, deposito, stock, demanda, fecha, tipo_proveedor)
+                    VALUES (?,?,?,?,?,?)
+                """, (cod, "GENERAL", float(row.get("stock_actual",0) or 0),
+                      float(row.get("demanda_promedio",0) or 0), fecha_hoy, tipo), fetch=False)
+        except Exception as _e:
+            pass  # Historial no es crítico
+
+        # Limpiar tabla completa antes de insertar (es un snapshot del día)
         execute_query("DELETE FROM optimizacion", fetch=False)
         return df_to_db(df, "optimizacion")
 
