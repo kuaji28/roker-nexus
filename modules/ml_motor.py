@@ -185,7 +185,7 @@ def analizar_competencia(resultados, nuestro_fr=0, nuestro_mec=0):
         out.append({**item,
             "diferencia_pct":round(diff,1),"estado_vs_nos":estado,
             "reputacion_str":REP.get(item.get("reputacion",""),item.get("reputacion","")),
-            "es_nuestra_tienda": tipo in ("FR","MECANICO")})
+            "es_nuestra_tienda": tipo in ("AI-TECH","MECANICO")})
     out.sort(key=lambda x: (not x["es_nuestra_tienda"], x["precio_ars"]))
     return out
 
