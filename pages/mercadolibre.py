@@ -2,9 +2,10 @@
 ROKER NEXUS — Módulo MercadoLibre
 Comparador de precios, MLA IDs anclados, editor masivo, búsqueda por tienda.
 
-Tienda FR (AITECH): mercadolibre.com.ar/tienda/aitech
-Tienda MECÁNICO:    mercadolibre.com.ar/tienda/mecanico
+Tienda AI-TECH:  mercadolibre.com.ar/tienda/aitech  → FR + mercadería local (no mecánico)
+Tienda MECÁNICO: mercadolibre.com.ar/tienda/mecanico → solo módulos mecánicos
 Lista 1 = precio mayorista USD · Lista 4 = precio ML publicado ARS
+Celtek fue reemplazada por Tienda AI-TECH.
 """
 import streamlit as st
 import pandas as pd
@@ -61,7 +62,7 @@ def render():
         🛒 MercadoLibre
     </h1>
     <p style="color:var(--nx-text2);font-size:14px;margin-bottom:20px">
-        Comparador de precios · Tienda FR (aitech) y Mecánico · Editor masivo
+        Comparador de precios · Tienda AI-TECH y Tienda Mecánico · Editor masivo
     </p>
     """, unsafe_allow_html=True)
 
@@ -95,7 +96,7 @@ def _tab_comparador():
     tasa = float(get_config("tasa_usd_ars", float) or 1420)
 
     col1, col2, col3 = st.columns(3)
-    filtro_tipo = col1.selectbox("Tipo", ["TODOS", "FR (letra)", "MECÁNICO (número)"])
+    filtro_tipo = col1.selectbox("Tipo", ["TODOS", "AI-TECH (letra)", "MECÁNICO (número)"])
     filtro_stock = col2.selectbox("Stock", ["Con stock", "Sin stock", "Todos"])
     top_n = col3.selectbox("Mostrar", [20, 50, 100, 200, "Todos"], index=0)
 
@@ -1021,9 +1022,9 @@ def _tab_calculadora():
         )
         lista1_ars = lista1_usd * tasa if lista1_usd > 0 else 0
 
-        tipo_tienda = st.radio("Tienda", ["FR (aitech)", "Mecánico"],
+        tipo_tienda = st.radio("Tienda", ["AI-TECH", "Mecánico"],
                                 horizontal=True, key="calc_tienda")
-        es_fr = "FR" in tipo_tienda
+        es_fr = "AI-TECH" in tipo_tienda
         com_base = com_fr if es_fr else com_mec
         m_base   = m_fr   if es_fr else m_mec
 
