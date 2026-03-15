@@ -1012,3 +1012,131 @@ def quitar_de_lista_negra(codigo: str) -> bool:
         return True
     except Exception:
         return False
+
+
+# ──────────────────────────────────────────────────────────────
+#  ARCHIVO TRACKER — Sistema de salud de datos
+# ──────────────────────────────────────────────────────────────
+
+# Catálogo de archivos esperados. Estos son los "slots" que el
+# sistema monitorea. dias_fresco / dias_alerta definen cuándo
+# el semáforo pasa de 🟢 a 🟡 a 🔴.
+ARCHIVOS_ESPERADOS = [
+    {"tipo": "stock",            "deposito": "SJ",  "label": "Stock SAN JOSE",    "icono": "🏭", "critico": True,  "dias_fresco": 3,  "dias_alerta": 7},
+    {"tipo": "stock",            "deposito": "LAR", "label": "Stock LARREA",      "icono": "🏪", "critico": True,  "dias_fresco": 3,  "dias_alerta": 7},
+    {"tipo": "stock",            "deposito": "SAR", "label": "Stock SARMIENTO",   "icono": "📦", "critico": False, "dias_fresco": 7,  "dias_alerta": 14},
+    {"tipo": "stock",            "deposito": "FML", "label": "Stock FULL ML",     "icono": "🛒", "critico": False, "dias_fresco": 7,  "dias_alerta": 14},
+    {"tipo": "stock",            "deposito": "DML", "label": "Stock DEP. ML",     "icono": "🛒", "critico": False, "dias_fresco": 7,  "dias_alerta": 14},
+    {"tipo": "stock",            "deposito": "MER", "label": "Stock MERMAS",      "icono": "⚠️", "critico": False, "dias_fresco": 14, "dias_alerta": 30},
+    {"tipo": "optimizacion",     "deposito": "",    "label": "Optimización",      "icono": "📊", "critico": True,  "dias_fresco": 3,  "dias_alerta": 7},
+    {"tipo": "ventas",           "deposito": "",    "label": "Ventas x Mes",      "icono": "📈", "critico": False, "dias_fresco": 30, "dias_alerta": 60},
+    {"tipo": "lista_precios",    "deposito": "",    "label": "Lista de Precios",  "icono": "💰", "critico": False, "dias_fresco": 7,  "dias_alerta": 14},
+    {"tipo": "cotizacion_aitech","deposito": "",    "label": "Cotiz. AITECH",     "icono": "🏭", "critico": False, "dias_fresco": 30, "dias_alerta": 90},
+]
+
+# Mapa de nombres largos de depósito → código corto del tracker
+DEPOSITO_A_CODIGO = {
+    "SAN JOSE": "SJ", "SANJOSE": "SJ", "SAN_JOSE": "SJ",
+    "LARREA": "LAR", "LARREA NUEVO": "LAR",
+    "SARMIENTO": "SAR", "SARMIENTO NUEVO": "SAR", "SARMIENTO NUEVO2": "SAR",
+    "FULL ML": "FML", "DEP. FULL ML": "FML", "FULLML": "FML",
+    "DEP. MERCADO LIBRE": "DML", "MERCADO LIBRE": "DML",
+    "MERMAS": "MER", "MERMAS GENERALES": "MER",
+    "RMA": "RMA", "DEP. TRANSITORIO RMA": "RMA",
+    "MUESTRAS": "MUE", "DEPOSITO MUESTRAS": "MUE",
+}
+
+
+def update_archivo_tracker(tipo_archivo: str, deposito: str, filas: int, nombre_archivo: str = "") -> bool:
+    """Registra o actualiza el timestamp de la última carga exitosa de un archivo.
+
+    Args:
+        tipo_archivo: 'stock', 'optimizacion', 'ventas', 'lista_precios', etc.
+        deposito: código corto del depósito ('SJ', 'LAR', ...) o '' si no aplica.
+                  También acepta el nombre largo (se convierte automáticamente).
+        filas: cantidad de filas importadas con éxito.
+        nombre_archivo: nombre original del archivo (para referencia).
+    """
+    try:
+        from datetime import datetime
+        # Normalizar código de depósito
+        dep = deposito.strip().upper() if deposito else ""
+        dep = DEPOSITO_A_CODIGO.get(dep, dep)  # convertir nombre largo → código corto
+
+        conn = get_sqlite()
+        # Obtener label del catálogo (o usar tipo+dep como fallback)
+        label = next(
+            (s["label"] for s in ARCHIVOS_ESPERADOS if s["tipo"] == tipo_archivo and s["deposito"] == dep),
+            f"{tipo_archivo} {dep}".strip()
+        )
+        conn.execute("""
+            INSERT INTO archivo_tracker (tipo_archivo, deposito, label, ultima_carga, filas_importadas, archivo_nombre)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(tipo_archivo, deposito) DO UPDATE SET
+                ultima_carga     = excluded.ultima_carga,
+                filas_importadas = excluded.filas_importadas,
+                archivo_nombre   = excluded.archivo_nombre,
+                label            = excluded.label
+        """, (tipo_archivo, dep, label, datetime.now().isoformat(), filas, nombre_archivo))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception:
+        return False
+
+
+def get_file_health() -> list[dict]:
+    """Devuelve el estado de salud de todos los archivos esperados.
+
+    Returns:
+        Lista de dicts con keys: tipo, deposito, label, icono, critico,
+        ultima_carga, filas, dias_sin_cargar, estado ('ok'|'stale'|'critico'|'nunca'),
+        dias_fresco, dias_alerta, archivo_nombre.
+    """
+    from datetime import datetime, timedelta
+    try:
+        conn = get_sqlite()
+        rows = conn.execute(
+            "SELECT tipo_archivo, deposito, ultima_carga, filas_importadas, archivo_nombre FROM archivo_tracker"
+        ).fetchall()
+        conn.close()
+        tracker = {(r[0], r[1]): {"ultima_carga": r[2], "filas": r[3], "archivo": r[4]} for r in rows}
+    except Exception:
+        tracker = {}
+
+    ahora = datetime.now()
+    resultado = []
+    for slot in ARCHIVOS_ESPERADOS:
+        key = (slot["tipo"], slot["deposito"])
+        info = tracker.get(key, {})
+        ultima = info.get("ultima_carga")
+
+        if ultima:
+            try:
+                dt = datetime.fromisoformat(ultima)
+                dias = (ahora - dt).days
+            except Exception:
+                dias = None
+        else:
+            dias = None
+
+        # Calcular estado del semáforo
+        if dias is None:
+            estado = "nunca"
+        elif dias <= slot["dias_fresco"]:
+            estado = "ok"
+        elif dias <= slot["dias_alerta"]:
+            estado = "stale"
+        else:
+            estado = "critico"
+
+        resultado.append({
+            **slot,
+            "ultima_carga":    ultima,
+            "filas":           info.get("filas", 0),
+            "dias_sin_cargar": dias,
+            "estado":          estado,
+            "archivo_nombre":  info.get("archivo", ""),
+        })
+
+    return resultado
