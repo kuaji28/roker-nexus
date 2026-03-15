@@ -1,8 +1,6 @@
-import os
 """
 ROKER NEXUS — Importador: AI-TECH y archivo de Mariano
 """
-import sqlite3
 import re
 from datetime import datetime
 import pandas as pd
@@ -83,45 +81,43 @@ class ImportadorAITECH(ImportadorBase):
         return match.group(0) if match else "SIN_INVOICE"
 
     def _guardar(self, df: pd.DataFrame) -> int:
-        # Asegurar tablas antes de guardar
-        try:
-            from database import init_db as _init
-            _init()
-        except Exception:
-            pass
-        conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "roker_nexus.db"))
+        from database import execute_query, df_to_db
         invoice_id = getattr(self, "_invoice_id", "SIN_INVOICE")
         fecha_hoy  = datetime.now().date().isoformat()
+        total_usd  = float(df["precio_usd"].sum())
 
-        # Si ya existe esta cotización, borrar items anteriores y reutilizar
-        cur_ex = conn.execute(
+        # ¿Ya existe esta cotización?
+        rows = execute_query(
             "SELECT id FROM cotizaciones WHERE invoice_id=? AND proveedor='AITECH'",
-            (invoice_id,)
+            (invoice_id,), fetch=True
         )
-        row_ex = cur_ex.fetchone()
-        if row_ex:
-            cotizacion_id = row_ex[0]
-            conn.execute("DELETE FROM cotizacion_items WHERE cotizacion_id=?", (cotizacion_id,))
-            conn.execute(
+        if rows:
+            cotizacion_id = rows[0]["id"]
+            execute_query("DELETE FROM cotizacion_items WHERE cotizacion_id=?",
+                          (cotizacion_id,), fetch=False)
+            execute_query(
                 "UPDATE cotizaciones SET total_usd=?, fecha=? WHERE id=?",
-                (float(df["precio_usd"].sum()), fecha_hoy, cotizacion_id)
+                (total_usd, fecha_hoy, cotizacion_id), fetch=False
             )
         else:
-            cur = conn.execute(
-                "INSERT INTO cotizaciones (proveedor, invoice_id, fecha, total_usd, estado, fecha_pendiente) VALUES (?,?,?,?,'pendiente',datetime('now'))",
-                ("AITECH", invoice_id, fecha_hoy, float(df["precio_usd"].sum()))
+            execute_query(
+                "INSERT INTO cotizaciones (proveedor, invoice_id, fecha, total_usd, estado) "
+                "VALUES (?,?,?,?,'pendiente')",
+                ("AITECH", invoice_id, fecha_hoy, total_usd), fetch=False
             )
-            cotizacion_id = cur.lastrowid
+            # Obtener el ID recién insertado
+            rows2 = execute_query(
+                "SELECT id FROM cotizaciones WHERE invoice_id=? AND proveedor='AITECH'",
+                (invoice_id,), fetch=True
+            )
+            cotizacion_id = rows2[0]["id"] if rows2 else None
 
-        # Insertar items
-        df2 = df[["codigo","descripcion","precio_usd","cantidad_caja"]].copy()
-        df2["cotizacion_id"] = cotizacion_id
-        df2.to_sql("cotizacion_items", conn, if_exists="append", index=False)
+        if cotizacion_id:
+            df2 = df[["codigo","descripcion","precio_usd","cantidad_caja"]].copy()
+            df2["cotizacion_id"] = cotizacion_id
+            df_to_db(df2, "cotizacion_items")
 
-        conn.commit()
-        count = len(df2)
-        conn.close()
-        return count
+        return len(df)
 
 
 class ImportadorMariano(ImportadorBase):
@@ -260,27 +256,26 @@ class ImportadorMariano(ImportadorBase):
         return df_out
 
     def _guardar(self, df: pd.DataFrame) -> int:
-        conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "roker_nexus.db"))
+        from database import execute_query, df_to_db
         total = 0
 
         # Guardar repuestos en tabla optimizacion
         if not df.empty and "demanda_total" in df.columns:
             hoy = datetime.now().date().isoformat()
-            conn.execute("DELETE FROM optimizacion WHERE date(importado_en)=?", (hoy,))
-            df.to_sql("optimizacion", conn, if_exists="append", index=False, method="multi")
+            execute_query("DELETE FROM optimizacion WHERE date(importado_en)=?",
+                          (hoy,), fetch=False)
+            df_to_db(df, "optimizacion")
             total += len(df)
 
         # Guardar precios si están disponibles
         precios_df = getattr(self, "_resultados_hojas", {}).get("precios")
         if precios_df is not None and not precios_df.empty:
             hoy = datetime.now().date().isoformat()
-            conn.execute("DELETE FROM precios WHERE fecha=?", (hoy,))
+            execute_query("DELETE FROM precios WHERE fecha=?", (hoy,), fetch=False)
             cols_precio = [c for c in ["codigo", "descripcion", "lista_1", "moneda", "fecha"]
                           if c in precios_df.columns]
-            precios_df[cols_precio].to_sql("precios", conn, if_exists="append", index=False)
+            df_to_db(precios_df[cols_precio], "precios")
 
-        conn.commit()
-        conn.close()
         return total
 
     def _metadata(self, df: pd.DataFrame) -> dict:
