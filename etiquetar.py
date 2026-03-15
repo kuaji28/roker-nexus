@@ -98,7 +98,10 @@ def buscar_descargas_recientes(minutos=120):
 # ─────────────────────────────────────────────
 def inyectar_etiqueta(filepath: Path, deposito: dict, tipo: dict, fecha_export: str):
     """Agrega una fila de identificación destacada al inicio del archivo."""
-    wb = openpyxl.load_workbook(filepath)
+    import stat
+    # Asegurar permisos de escritura
+    filepath.chmod(stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
+    wb = openpyxl.load_workbook(filepath, data_only=True)
     ws = wb.active
 
     # Insertar 2 filas al principio para no romper la estructura original
