@@ -64,30 +64,22 @@ class ImportadorListaPrecios(ImportadorBase):
         }
 
     def _upsert_articulos(self, df: pd.DataFrame):
-        """Inserta artículos nuevos en el catálogo maestro."""
-        import os as _os_lp
-        _db_path = _os_lp.path.join(_os_lp.path.dirname(_os_lp.path.abspath(__file__)), "..", "roker_nexus.db")
-        # Asegurar que la tabla existe antes de insertar
+        """Inserta artículos nuevos en el catálogo maestro (bulk, PostgreSQL-compatible)."""
+        from database import df_to_db
         try:
-            from database import init_db as _init
-            _init()
+            df_arts = df[["codigo","descripcion"]].copy()
+            df_arts = df_arts[df_arts["codigo"].notna()]
+            df_arts["codigo"] = df_arts["codigo"].astype(str).str.strip()
+            df_arts = df_arts[df_arts["codigo"].str.len() > 0]
+            df_arts = df_arts[df_arts["codigo"] != "nan"]
+            df_arts["descripcion"] = df_arts["descripcion"].astype(str).str.strip()
+            df_arts["tipo_codigo"] = df_arts["codigo"].apply(tipo_codigo)
+            df_arts["marca"]       = df_arts["descripcion"].apply(
+                lambda d: extraer_marca(d) if d and d != "nan" else None
+            )
+            df_to_db(df_arts, "articulos")
         except Exception:
             pass
-        conn = sqlite3.connect(_db_path)
-        for _, row in df.iterrows():
-            codigo = str(row.get("codigo", "")).strip()
-            desc   = str(row.get("descripcion", "")).strip()
-            if not codigo or codigo == "nan":
-                continue
-            t = tipo_codigo(codigo)
-            marca = extraer_marca(desc) if desc else None
-            conn.execute("""
-                INSERT OR IGNORE INTO articulos
-                    (codigo, descripcion, tipo_codigo, marca)
-                VALUES (?, ?, ?, ?)
-            """, (codigo, desc, t, marca))
-        conn.commit()
-        conn.close()
 
     def _guardar(self, df: pd.DataFrame) -> int:
         from database import df_to_db, execute_query

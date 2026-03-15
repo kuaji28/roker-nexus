@@ -96,19 +96,17 @@ class ImportadorStock(ImportadorBase):
         self._upsert_articulos(df_out)
         return df_out
     def _upsert_articulos(self, df: pd.DataFrame):
+        """Inserta artículos nuevos en el catálogo maestro (bulk, PostgreSQL-compatible)."""
+        from database import df_to_db
         from utils.matching import tipo_codigo
         try:
-            conn = __import__('sqlite3').connect("roker_nexus.db")
-            for _, row in df.iterrows():
-                cod  = str(row.get("codigo","")).strip()
-                desc = str(row.get("descripcion","")).strip()
-                if not cod or cod == "nan": continue
-                conn.execute(
-                    "INSERT OR IGNORE INTO articulos (codigo, descripcion) VALUES (?, ?)",
-                    (cod, desc)
-                )
-            conn.commit()
-            conn.close()
+            df_arts = df[["codigo","descripcion"]].copy()
+            df_arts["codigo"] = df_arts["codigo"].astype(str).str.strip()
+            df_arts = df_arts[df_arts["codigo"].str.len() > 0]
+            df_arts = df_arts[df_arts["codigo"] != "nan"]
+            df_arts["descripcion"] = df_arts["descripcion"].astype(str).str.strip()
+            df_arts["tipo_codigo"] = df_arts["codigo"].apply(tipo_codigo)
+            df_to_db(df_arts, "articulos")
         except Exception:
             pass
 
