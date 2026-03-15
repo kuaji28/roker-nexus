@@ -353,42 +353,49 @@ def render():
         if urgentes.empty:
             st.success("✅ Sin urgentes")
         else:
-            for _, r in urgentes.iterrows():
-                desc  = str(r.get("descripcion",""))[:40]
-                cod   = r["codigo"]
-                stk   = int(r.get("stock_actual") or 0)
-                dias  = int(r.get("dias_cob") or 0)
-                tipo  = "🔵 FR" if r["tipo"]=="fr" else "🟡 MEC"
-                color = "#ff375f" if dias<7 else "#ff9f0a"
-                tr    = float(r.get("en_transito") or 0)
-                c_a, c_b = st.columns([3,1])
-                with c_a:
-                    st.markdown(f"""<div style="padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)">
-                        <div style="display:flex;justify-content:space-between;align-items:center">
-                            <div>
-                                <span style="font-size:10px;color:var(--nx-text3)">{tipo}</span>
-                                <span style="font-size:13px;font-weight:600;margin-left:6px">{desc}</span>
-                            </div>
-                            <div style="text-align:right">
-                                <div style="font-size:12px;font-weight:600;color:{color}">{dias} días</div>
-                                <div style="font-size:10px;color:var(--nx-text3)">{stk} stock{f' + {int(tr)} tránsito' if tr>0 else ''}</div>
-                            </div>
-                        </div>
-                        <code style="font-size:10px;color:var(--nx-text3)">{cod}</code>
-                    </div>""", unsafe_allow_html=True)
-                with c_b:
-                    c_ln, c_bd = st.columns(2)
-                    with c_ln:
-                        if st.button("🚫", key=f"urg_ln_{cod}", help="Lista negra"):
+            df_u = urgentes.copy()
+            df_u["Tipo"]      = df_u["tipo"].map({"fr": "FR", "mecanico": "MEC"})
+            df_u["Artículo"]  = df_u["descripcion"].str[:45]
+            df_u["Stock"]     = df_u["stock_actual"].fillna(0).astype(int)
+            df_u["Tránsito"]  = df_u["en_transito"].fillna(0).astype(int)
+            df_u["Días cob."] = df_u["dias_cob"].fillna(0).astype(int)
+            df_u["Dem/mes"]   = df_u["demanda_promedio"].round(1)
+            st.dataframe(
+                df_u[["codigo","Tipo","Artículo","Stock","Tránsito","Días cob.","Dem/mes"]],
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "codigo":    st.column_config.TextColumn("Código",    width="small"),
+                    "Tipo":      st.column_config.TextColumn("Tipo",      width="small"),
+                    "Artículo":  st.column_config.TextColumn("Artículo"),
+                    "Stock":     st.column_config.NumberColumn("Stock",    format="%d"),
+                    "Tránsito":  st.column_config.NumberColumn("✈️ Tráns.", format="%d"),
+                    "Días cob.": st.column_config.NumberColumn("Días cob.", format="%d"),
+                    "Dem/mes":   st.column_config.NumberColumn("Dem/mes",  format="%.1f"),
+                }
+            )
+            sel_u = st.multiselect("Seleccionar para accionar →",
+                                   urgentes["codigo"].tolist(), key="urg_sel",
+                                   format_func=lambda c: f"{c} — {urgentes[urgentes['codigo']==c]['descripcion'].values[0][:35]}" if len(urgentes[urgentes['codigo']==c]) else c)
+            if sel_u:
+                ua, ub = st.columns(2)
+                with ua:
+                    if st.button("🚫 Lista negra", key="urg_ln_bulk", use_container_width=True):
+                        for cod in sel_u:
+                            desc = urgentes[urgentes["codigo"]==cod]["descripcion"].values[0][:40] if len(urgentes[urgentes["codigo"]==cod]) else cod
                             execute_query("INSERT OR IGNORE INTO lista_negra (codigo, descripcion, notas) VALUES(?,?,?)",
-                                (cod, desc, "Agregado desde Dashboard"), fetch=False)
-                            st.success("✅"); st.rerun()
-                    with c_bd:
-                        if st.button("📝", key=f"urg_bd_{cod}", help="Borrador"):
-                            execute_query("""INSERT INTO borrador_pedido (texto_original, codigo_flexxus, descripcion, tipo_codigo, estado)
-                                VALUES(?,?,?,?,?)""",
-                                (desc, cod, desc, r["tipo"], "pendiente"), fetch=False)
-                            st.success("✅"); st.rerun()
+                                (cod, desc, "Dashboard"), fetch=False)
+                        st.success(f"✅ {len(sel_u)} en lista negra"); st.rerun()
+                with ub:
+                    if st.button("📝 Al borrador", key="urg_bd_bulk", use_container_width=True):
+                        for cod in sel_u:
+                            row = urgentes[urgentes["codigo"]==cod]
+                            if len(row):
+                                r = row.iloc[0]
+                                desc = str(r["descripcion"])[:40]
+                                execute_query("""INSERT INTO borrador_pedido (texto_original, codigo_flexxus, descripcion, tipo_codigo, estado) VALUES(?,?,?,?,?)""",
+                                    (desc, cod, desc, r["tipo"], "pendiente"), fetch=False)
+                        st.success(f"✅ {len(sel_u)} al borrador"); st.rerun()
 
     # ── Gráfico marcas ────────────────────────────────────────
     st.markdown("---")
