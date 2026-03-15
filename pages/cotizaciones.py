@@ -52,6 +52,7 @@ def render():
     tabs = st.tabs([
         "📥 Nuevo Pedido",
         "✈️ En Tránsito",
+        "📊 SKUs en Tránsito",
         "✅ Historial",
     ])
 
@@ -62,6 +63,9 @@ def render():
         _tab_en_transito()
 
     with tabs[2]:
+        _tab_skus_transito()
+
+    with tabs[3]:
         _tab_historial()
 
 
