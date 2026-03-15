@@ -351,65 +351,24 @@ if "pagina" not in st.session_state:
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# ── Estado APIs (rápido, para el topbar) ─────────────────────
-apis = check_apis()
-sistema_ok = apis.get("supabase", False) and apis.get("claude", False)
-
 # ── Top Navigation Bar ────────────────────────────────────────
 paginas = [
-    ("📊", "Dashboard",       "Dashboard"),
-    ("📦", "Inventario",      "Inventario"),
-    ("✏️", "Demanda Manual",  "Demanda Manual"),
-    ("📝", "Borrador",        "Borrador"),
+    ("📊", "Dashboard",          "Dashboard"),
+    ("📦", "Inventario",         "Inventario"),
+    ("✏️", "Demanda Manual",     "Demanda Manual"),
+    ("📝", "Borrador",           "Borrador"),
     ("✈️", "Pedidos & Tránsito", "Cotizaciones"),
-    ("🛒", "Precios ML",      "MercadoLibre"),
-    ("🤖", "Inteligencia IA", "Asistente"),
-    ("👻", "Ghost SKUs",      "Ghost SKUs"),
-    ("🚫", "Lista Negra",     "Lista Negra"),
-    ("📥", "Importar",        "Importar"),
-    ("💰", "Precios",         "Precios"),
-    ("🛒", "Compras",         "Compras"),
-    ("🔌", "Sistema",         "Sistema"),
+    ("🛒", "Precios ML",         "MercadoLibre"),
+    ("🤖", "Inteligencia IA",    "Asistente"),
+    ("👻", "Ghost SKUs",         "Ghost SKUs"),
+    ("🚫", "Lista Negra",        "Lista Negra"),
+    ("📥", "Importar",           "Importar"),
+    ("💰", "Precios",            "Precios"),
+    ("🛍️", "Compras",            "Compras"),
+    ("🔌", "Sistema",            "Sistema"),
 ]
 
 p_actual = st.session_state.pagina
-
-# Topbar HTML decorativo (visual only)
-from version import APP_VERSION as _VER
-dot_color  = "nx-dot-green" if sistema_ok else "nx-dot-red"
-dot_estado = "Sistema OK" if sistema_ok else "Sin conexión"
-nav_items = ""
-for icono, nombre, key in paginas:
-    cls = "nx-nav-item active" if p_actual == key else "nx-nav-item"
-    nav_items += f'<div class="{cls}">{icono} {nombre}</div>'
-
-st.markdown(f"""
-<div class="nx-topbar">
-    <div class="nx-logo">
-        <div class="nx-logo-icon">⚡</div>
-        <div>
-            <div class="nx-logo-text">ROKER NEXUS</div>
-            <div class="nx-logo-sub">{_VER} · FR + MECÁNICO + ML</div>
-        </div>
-    </div>
-    <div class="nx-nav">{nav_items}</div>
-    <div class="nx-status">
-        <div class="nx-dot {dot_color}"></div>
-        <span style="font-size:11px;color:var(--text3)">{dot_estado}</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# ── Botones de navegación reales (sobre el topbar visual) ─────
-st.markdown("""
-<style>
-/* Ocultar labels de los botones de nav, mantener solo el botón */
-div[data-testid="stHorizontalBlock"] .stButton>button{
-    padding:5px 10px!important;font-size:11px!important;
-    border-radius:20px!important;white-space:nowrap!important;
-}
-</style>
-""", unsafe_allow_html=True)
 
 cols = st.columns(len(paginas))
 for i, (icono, nombre, key) in enumerate(paginas):
