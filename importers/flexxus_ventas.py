@@ -21,6 +21,7 @@ class ImportadorVentas(ImportadorBase):
     COLUMNAS_REQUERIDAS = ["Código", "Artículo"]
 
     def _transformar(self, df: pd.DataFrame, uploaded_file=None) -> pd.DataFrame:
+        self._nombre_archivo = getattr(uploaded_file, "name", "") if uploaded_file else ""
         # Deduplicar columnas por si Flexxus repite nombres
         df = df.loc[:, ~df.columns.duplicated()].copy()
         col_map = self._mapear_columnas(df)
@@ -61,7 +62,27 @@ class ImportadorVentas(ImportadorBase):
 
     @property
     def _extraer_fecha_desde(self):
-        return "2026-01-01"  # Valor por defecto
+        """Intenta extraer la fecha del nombre del archivo; si no, primer día del mes actual."""
+        nombre = getattr(self, "_nombre_archivo", "") or ""
+        # Buscar patrón YYYY-MM-DD o DDMMYYYY o YYYYMMDD en el nombre
+        for pat in [r'(\d{4}-\d{2}-\d{2})', r'(\d{8})']:
+            m = re.search(pat, nombre)
+            if m:
+                raw = m.group(1).replace("-", "")
+                try:
+                    if len(raw) == 8:
+                        # Probar YYYYMMDD primero, luego DDMMYYYY
+                        for fmt in ("%Y%m%d", "%d%m%Y"):
+                            try:
+                                d = datetime.strptime(raw, fmt)
+                                return d.replace(day=1).strftime("%Y-%m-%d")
+                            except ValueError:
+                                continue
+                except Exception:
+                    pass
+        # Fallback: primer día del mes actual
+        hoy = datetime.now()
+        return hoy.replace(day=1).strftime("%Y-%m-%d")
 
     def _guardar(self, df: pd.DataFrame) -> int:
         from database import df_to_db, execute_query
