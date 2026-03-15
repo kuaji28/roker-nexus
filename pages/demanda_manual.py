@@ -27,7 +27,7 @@ def render():
     c1, c2, c3 = st.columns([3, 1, 1])
     with c1: filtro = st.text_input("🔍 Filtrar", "", key="dm_f")
     with c2: solo_cero = st.checkbox("Solo ERP=0", True, key="dm_z")
-    with c3: prov_f = st.selectbox("Proveedor", ["Todos","FR","Mecánico"], key="dm_p")
+    with c3: prov_f = st.selectbox("Proveedor", ["Todos","AI-TECH","Mecánico"], key="dm_p")
 
     try:
         execute_query("CREATE TABLE IF NOT EXISTS demanda_manual (codigo TEXT PRIMARY KEY, demanda_manual REAL NOT NULL, nota TEXT, actualizado TEXT DEFAULT (datetime('now')))", fetch=False)
