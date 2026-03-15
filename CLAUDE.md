@@ -11,7 +11,7 @@
 | **Diego** | Dueño (co-owner) | Roker se maneja más con él. Destinatario principal de presentaciones. |
 | **Walter** | Dueño (co-owner) | Segundo dueño. Recibe las presentaciones con Diego. |
 | **Pablo** | Gerente | Puede estar mostrando números selectivos. Tiene acceso Flexxus amplio. |
-| **Mariano** | Sub-gerente | **Ingresó en diciembre 2024.** Ídem Pablo. Posible zona gris en manejo de datos. Baseline = antes de dic 2024 (sin su gestión). |
+| **Mariano** | Sub-gerente | **Ingresó en diciembre 2025.** Ídem Pablo. Posible zona gris en manejo de datos. Baseline = antes de dic 2024 (sin su gestión). |
 | **Lorena Rodriguez** | Staff | Hace ajustes MD en Flexxus (inventario). |
 | **Ezequiel Firmapaz** | Staff | Hace ajustes MD en Flexxus. |
 | **Matias Toledano** | Staff | Hace ajustes MD en Flexxus. |
