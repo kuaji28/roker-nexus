@@ -122,87 +122,153 @@ class ImportadorAITECH(ImportadorBase):
 
 class ImportadorMariano(ImportadorBase):
     """
-    Importa el archivo mensual de Mariano.
-    Tiene múltiples hojas: Repuestos, PROV 1 FR, Lista de Precios, Stock.
+    Importa el archivo de Mariano (Repuestos al DD.MM.YYYY.xlsx).
+    Formato real:
+      - Hoja "Repuestos al ..." : headers en fila 4 (índice 3), datos desde fila 5
+        Columnas clave: Código, Artículo, Demanda Total, Demanda Prom.(90 dias),
+                        S.Actual, A Pedir, S.Optimo
+        Filas 1-2: metadata del período (no se usan como headers)
+      - Hoja "Lista de Precios": headers en fila 2, Código / Descripción / Lista 1 / P.Comp.
+
+    Los datos se guardan en la tabla mariano_repuestos (NUNCA en optimizacion).
+    Sirve como referencia de auditoría — no afecta cálculos del sistema.
     """
 
     NOMBRE = "mariano"
     FLEXXUS_MODULO = "Interno — archivo de Mariano"
-    ARCHIVO_DESCARGA = "optimizacion_YYYYMMDD.xlsx"
+    ARCHIVO_DESCARGA = "Repuestos al DD.MM.YYYY.xlsx"
     COLUMNAS_REQUERIDAS = []
 
+    # ── Lectura ────────────────────────────────────────────────
     def _leer(self, uploaded_file) -> pd.DataFrame:
-        """Override — necesitamos leer múltiples hojas."""
-        import pandas as pd
+        """Lee todas las hojas del archivo. Retorna la hoja de Repuestos."""
         nombre = getattr(uploaded_file, "name", "")
         ext = nombre.split(".")[-1].lower()
         engine = "xlrd" if ext == "xls" else "openpyxl"
 
-        self._hojas = {}
+        self._hojas_raw = {}
         try:
             xls = pd.ExcelFile(uploaded_file, engine=engine)
             for hoja in xls.sheet_names:
-                self._hojas[hoja] = xls.parse(hoja)
-        except Exception as e:
+                # Leer sin header para manejar el offset de filas
+                self._hojas_raw[hoja] = xls.parse(hoja, header=None)
+        except Exception:
             pass
 
-        # Retorna la hoja principal (Repuestos)
-        for key in self._hojas:
+        # Retorna la hoja de Repuestos (para que el pipeline base no falle)
+        for key in self._hojas_raw:
             if "repuesto" in key.lower():
-                return self._hojas[key]
-        # Si no, la primera
-        if self._hojas:
-            return list(self._hojas.values())[0]
+                return self._hojas_raw[key]
+        if self._hojas_raw:
+            return list(self._hojas_raw.values())[0]
         return pd.DataFrame()
 
+    def _detectar_y_setear_headers(self, df):
+        return df  # Manejamos headers manualmente en _transformar
+
     def _validar_columnas(self, df: pd.DataFrame) -> tuple:
-        # Flexible — Mariano no tiene estructura fija de headers
         return True, ""
 
+    def _limpiar(self, df: pd.DataFrame) -> pd.DataFrame:
+        return df  # Sin limpieza en esta etapa
+
+    # ── Transformación ─────────────────────────────────────────
     def _transformar(self, df: pd.DataFrame, uploaded_file=None) -> pd.DataFrame:
-        """
-        Procesa las hojas del archivo de Mariano.
-        """
-        results = {}
-
-        # Hoja 1: Repuestos (demanda y stock)
+        """Procesa la hoja de Repuestos (formato real con headers en fila 4)."""
         hoja_rep = self._get_hoja_repuestos()
-        if hoja_rep is not None:
-            results["repuestos"] = self._procesar_repuestos(hoja_rep)
-
-        # Hoja 3: Lista de Precios
         hoja_precios = self._get_hoja_precios()
-        if hoja_precios is not None:
-            results["precios"] = self._procesar_precios(hoja_precios)
 
-        self._resultados_hojas = results
-
-        # Retornar la hoja de repuestos como principal
-        return results.get("repuestos", pd.DataFrame())
+        self._precios_df = self._procesar_precios(hoja_precios) if hoja_precios is not None else None
+        return self._procesar_repuestos(hoja_rep) if hoja_rep is not None else pd.DataFrame()
 
     def _get_hoja_repuestos(self):
-        for k, v in self._hojas.items():
+        for k, v in self._hojas_raw.items():
             if "repuesto" in k.lower():
                 return v
         return None
 
     def _get_hoja_precios(self):
-        for k, v in self._hojas.items():
-            if "precio" in k.lower() or "lista" in k.lower():
+        for k, v in self._hojas_raw.items():
+            if "lista" in k.lower() and "precio" in k.lower():
+                return v
+            if "precio" in k.lower():
                 return v
         return None
 
-    def _procesar_repuestos(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Procesa la hoja de repuestos de Mariano."""
+    def _procesar_repuestos(self, df_raw: pd.DataFrame) -> pd.DataFrame:
+        """
+        El archivo real tiene:
+          Filas 0-1: metadata del período
+          Fila 2:    vacía
+          Fila 3:    headers reales (Código, Artículo, Demanda Total, ...)
+          Fila 4+:   datos
+        """
+        # Buscar la fila de headers buscando "Código" o "Artículo"
+        header_row = 3  # default
+        for i in range(min(8, len(df_raw))):
+            fila_str = " ".join(str(v).upper() for v in df_raw.iloc[i].values if pd.notna(v))
+            if "CÓDIGO" in fila_str or "CODIGO" in fila_str or "ARTÍCULO" in fila_str:
+                header_row = i
+                break
+
+        df = df_raw.iloc[header_row:].copy()
+        df.columns = [str(c).strip() if pd.notna(c) else f"_col{i}"
+                      for i, c in enumerate(df.iloc[0])]
+        df = df.iloc[1:].reset_index(drop=True)
+
+        # Normalizar nombres de columna para búsqueda
+        cols = {}
+        for c in df.columns:
+            cols[str(c).upper().replace("\n", " ").strip()] = c
+
+        def find(*kws):
+            for kw in kws:
+                kw_u = kw.upper()
+                for cu, co in cols.items():
+                    if kw_u in cu:
+                        return co
+            return None
+
+        cod_col  = find("CÓDIGO", "CODIGO") or df.columns[0]
+        art_col  = find("ARTÍCULO", "ARTICULO")
+        dem_tot  = find("DEMANDA TOTAL", "DEM TOTAL", "DEMANDA\nTOTAL")
+        dem_prom = find("DEMANDA PROM", "DEM PROM", "PROM. (90", "PROM (90")
+        s_actual = find("S. ACTUAL", "S.ACTUAL", "STOCK ACTUAL")
+        a_pedir  = find("A PEDIR")
+        s_optimo = find("S. OPTIMO", "S.OPTIMO", "ÓPTIMO", "OPTIMO")
+
+        df_out = pd.DataFrame()
+        df_out["codigo"]         = df[cod_col].astype(str).str.strip()
+        df_out["descripcion"]    = df[art_col].astype(str).str.strip() if art_col else ""
+        df_out["demanda_total"]  = pd.to_numeric(df[dem_tot],  errors="coerce").fillna(0) if dem_tot  else 0.0
+        df_out["demanda_prom"]   = pd.to_numeric(df[dem_prom], errors="coerce").fillna(0) if dem_prom else 0.0
+        df_out["stock_actual"]   = pd.to_numeric(df[s_actual], errors="coerce").fillna(0) if s_actual else 0.0
+        df_out["a_pedir"]        = pd.to_numeric(df[a_pedir],  errors="coerce").fillna(0) if a_pedir  else 0.0
+        df_out["stock_optimo"]   = pd.to_numeric(df[s_optimo], errors="coerce").fillna(0) if s_optimo else 0.0
+        df_out["importado_en"]   = datetime.now().isoformat()
+
+        # Filtrar filas sin código válido
+        df_out = df_out[df_out["codigo"].str.len() > 1]
+        df_out = df_out[~df_out["codigo"].isin(["nan", "None", "NaN"])]
+        df_out = df_out[df_out["codigo"].str.match(r'^[A-Za-z0-9]')]
+        return df_out.reset_index(drop=True)
+
+    def _procesar_precios(self, df_raw: pd.DataFrame) -> pd.DataFrame:
+        """Lista de Precios: headers en fila 2 (índice 1)."""
         # Buscar fila de headers
-        from utils.helpers import encontrar_fila_header
-        fila_h = encontrar_fila_header(df, ["Código", "Artículo", "Demanda"])
-        if fila_h > 0:
-            df.columns = df.iloc[fila_h]
-            df = df.iloc[fila_h+1:].reset_index(drop=True)
-            df.columns = [str(c).strip() for c in df.columns]
+        header_row = 1
+        for i in range(min(5, len(df_raw))):
+            fila_str = " ".join(str(v).upper() for v in df_raw.iloc[i].values if pd.notna(v))
+            if "CÓDIGO" in fila_str or "CODIGO" in fila_str:
+                header_row = i
+                break
 
-        cols = {c.upper(): c for c in df.columns}
+        df = df_raw.iloc[header_row:].copy()
+        df.columns = [str(c).strip() if pd.notna(c) else f"_col{i}"
+                      for i, c in enumerate(df.iloc[0])]
+        df = df.iloc[1:].reset_index(drop=True)
+
+        cols = {str(c).upper(): c for c in df.columns}
         def find(*kws):
             for kw in kws:
                 for cu, co in cols.items():
@@ -210,78 +276,39 @@ class ImportadorMariano(ImportadorBase):
                         return co
             return None
 
-        df_out = pd.DataFrame()
         cod_col = find("CÓDIGO", "CODIGO") or df.columns[0]
-        df_out["codigo"]           = df[cod_col].astype(str).str.strip()
-        df_out["descripcion"]      = df.get(find("ARTÍCULO", "ARTICULO"), None)
-        df_out["demanda_total"]    = pd.to_numeric(df.get(find("DEMANDA TOTAL", "DEM TOTAL"), 0), errors="coerce").fillna(0)
-        df_out["demanda_promedio"] = pd.to_numeric(df.get(find("DEMANDA PROM", "DEM PROM"), 0), errors="coerce").fillna(0)
-        df_out["stock_actual"]     = pd.to_numeric(df.get(find("S. ACTUAL", "STOCK ACTUAL", "S.ACTUAL"), 0), errors="coerce").fillna(0)
-        df_out["stock_minimo"]     = pd.to_numeric(df.get(find("STOCK MÍNIMO", "S. MÍNIMO", "MÍNIMO"), 0), errors="coerce").fillna(0)
-        df_out["a_pedir"]          = pd.to_numeric(df.get(find("A PEDIR"), 0), errors="coerce").fillna(0)
-        df_out["importado_en"]     = datetime.now().isoformat()
-
-        df_out = df_out[df_out["codigo"].str.len() > 1]
-        df_out = df_out[df_out["codigo"] != "nan"]
-        return df_out
-
-    def _procesar_precios(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Procesa la hoja de lista de precios de Mariano."""
-        from utils.helpers import encontrar_fila_header
-        fila_h = encontrar_fila_header(df, ["Código", "Lista 1", "Descripción"])
-        if fila_h > 0:
-            df.columns = df.iloc[fila_h]
-            df = df.iloc[fila_h+1:].reset_index(drop=True)
-            df.columns = [str(c).strip() for c in df.columns]
-
-        cols = {c.upper(): c for c in df.columns}
-        def find(*kws):
-            for kw in kws:
-                for cu, co in cols.items():
-                    if kw.upper() in cu:
-                        return co
-            return None
-
         df_out = pd.DataFrame()
-        cod_col = find("CÓDIGO", "CODIGO") or df.columns[0]
         df_out["codigo"]      = df[cod_col].astype(str).str.strip()
-        df_out["descripcion"] = df.get(find("DESCRIPCIÓN", "DESCRIPCION"), None)
-        df_out["lista_1"]     = pd.to_numeric(df.get(find("LISTA 1", "LIST 1"), 0), errors="coerce").fillna(0)
-        df_out["precio_comp"] = pd.to_numeric(df.get(find("P. COMP", "PRECIO COMP", "COSTO"), 0), errors="coerce").fillna(0)
-        df_out["moneda"]      = df.get(find("MON", "MONEDA"), "USD").fillna("USD")
-        df_out["fecha"]       = datetime.now().date().isoformat()
+        df_out["lista_1"]     = pd.to_numeric(df[find("LISTA 1", "LIST 1")], errors="coerce").fillna(0) if find("LISTA 1", "LIST 1") else 0.0
+        df_out["precio_comp"] = pd.to_numeric(df[find("P. COMP", "COSTO")],  errors="coerce").fillna(0) if find("P. COMP", "COSTO") else 0.0
 
         df_out = df_out[df_out["codigo"].str.len() > 1]
-        df_out = df_out[df_out["codigo"] != "nan"]
-        return df_out
+        df_out = df_out[~df_out["codigo"].isin(["nan", "None", "NaN"])]
+        return df_out.reset_index(drop=True)
 
+    # ── Guardado ───────────────────────────────────────────────
     def _guardar(self, df: pd.DataFrame) -> int:
+        """
+        Guarda en tabla mariano_repuestos (NO toca optimizacion).
+        Borra los registros anteriores y reemplaza con el nuevo lote.
+        """
         from database import execute_query, df_to_db
         total = 0
 
-        # Guardar repuestos en tabla optimizacion
-        if not df.empty and "demanda_total" in df.columns:
-            hoy = datetime.now().date().isoformat()
-            execute_query("DELETE FROM optimizacion WHERE date(importado_en)=?",
-                          (hoy,), fetch=False)
-            df_to_db(df, "optimizacion")
+        if not df.empty:
+            # Reemplazar todo (son datos de referencia, no histórico)
+            execute_query("DELETE FROM mariano_repuestos", fetch=False)
+            df_to_db(df, "mariano_repuestos")
             total += len(df)
-
-        # Guardar precios si están disponibles
-        precios_df = getattr(self, "_resultados_hojas", {}).get("precios")
-        if precios_df is not None and not precios_df.empty:
-            hoy = datetime.now().date().isoformat()
-            execute_query("DELETE FROM precios WHERE fecha=?", (hoy,), fetch=False)
-            cols_precio = [c for c in ["codigo", "descripcion", "lista_1", "moneda", "fecha"]
-                          if c in precios_df.columns]
-            df_to_db(precios_df[cols_precio], "precios")
 
         return total
 
     def _metadata(self, df: pd.DataFrame) -> dict:
-        hojas = list(getattr(self, "_hojas", {}).keys())
+        hojas = list(getattr(self, "_hojas_raw", {}).keys())
+        total_a_pedir = int(df["a_pedir"].sum()) if "a_pedir" in df.columns else 0
         return {
             "hojas_encontradas": hojas,
             "total_articulos":   len(df),
-            "a_pedir":           int(df["a_pedir"].sum()) if "a_pedir" in df.columns else 0,
+            "total_a_pedir":     total_a_pedir,
+            "fuente":            "Archivo de Mariano (referencia — no afecta cálculos del sistema)",
         }
