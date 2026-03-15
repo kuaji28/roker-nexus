@@ -344,14 +344,34 @@ try:
 except ImportError:
     _PAGES_EXTRA = False
 
+try:
+    import pages.alertas_stock as pg_alertas
+    _HAS_ALERTAS = True
+except ImportError:
+    _HAS_ALERTAS = False
+
 if "pagina" not in st.session_state:
     st.session_state.pagina = "Dashboard"
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 # ── Top Navigation Bar ────────────────────────────────────────
+# Badge de alertas sin ver
+_alerta_badge = ""
+if _HAS_ALERTAS:
+    try:
+        from modules.stock_alertas import count_alertas_sin_ver
+        _n_alertas = count_alertas_sin_ver()
+        if _n_alertas > 0:
+            _alerta_badge = f" ({_n_alertas})"
+    except Exception:
+        _n_alertas = 0
+else:
+    _n_alertas = 0
+
 paginas = [
     ("📊", "Dashboard",          "Dashboard"),
+    (f"🔔", f"Alertas{_alerta_badge}", "Alertas"),
     ("📦", "Inventario",         "Inventario"),
     ("✏️", "Demanda Manual",     "Demanda Manual"),
     ("📝", "Borrador",           "Borrador"),
@@ -390,6 +410,7 @@ elif p == "Precios":      pg_precios.render()
 elif p == "MercadoLibre": pg_mercadolibre.render()
 elif p == "Asistente":    pg_asistente.render()
 elif p == "Sistema":        pg_sistema.render()
+elif p == "Alertas" and _HAS_ALERTAS: pg_alertas.render()
 elif p == "Demanda Manual" and _PAGES_EXTRA: pg_demanda.render()
 elif p == "Ghost SKUs" and _PAGES_EXTRA:     pg_ghost.render()
 elif p == "Lista Negra" and _PAGES_EXTRA:    pg_lista_negra.render()
