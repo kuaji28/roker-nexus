@@ -146,7 +146,7 @@ FLEXXUS_ARCHIVOS = {
     "remitos":        "Planilla Detallada de Remitos - Remitos Internos",
 }
 
-# ── Proveedores ───────────────────────────────────────────────
+# ── Proveedores (China) ───────────────────────────────────────
 PROVEEDORES = {
     "AITECH": {
         "nombre": "AI-TECH",
@@ -158,6 +158,27 @@ PROVEEDORES = {
         "tipo":   "con_marco",
         "moneda": "USD",
         "activo": False,   # pausado
+    },
+}
+
+# ── Tiendas MercadoLibre ──────────────────────────────────────
+# Tienda AI-TECH: FR + toda la mercadería local (excepto módulos mecánicos)
+# Tienda MECÁNICO: exclusivamente módulos mecánicos
+# Celtek ya no existe — fue reemplazada por AI-TECH
+ML_TIENDAS = {
+    "AITECH": {
+        "nombre":  "AI-TECH",
+        "slug":    "aitech",
+        "url":     "https://www.mercadolibre.com.ar/tienda/aitech",
+        "tipo":    ["con_marco", "otro"],   # FR + local (no mecánico)
+        "col_db":  "mla_id_fr",
+    },
+    "MECANICO": {
+        "nombre":  "Mecánico",
+        "slug":    "mecanico",
+        "url":     "https://www.mercadolibre.com.ar/tienda/mecanico",
+        "tipo":    ["mecanico"],            # solo mecánicos
+        "col_db":  "mla_id_mec",
     },
 }
 
