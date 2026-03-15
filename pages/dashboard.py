@@ -177,6 +177,72 @@ def _kpi(titulo, valor, sub, color):
     </div>""", unsafe_allow_html=True)
 
 
+def _panel_salud_datos():
+    """Widget compacto de salud de datos — siempre visible en la parte superior del Dashboard."""
+    try:
+        from database import get_file_health
+        slots = get_file_health()
+    except Exception:
+        return  # Silencioso si la tabla aún no existe
+
+    total    = len(slots)
+    ok_count = sum(1 for s in slots if s["estado"] == "ok")
+    stale    = [s for s in slots if s["estado"] in ("stale", "critico")]
+    nunca    = [s for s in slots if s["estado"] == "nunca"]
+    criticos = [s for s in stale if s["critico"]]
+
+    # Si todo está bien: sólo muestra badge verde discreto
+    if ok_count == total:
+        st.markdown(
+            f'<div style="text-align:right;margin-bottom:4px">'
+            f'<span style="font-size:11px;color:#34C759">✓ Todos los datos al día ({total}/{total})</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    # Si hay problemas: expandible con detalle
+    resumen_parts = []
+    if criticos:
+        nombres = ", ".join(s["label"] for s in criticos[:2])
+        resumen_parts.append(f"🔴 **{len(criticos)} crítico(s):** {nombres}")
+    if nunca:
+        nombres = ", ".join(s["label"] for s in nunca[:3])
+        resumen_parts.append(f"⚫ **{len(nunca)} sin cargar:** {nombres}")
+    resumen = " · ".join(resumen_parts) if resumen_parts else f"{ok_count}/{total} al día"
+
+    pct = int(ok_count / total * 100)
+    color = "#FF3B30" if pct < 40 else ("#FF9F0A" if pct < 80 else "#34C759")
+
+    with st.expander(f"📁 Datos: {ok_count}/{total} archivos al día · {resumen}", expanded=bool(criticos)):
+        COLORES = {
+            "ok":      ("#34C759", "🟢"),
+            "stale":   ("#FF9F0A", "🟡"),
+            "critico": ("#FF3B30", "🔴"),
+            "nunca":   ("#8E8E93", "⚫"),
+        }
+        cols = st.columns(2)
+        for i, s in enumerate(slots):
+            color_s, dot = COLORES.get(s["estado"], ("#8E8E93", "⚫"))
+            dias_txt = (f"hace {s['dias_sin_cargar']}d" if s.get("dias_sin_cargar") and s["dias_sin_cargar"] > 0
+                        else ("hoy" if s.get("dias_sin_cargar") == 0 else "—"))
+            with cols[i % 2]:
+                st.markdown(
+                    f'<div style="display:flex;justify-content:space-between;padding:3px 0;'
+                    f'border-bottom:1px solid var(--nx-border,#3a3a3c);font-size:12px">'
+                    f'<span>{s["icono"]} {s["label"]}</span>'
+                    f'<span style="color:{color_s};font-weight:600">{dot} {dias_txt}</span>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+        st.markdown(
+            '<div style="text-align:right;margin-top:8px">'
+            '<span style="font-size:11px;color:var(--nx-text3)">Actualizá desde la pestaña ▶ Cargar</span>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+
 def render():
     # ── Header con filtros ─────────────────────────────────────
     c_h, c_f1, c_f2, c_ref = st.columns([2.5, 1.2, 1, 0.5])

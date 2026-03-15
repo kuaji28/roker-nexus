@@ -19,22 +19,46 @@ class ImportadorStock(ImportadorBase):
     ARCHIVO_DESCARGA = "Planilla_de_Stock_DEPOSITO_FECHA.XLS"
     COLUMNAS_REQUERIDAS = ["Código", "Stock"]
 
+    @staticmethod
+    def _leer_nexus_meta(df: pd.DataFrame) -> str | None:
+        """Intenta leer la celda NEXUS_META que inyecta etiquetar.py.
+
+        etiquetar.py inserta 2 filas al principio del xlsx con este formato:
+          Fila 1 (A1): "▶ DEPÓSITO: SAN JOSE | TIPO: Stock | ..."  ← visible (amarilla)
+          Fila 2 (A2): "NEXUS_META|deposito=SJ|tipo=stock|fecha=..."  ← parseable
+
+        Si encuentra el tag → devuelve el código de depósito (ej: "SJ").
+        Si no → devuelve None (el sistema cae en la detección por nombre).
+        """
+        try:
+            for row_idx in range(min(4, len(df))):
+                val = str(df.iloc[row_idx, 0]).strip()
+                if val.startswith("NEXUS_META|"):
+                    parts = dict(p.split("=", 1) for p in val.split("|")[1:] if "=" in p)
+                    return parts.get("deposito")  # ej: "SJ"
+        except Exception:
+            pass
+        return None
+
     def _transformar(self, df: pd.DataFrame, uploaded_file=None) -> pd.DataFrame:
         """
         Formato confirmado Flexxus Planilla de Stock:
-        - Header real: fila 8 (contiene "Código", "Artículo", etc.)
-        - Datos desde: fila 9
+        - Fila 1-2: NEXUS_META (si el archivo fue etiquetado con etiquetar.py)
+        - Header real: fila ~8-10 (contiene "Código", "Artículo", etc.)
         - col 0: Código
         - col 2: Artículo/Descripción
         - col 5: Rubro
-        - col 7: Stock (⚠️ no col 8)
-        - col 9: S.Mínimo
-        - col 10: S.Máximo
-        - col 11: S.Óptimo
-        - Sin columna de depósito — se infiere del nombre del archivo
+        - col 7: Stock (⚠️ no col 8 — bug offset Flexxus documentado)
+        - col 9: S.Mínimo | col 10: S.Máximo | col 11: S.Óptimo
+        - Depósito: primero desde NEXUS_META, luego desde nombre del archivo
         """
         nombre = getattr(uploaded_file, "name", "") if uploaded_file else ""
-        deposito = detectar_deposito_del_nombre(nombre) or "GENERAL"
+
+        # 1. Intentar leer NEXUS_META (archivo etiquetado con etiquetar.py)
+        deposito_meta = self._leer_nexus_meta(df)
+
+        # 2. Fallback: detectar desde nombre del archivo
+        deposito = deposito_meta or detectar_deposito_del_nombre(nombre) or "GENERAL"
 
         registros = []
         en_datos = False
