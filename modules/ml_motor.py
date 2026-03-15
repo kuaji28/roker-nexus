@@ -134,7 +134,7 @@ def _parsear_html(html, limit):
 
 def _tipo_tienda(nick):
     n = nick.upper()
-    if TIENDA_FR.upper() in n: return "FR"
+    if TIENDA_FR.upper() in n: return "AI-TECH"
     if TIENDA_MEC.upper() in n: return "MECANICO"
     return "COMPETIDOR"
 
@@ -175,7 +175,7 @@ def analizar_competencia(resultados, nuestro_fr=0, nuestro_mec=0):
     for item in resultados:
         pml  = item["precio_ars"]
         tipo = item["tipo_tienda"]
-        nuestro = (nuestro_fr if tipo=="FR" else nuestro_mec if tipo=="MECANICO"
+        nuestro = (nuestro_fr if tipo=="AI-TECH" else nuestro_mec if tipo=="MECANICO"
                    else nuestro_fr or nuestro_mec)
         if nuestro > 0 and pml > 0:
             diff = (pml-nuestro)/nuestro*100

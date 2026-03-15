@@ -174,7 +174,7 @@ def _tab_comparador():
         if not row.empty:
             row = row.iloc[0]
             tipo = row.get("tipo", "")
-            tienda = TIENDA_FR if "FR" in str(tipo) else TIENDA_MEC
+            tienda = TIENDA_FR if "AI-TECH" in str(tipo) else TIENDA_MEC
 
             termino = str(row.get("ml_termino") or "")
             if not termino or termino == "nan":
@@ -716,7 +716,7 @@ def _guardar_cambios_ml(df_original: pd.DataFrame, df_editado: pd.DataFrame):
         # Guardar MLA ID si cambió
         if str(edit.get("mla_id", "")) != str(orig.get("mla_id", "")):
             mla = str(edit["mla_id"]).strip()
-            if "FR" in str(tipo):
+            if "AI-TECH" in str(tipo):
                 execute_query("UPDATE articulos SET mla_id_fr=? WHERE codigo=?", (mla, cod), fetch=False)
             else:
                 execute_query("UPDATE articulos SET mla_id_mec=? WHERE codigo=?", (mla, cod), fetch=False)
