@@ -261,6 +261,21 @@ CREATE TABLE IF NOT EXISTS mariano_repuestos (
     importado_en TIMESTAMPTZ DEFAULT now()
 );
 
+-- Alertas de stock (subidas y caídas detectadas al importar)
+CREATE TABLE IF NOT EXISTS stock_alertas (
+    id SERIAL PRIMARY KEY,
+    codigo TEXT NOT NULL,
+    descripcion TEXT,
+    deposito TEXT,
+    stock_anterior REAL DEFAULT 0,
+    stock_nuevo REAL DEFAULT 0,
+    diferencia REAL DEFAULT 0,
+    tipo_alerta TEXT NOT NULL,
+    severidad TEXT DEFAULT 'info',
+    visto INTEGER DEFAULT 0,
+    fecha TIMESTAMPTZ DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS ml_reporte_comparaciones (
     id SERIAL PRIMARY KEY,
     codigo TEXT,
