@@ -57,6 +57,13 @@ BATCHES = [
 
 BATCH_DIR = pathlib.Path(__file__).parent / "batch_files"
 
+# ── on_conflict params per table (matches UNIQUE constraint, NOT the PK) ─────
+ON_CONFLICT = {
+    "precios":         "codigo,fecha",
+    "ventas":          "codigo,fecha_desde,fecha_hasta",
+    "stock_snapshots": "codigo,deposito,fecha",
+}
+
 # ── JSON extractor ────────────────────────────────────────────────────────────
 _JSON_ARRAY_RE = re.compile(r"body:JSON\.stringify\((\[.*\])\)", re.DOTALL)
 
@@ -73,9 +80,17 @@ def push_batch(table: str, filename: str) -> dict:
         return {"skip": True, "reason": "file not found"}
 
     rows = extract_rows(fpath.read_text(encoding="utf-8"))
-    resp = requests.post(f"{SUPABASE_URL}/{table}", headers=HEADERS,
-                         json=rows, timeout=60)
-    return {"ok": resp.status_code <= 201, "status": resp.status_code, "n": len(rows)}
+
+    conflict_cols = ON_CONFLICT.get(table, "")
+    url = (f"{SUPABASE_URL}/{table}?on_conflict={conflict_cols}"
+           if conflict_cols else f"{SUPABASE_URL}/{table}")
+
+    resp = requests.post(url, headers=HEADERS, json=rows, timeout=60)
+    ok = resp.status_code in (200, 201)
+    result = {"ok": ok, "status": resp.status_code, "n": len(rows)}
+    if not ok:
+        result["error_body"] = resp.text[:500]   # primeros 500 chars del error
+    return result
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
@@ -103,6 +118,8 @@ def main():
         else:
             err_count += 1
             errors.append((fname, result["status"]))
+            if result.get("error_body"):
+                print(f"         ERROR: {result['error_body']}")
 
         # Tiny delay to avoid hammering the API
         time.sleep(0.15)
