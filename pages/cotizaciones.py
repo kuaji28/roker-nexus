@@ -68,6 +68,22 @@ def render():
     with tabs[3]:
         _tab_historial()
 
+    # ── IA contextual ──────────────────────────────────────────
+    from utils.ia_widget import nx_ai_widget, ctx_cotizaciones
+    nx_ai_widget(
+        page_key  = "cotizaciones",
+        titulo    = "🤖 Asistente de tránsito con IA",
+        subtitulo = "Analizá pedidos en tránsito, costos y prioridades",
+        sugeridas = [
+            ("✈️ Resumen de tránsito",   "¿Cuánto hay en tránsito ahora? Dame un resumen con montos y fechas estimadas."),
+            ("💰 Costo total del lote",  "¿Cuánto vale en total lo que está en tránsito? ¿Hay algo que debería priorizar?"),
+            ("🔄 Traducir código FR",    "Ayudame a relacionar códigos de Diego (cotización china) con los códigos de Flexxus."),
+            ("📅 Riesgo de demora",      "¿Qué pedidos tienen mayor riesgo de demorar y cómo me afecta en stock?"),
+        ],
+        context_fn = ctx_cotizaciones,
+        collapsed  = True,
+    )
+
 
 # ─────────────────────────────────────────────────────────────
 # TAB 1 — NUEVO PEDIDO
