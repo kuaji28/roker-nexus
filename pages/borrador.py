@@ -59,6 +59,22 @@ def render():
     with tabs[3]:
         _tab_ghost_skus()
 
+    # ── IA contextual ──────────────────────────────────────────
+    from utils.ia_widget import nx_ai_widget, ctx_borrador
+    nx_ai_widget(
+        page_key  = "borrador",
+        titulo    = "🤖 Revisar borrador con IA",
+        subtitulo = "Optimizá el pedido: cantidades, prioridades y costos",
+        sugeridas = [
+            ("✅ ¿Está completo?",        "Revisá el borrador. ¿Falta algo importante según el stock actual y la demanda?"),
+            ("💰 Costo total del lote",   "Calculá el costo total del borrador en USD. ¿Está dentro del presupuesto de U$S 250.000?"),
+            ("🔢 Ajustar cantidades",     "¿Las cantidades del borrador son correctas? Sugerí ajustes según demanda de 30 días."),
+            ("📋 Redactar para Diego",    "Redactá el pedido en formato para enviarle a Diego (nombre modelo, código, cantidad)."),
+        ],
+        context_fn = ctx_borrador,
+        collapsed  = True,
+    )
+
 
 # ─────────────────────────────────────────────────────────────
 # TAB 1 — AGREGAR ÍTEMS

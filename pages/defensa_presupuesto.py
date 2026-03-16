@@ -67,6 +67,22 @@ def render():
     st.divider()
     _seccion_datos_live()
 
+    # ── IA contextual ──────────────────────────────────────────
+    from utils.ia_widget import nx_ai_widget, ctx_defensa
+    nx_ai_widget(
+        page_key  = "defensa",
+        titulo    = "🤖 Construir argumento con IA",
+        subtitulo = "Preparate para la presentación con Diego y Walter",
+        sugeridas = [
+            ("🛡️ Argumento principal",    "Construí el argumento más sólido para defender el presupuesto de módulos ante Diego y Walter."),
+            ("📊 Cuantificar el daño",    "¿Cuánto costó en ventas perdidas el recorte de presupuesto desde diciembre 2025?"),
+            ("🎯 Rebatir a Pablo/Mariano","¿Cómo rebato el argumento de 'los módulos tienen márgenes bajos' con los datos actuales?"),
+            ("📋 Preparar presentación",  "Redactá un guion ejecutivo de 5 minutos para presentar a Diego. Directo, con números."),
+        ],
+        context_fn = ctx_defensa,
+        collapsed  = False,
+    )
+
 
 # ══════════════════════════════════════════════════════════════
 # SECCIÓN 1 — KPIs Principales
