@@ -101,7 +101,23 @@ def render():
 
     st.markdown("---")
 
-    # ── Base de datos ──
+    # ── Test Telegram ──
+    try:
+        from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
+        if TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
+            col_tg1, col_tg2, _ = st.columns([2, 2, 6])
+            with col_tg1:
+                if st.button("📨 Enviar notificación de prueba", key="btn_tg_test"):
+                    from utils.helpers import notificar_telegram
+                    notificar_telegram(
+                        "\U0001f514 *Roker Nexus — Sistema OK*\n"
+                        "Notificaciones Telegram activas. 16/03/2026"
+                    )
+                    st.success("\u2705 Mensaje enviado a Telegram.")
+    except Exception:
+        pass
+
+        # ── Base de datos ──
     st.markdown("### 📊 Base de datos")
     try:
         from database import execute_query
