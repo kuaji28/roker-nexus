@@ -98,26 +98,36 @@ def detectar_deposito_del_nombre(nombre: str) -> Optional[str]:
       2. Palabra clave en cualquier parte (legado): "Planilla Stock San Jose.xls"
     """
     # ── 1. Prefijo corto al inicio del nombre ─────────────────────────────
-    # Formato: "SJ Planilla de Stock..." o "SJ_Planilla_de_Stock..."
+    # Formato: "SJ Planilla de Stock..." o "SJ_Planilla_de_Stock..." o "SJ.XLS"
     PREFIJOS = {
-        "SJ":  "SJ",
-        "LAR": "LAR",
-        "SAR": "SAR",
-        "FML": "FML",
-        "DML": "DML",
-        "MER": "MER",
-        "RMA": "RMA",
-        "MUE": "MUE",
-        "UI":  "UI",
+        "SJ":     "SJ",
+        "JS":     "SJ",    # alias corto (ej: JS.XLS)
+        "LAR":    "LAR",
+        "SAR":    "SAR",
+        "FML":    "FML",
+        "FULLML": "FML",   # alias corto (ej: FULLML.XLS)
+        "DML":    "DML",
+        "ML":     "DML",   # alias corto (ej: ML.XLS)
+        "MER":    "MER",
+        "MERG":   "MER",   # alias corto (ej: MERG.XLS)
+        "RMA":    "RMA",
+        "RM":     "RMA",   # alias corto (ej: RM.XLS)
+        "MUE":    "MUE",
+        "DTM":    "DTM",   # Dep. Transitorio Dev ML
+        "UI":     "UI",
     }
     nombre_base = nombre.split("/")[-1].split("\\")[-1]  # solo filename, sin path
     nombre_upper = nombre_base.upper()
     for prefijo, codigo in PREFIJOS.items():
-        if nombre_upper.startswith(prefijo + " ") or nombre_upper.startswith(prefijo + "_"):
+        if (nombre_upper.startswith(prefijo + " ")
+                or nombre_upper.startswith(prefijo + "_")
+                or nombre_upper.startswith(prefijo + ".")):
             return codigo
 
     # ── 2. Palabras clave en cualquier parte (compatibilidad legado) ────────
     nombre_up = nombre.upper()
+    if "TRANSITORIO" in nombre_up and ("DEV" in nombre_up or "ML" in nombre_up):
+        return "DTM"
     if "SAN" in nombre_up and "JOSE" in nombre_up:
         return "SJ"
     if "LARREA" in nombre_up:
