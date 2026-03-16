@@ -408,6 +408,241 @@ def render():
             st.caption(f"Últimas 50 importaciones. Total: {len(df_log)}")
 
 
+def _tab_guia():
+    """
+    Tab Guía de archivos:
+    - Herramienta renombrador (pegar nombre Flexxus → obtener nombre correcto)
+    - Tarjetas expandibles por tipo de archivo con pasos + errores comunes
+    """
+    # ── Renombrador ────────────────────────────────────────────
+    st.markdown("""
+    <div style="background:linear-gradient(135deg,rgba(10,132,255,.15),rgba(50,215,75,.1));
+                border:1px solid rgba(10,132,255,.3);border-radius:12px;padding:16px 20px;margin-bottom:24px">
+        <div style="font-size:15px;font-weight:700;color:var(--nx-text);margin-bottom:4px">
+            ✏️ Renombrador rápido
+        </div>
+        <div style="font-size:12px;color:var(--nx-text2)">
+            Pegá el nombre que genera Flexxus → el sistema te dice cómo renombrarlo.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col_dep, col_nombre = st.columns([1, 2])
+    with col_dep:
+        deposito_sel = st.selectbox(
+            "Depósito",
+            options=["SAN JOSE (SJ)", "LARREA (LAR)", "ES LOCAL (ESLOCAL)", "Otro / No aplica"],
+            key="guia_dep_sel",
+            help="¿Para qué depósito es la Planilla de Stock?"
+        )
+    with col_nombre:
+        nombre_original = st.text_input(
+            "Nombre que genera Flexxus",
+            placeholder="Ej: Planilla de Stock_15-03-2026 10-22-45.xlsx",
+            key="guia_nombre_original",
+        )
+
+    if nombre_original.strip():
+        nombre_base = nombre_original.strip()
+        # Extraer fecha del nombre si tiene el patrón DD-MM-YYYY
+        import re
+        fecha_iso = None
+        m = re.search(r"(\d{2})-(\d{2})-(\d{4})", nombre_base)
+        if m:
+            d, mo, y = m.group(1), m.group(2), m.group(3)
+            fecha_iso = f"{y}-{mo}-{d}"
+
+        fecha_str = fecha_iso or datetime.now().strftime("%Y-%m-%d")
+        dep_code_map = {
+            "SAN JOSE (SJ)": "SJ",
+            "LARREA (LAR)": "LAR",
+            "ES LOCAL (ESLOCAL)": "ESLOCAL",
+            "Otro / No aplica": None,
+        }
+        dep_code = dep_code_map.get(deposito_sel)
+
+        # Determinar nombre correcto
+        es_planilla_stock = "planilla" in nombre_base.lower() and "stock" in nombre_base.lower()
+        es_optimizacion = "optimizac" in nombre_base.lower()
+        es_ventas = "resumida" in nombre_base.lower()
+        es_lista = "lista de precio" in nombre_base.lower()
+        es_compras = "por marca" in nombre_base.lower() or "compras" in nombre_base.lower()
+
+        if es_planilla_stock and dep_code:
+            nombre_correcto = f"{dep_code}_stock_{fecha_str}.xlsx"
+            nombre_atajo   = f"{dep_code} {nombre_base}"
+            color_ok = "#32D74B"
+            label_tipo = f"📦 Stock {deposito_sel.split(' (')[0]}"
+            necesita_renombrar = True
+        elif es_planilla_stock and not dep_code:
+            nombre_correcto = "— Seleccioná el depósito arriba →"
+            nombre_atajo = None
+            color_ok = "#FF9F0A"
+            label_tipo = "📦 Planilla de Stock (depósito desconocido)"
+            necesita_renombrar = True
+        elif es_optimizacion:
+            nombre_correcto = nombre_base  # ya es reconocido
+            nombre_atajo = None
+            color_ok = "#32D74B"
+            label_tipo = "📊 Optimización de Stock"
+            necesita_renombrar = False
+        elif es_ventas:
+            nombre_correcto = nombre_base
+            nombre_atajo = None
+            color_ok = "#32D74B"
+            label_tipo = "📈 Ventas por Artículo"
+            necesita_renombrar = False
+        elif es_lista:
+            nombre_correcto = nombre_base
+            nombre_atajo = None
+            color_ok = "#32D74B"
+            label_tipo = "💰 Lista de Precios"
+            necesita_renombrar = False
+        elif es_compras:
+            nombre_correcto = nombre_base
+            nombre_atajo = None
+            color_ok = "#32D74B"
+            label_tipo = "🛍️ Compras por Marca"
+            necesita_renombrar = False
+        else:
+            nombre_correcto = "⚠️ No reconocido — verificá el nombre"
+            nombre_atajo = None
+            color_ok = "#FF3B30"
+            label_tipo = "❓ Tipo desconocido"
+            necesita_renombrar = True
+
+        # Resultado visual
+        st.markdown(f"""
+        <div style="background:var(--nx-surface2,#1c1c1e);border:1px solid {color_ok}33;
+                    border-radius:10px;padding:14px 18px;margin-top:8px">
+            <div style="font-size:11px;color:var(--nx-text3);margin-bottom:6px">
+                {label_tipo}
+            </div>
+        """, unsafe_allow_html=True)
+
+        if necesita_renombrar and dep_code:
+            st.markdown(f"""
+            <div style="margin-bottom:6px">
+                <span style="font-size:11px;color:var(--nx-text2)">Nombre correcto:</span><br>
+                <code style="font-size:14px;color:{color_ok};background:rgba(50,215,75,.1);
+                             padding:4px 10px;border-radius:6px;display:inline-block;margin-top:2px">
+                    {nombre_correcto}
+                </code>
+            </div>
+            """, unsafe_allow_html=True)
+            if nombre_atajo:
+                st.markdown(f"""
+                <div>
+                    <span style="font-size:11px;color:var(--nx-text3)">
+                        ⚡ Atajo (también funciona): <code>{nombre_atajo[:60]}{'...' if len(nombre_atajo)>60 else ''}</code>
+                    </span>
+                </div>
+                """, unsafe_allow_html=True)
+        elif not necesita_renombrar:
+            st.markdown(f"""
+            <div>
+                <span style="font-size:12px;color:{color_ok}">✅ El nombre ya es correcto, no necesita renombrarse.</span>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div>
+                <span style="font-size:12px;color:{color_ok}">{nombre_correcto}</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── Selector de categoría ──────────────────────────────────
+    st.markdown("""
+    <div style="font-size:14px;font-weight:700;color:var(--nx-text);margin-bottom:12px">
+        📋 Guía paso a paso por tipo de archivo
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Agrupar guías por categoría
+    GRUPOS_GUIA = {
+        "📦 Stock por Depósito": ["stock_sj", "stock_lar", "stock_eslocal"],
+        "📊 Análisis y Precios": ["optimizacion", "lista_precios"],
+        "📈 Ventas y Compras": ["ventas", "compras"],
+        "🏭 Externos": ["cotizacion_aitech", "mariano"],
+    }
+
+    for grupo_label, claves in GRUPOS_GUIA.items():
+        st.markdown(f"""
+        <div style="font-size:12px;font-weight:700;color:var(--nx-text3);
+                    text-transform:uppercase;letter-spacing:.06em;
+                    margin:16px 0 6px;padding-bottom:4px;
+                    border-bottom:1px solid var(--nx-border,#3a3a3c)">
+            {grupo_label}
+        </div>
+        """, unsafe_allow_html=True)
+
+        for clave in claves:
+            guia = GUIA_DETALLADA.get(clave)
+            if not guia:
+                continue
+
+            color = guia.get("color", "#8E8E93")
+            with st.expander(f"{guia['titulo']}  —  {guia['urgencia']}"):
+
+                # Nombre archivos
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    st.markdown(f"""
+                    <div style="background:var(--nx-surface2);border-radius:8px;padding:10px 12px">
+                        <div style="font-size:10px;color:var(--nx-text3);margin-bottom:4px;text-transform:uppercase">
+                            📁 Ruta Flexxus
+                        </div>
+                        <code style="font-size:12px;color:var(--nx-accent)">{guia['flexxus_ruta']}</code>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with col_b:
+                    st.markdown(f"""
+                    <div style="background:var(--nx-surface2);border-radius:8px;padding:10px 12px">
+                        <div style="font-size:10px;color:var(--nx-text3);margin-bottom:4px;text-transform:uppercase">
+                            💾 Flexxus genera
+                        </div>
+                        <code style="font-size:12px;color:var(--nx-text2)">{guia['nombre_genera_flexxus']}</code>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                # Nombre correcto con badge color
+                nombre_c = guia["nombre_correcto"]
+                no_renombrar = nombre_c == guia["nombre_genera_flexxus"] or "no necesita" in guia.get("nombre_alternativo","").lower()
+                badge_color = "#32D74B" if no_renombrar else color
+                badge_text  = "✅ Sin renombrar" if no_renombrar else "✏️ Renombrar a:"
+                st.markdown(f"""
+                <div style="background:rgba(50,215,75,.08);border:1px solid {badge_color}44;
+                            border-radius:8px;padding:8px 12px;margin:8px 0">
+                    <span style="font-size:11px;color:var(--nx-text3)">{badge_text} </span>
+                    <code style="font-size:13px;color:{badge_color}">{nombre_c}</code>
+                    {"<br><span style='font-size:10px;color:var(--nx-text3)'>⚡ Alternativa: " + guia['nombre_alternativo'] + "</span>" if guia.get('nombre_alternativo') and "no necesita" not in guia['nombre_alternativo'].lower() and guia['nombre_alternativo'] != "— (no necesita renombrado)" else ""}
+                </div>
+                """, unsafe_allow_html=True)
+
+                # Pasos
+                st.markdown("<div style='font-size:12px;font-weight:600;color:var(--nx-text);margin:10px 0 6px'>Pasos:</div>", unsafe_allow_html=True)
+                pasos_html = ""
+                for paso in guia["pasos"]:
+                    # Negrita para texto entre **
+                    paso_fmt = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", paso) if "re" in dir() else paso
+                    # backtick code
+                    paso_fmt = re.sub(r"`(.+?)`", r"<code>\1</code>", paso_fmt)
+                    pasos_html += f"<div style='padding:3px 0;color:var(--nx-text2);line-height:1.5'>{paso_fmt}</div>"
+                st.markdown(f"<div style='font-size:12px'>{pasos_html}</div>", unsafe_allow_html=True)
+
+                # Errores comunes
+                if guia.get("errores_comunes"):
+                    st.markdown("<div style='font-size:12px;font-weight:600;color:#FF3B30;margin:10px 0 4px'>⚠️ Errores comunes:</div>", unsafe_allow_html=True)
+                    err_html = ""
+                    for err in guia["errores_comunes"]:
+                        err_html += f"<div style='padding:2px 0;color:rgba(255,59,48,.8)'>{err}</div>"
+                    st.markdown(f"<div style='font-size:12px;background:rgba(255,59,48,.06);border-radius:6px;padding:8px 10px'>{err_html}</div>", unsafe_allow_html=True)
+
+
 def _procesar_archivo(f, forzar_tipo: str = None):
     """Procesa un archivo subido y muestra el resultado."""
     nombre = f.name
