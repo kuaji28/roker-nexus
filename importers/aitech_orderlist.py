@@ -141,11 +141,15 @@ def parsear_orderlist(filepath: str) -> dict:
         except (ValueError, TypeError):
             qty = 0
 
+        # col9 es PRECIO EN RMB (yuan chino), no USD.
+        # Convertir a USD dividiendo por la tasa RMB→USD (por defecto 6.9)
+        TASA_RMB_USD = 6.9
         try:
-            precio = float(col9) if col9 else 0.0
+            precio_rmb = float(col9) if col9 else 0.0
         except (ValueError, TypeError):
-            precio = 0.0
+            precio_rmb = 0.0
 
+        precio = round(precio_rmb / TASA_RMB_USD, 2)
         subtotal = qty * precio
         total_usd += subtotal
 
@@ -159,7 +163,8 @@ def parsear_orderlist(filepath: str) -> dict:
             "quality":          col6,
             "colour":           col7,
             "cantidad_pedida":  qty,
-            "precio_usd":       precio,
+            "precio_rmb":       precio_rmb,          # precio original en yuan
+            "precio_usd":       precio,               # precio_rmb / 6.9
             "subtotal_usd":     subtotal,
             "seccion":          seccion_actual,
             # Campos que se llenarán en el matching

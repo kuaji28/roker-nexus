@@ -14,16 +14,12 @@ from utils.helpers import fmt_usd, fmt_ars, fmt_num
 
 def _es_modulo(desc: str) -> bool:
     """
-    Filtra módulos. La tabla optimizacion YA contiene solo módulos, así que
-    aceptamos todo. Solo excluimos filas con descripción claramente no-módulo.
+    Módulos = pantallas de celular (display + touch).
+    Filtro POSITIVO: la descripción DEBE contener alguna de las palabras clave.
+    Baterías, pins, placas, cables, auriculares, etc. no las contienen → quedan fuera.
     """
     d = str(desc or "").upper().strip()
-    # Excluir accesorios genéricos / servicios / artículos sin descripción útil
-    for exc in ("AURICULAR", "CARGADOR", "CABLE", "FUNDA", "TEMPLADO",
-                "SERVICIO", "REPUESTO GENERAL", "SIN DESCRIPCION"):
-        if d.startswith(exc):
-            return False
-    return bool(d)  # acepta todo lo que tenga descripción
+    return any(p in d for p in ("MODULO", "MODULE", "DISPLAY", "PANTALLA"))
 
 def _tipo(codigo: str) -> str:
     c = str(codigo or "").strip()

@@ -79,6 +79,18 @@ def detectar_tipo_flexxus(nombre_archivo: str) -> Optional[str]:
         return "stock"
     if nombre_norm.startswith("STOCK") or nombre_up.startswith("STOCK ") or nombre_up.startswith("STOCK_"):
         return "stock"
+    # Stock: depósito Transitorio Dev ML (no tiene "Planilla" ni "Stock" en el nombre)
+    if "TRANSITORIO" in nombre_norm and ("DEV" in nombre_norm or "DEVML" in nombre_norm):
+        return "stock"
+    # Stock: nombre corto por depósito (ej: JS.XLS, LAR.XLS, FULLML.XLS, ML.XLS, etc.)
+    _CODIGOS_DEPOSITO = {
+        "SJ", "JS", "LAR", "SAR", "FML", "FULLML", "DML", "ML",
+        "MER", "MERG", "RMA", "RM", "MUE", "DTM",
+    }
+    import os as _os
+    _base = _os.path.splitext(nombre_up.split("/")[-1].split("\\")[-1])[0].strip()
+    if _base in _CODIGOS_DEPOSITO:
+        return "stock"
 
     # Archivos de proveedores
     if "cotizacion" in nombre.lower() or "ai-tech" in nombre.lower() or "ai_tech" in nombre.lower():

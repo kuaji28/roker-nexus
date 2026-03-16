@@ -163,8 +163,8 @@ async def cmd_stock(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Sin argumento: elegir depósito para ver resumen
         keyboard = [
             [
-                InlineKeyboardButton("🏭 San José", callback_data="stock_dep_SAN_JOSE"),
-                InlineKeyboardButton("🏪 Larrea", callback_data="stock_dep_LARREA"),
+                InlineKeyboardButton("🏭 San José", callback_data="stock_dep_SJ"),
+                InlineKeyboardButton("🏪 Larrea", callback_data="stock_dep_LAR"),
             ],
             [InlineKeyboardButton("📊 Todos los depósitos", callback_data="stock_dep_TODOS")],
         ]
@@ -183,35 +183,25 @@ async def cmd_stock(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def _buscar_articulos(query: str) -> list:
     """Busca artículos por código exacto o descripción parcial. Retorna lista de (codigo, descripcion, marca)."""
-    import sqlite3 as _sq
-    conn = _sq.connect("roker_nexus.db")
+    from database import execute_query as _eq
     q = query.upper()
     # Primero intenta código exacto
-    cur = conn.execute(
-        "SELECT codigo, descripcion, marca FROM articulos WHERE UPPER(codigo)=? LIMIT 1", (q,)
-    )
-    row = cur.fetchone()
-    if row:
-        conn.close()
-        return [row]
+    rows = _eq("SELECT codigo, descripcion, marca FROM articulos WHERE UPPER(codigo)=? LIMIT 1", (q,))
+    if rows:
+        return [(r["codigo"], r["descripcion"], r["marca"]) for r in rows]
     # Búsqueda por descripción o marca
     palabras = q.split()
     like = "%" + "%".join(palabras) + "%"
-    cur = conn.execute(
+    rows = _eq(
         "SELECT codigo, descripcion, marca FROM articulos WHERE UPPER(descripcion) LIKE ? OR UPPER(marca) LIKE ? ORDER BY descripcion LIMIT 10",
         (like, like)
     )
-    rows = cur.fetchall()
     # Si no encontró, buscar palabras sueltas
     if not rows:
-        cur = conn.execute(
-            "SELECT codigo, descripcion, marca FROM articulos WHERE " +
-            " AND ".join(["UPPER(descripcion) LIKE ?" for _ in palabras]),
-            ["%" + p + "%" for p in palabras]
-        )
-        rows = cur.fetchall()
-    conn.close()
-    return rows
+        sql = ("SELECT codigo, descripcion, marca FROM articulos WHERE " +
+               " AND ".join(["UPPER(descripcion) LIKE ?" for _ in palabras]))
+        rows = _eq(sql, tuple(["%" + p + "%" for p in palabras]))
+    return [(r["codigo"], r["descripcion"], r["marca"]) for r in rows]
 
 
 async def _buscar_y_mostrar_stock(message, query: str, context):
@@ -247,33 +237,30 @@ async def _buscar_y_mostrar_stock(message, query: str, context):
 
 async def _mostrar_stock_codigo(message, codigo: str):
     """Muestra stock completo: depósitos, precios L1/L4, tránsito, último ingreso, sugerencia."""
-    import sqlite3 as _sq, os as _os_s
-    _db = _os_s.path.join(_os_s.path.dirname(_os_s.path.abspath(__file__)), "roker_nexus.db")
-    conn = _sq.connect(_db)
+    from database import execute_query as _eq
 
     # Stock por depósito
-    cur = conn.execute("""
+    rows_stock = _eq("""
         SELECT s.deposito, s.stock, s.stock_minimo, s.stock_optimo
         FROM stock_snapshots s
         JOIN (SELECT deposito, MAX(fecha) mf FROM stock_snapshots WHERE codigo=? GROUP BY deposito) lx
           ON s.deposito=lx.deposito AND s.fecha=lx.mf
         WHERE s.codigo=?
-        ORDER BY CASE s.deposito WHEN 'SAN_JOSE' THEN 1 WHEN 'LARREA' THEN 2 ELSE 3 END
+        ORDER BY CASE s.deposito WHEN 'SJ' THEN 1 WHEN 'LAR' THEN 2 ELSE 3 END
     """, (codigo, codigo))
-    rows_stock = cur.fetchall()
 
     # Artículo + precios
-    cur2 = conn.execute("""
+    art_rows = _eq("""
         SELECT a.descripcion, a.marca, p.lista_1, p.lista_4
         FROM articulos a
         LEFT JOIN precios p ON a.codigo=p.codigo
         WHERE a.codigo=?
         ORDER BY p.fecha DESC LIMIT 1
     """, (codigo,))
-    art = cur2.fetchone()
+    art = art_rows[0] if art_rows else None
 
     # En tránsito (cotizaciones)
-    cur3 = conn.execute("""
+    transito_rows = _eq("""
         SELECT SUM(ci.cantidad_pedida - COALESCE(ci.cantidad_recibida,0)) as en_transito,
                c.invoice_id, c.fecha
         FROM cotizacion_items ci
@@ -283,43 +270,42 @@ async def _mostrar_stock_codigo(message, codigo: str):
           AND ci.cantidad_pedida > COALESCE(ci.cantidad_recibida,0)
         GROUP BY c.id ORDER BY c.fecha DESC LIMIT 1
     """, (codigo, codigo))
-    transito = cur3.fetchone()
+    transito = transito_rows[0] if transito_rows else None
 
     # Optimización (sugerencia y demanda)
-    cur4 = conn.execute("""
+    opt_rows = _eq("""
         SELECT demanda_promedio, stock_actual, stock_optimo, costo_reposicion
         FROM optimizacion WHERE codigo=? LIMIT 1
     """, (codigo,))
-    opt = cur4.fetchone()
-
-    conn.close()
+    opt = opt_rows[0] if opt_rows else None
 
     if not rows_stock and not art:
         await message.reply_text(f"❓ Sin datos para `{codigo}`.", parse_mode="Markdown")
         return
 
-    desc = art[0] if art else codigo
-    marca_str = f" ({art[1]})" if art and art[1] else ""
-    l1_usd = float(art[2] or 0) if art else 0
-    l4_ars = float(art[3] or 0) if art else 0
+    desc = art["descripcion"] if art else codigo
+    marca_str = f" ({art['marca']})" if art and art.get("marca") else ""
+    l1_usd = float(art.get("lista_1") or 0) if art else 0
+    l4_ars = float(art.get("lista_4") or 0) if art else 0
 
     # Obtener tasa
     try:
-        from database import get_config  # noqa as _gc
+        from database import get_config as _gc
         tasa = float(_gc("tasa_usd_ars", float) or 1420)
     except Exception:
         tasa = 1420
 
     l1_ars = l1_usd * tasa
-    nombres_dep = {"SAN_JOSE": "🏭 San José", "LARREA": "🏪 Larrea", "ES_LOCAL": "🏬 Local"}
+    nombres_dep = {"SJ": "🏭 San José", "LAR": "🏪 Larrea", "SAR": "🏬 Sarmiento"}
 
     lineas = [f"📦 *{desc}*{marca_str}\n`{codigo}`\n"]
 
     # Stock por depósito
     stock_total = 0
-    for dep, stk, minn, opt_s in rows_stock:
-        stk = int(stk or 0)
-        minn = int(minn or 0)
+    for r_s in rows_stock:
+        dep = r_s["deposito"]
+        stk = int(r_s.get("stock") or 0)
+        minn = int(r_s.get("stock_minimo") or 0)
         stock_total += stk
         icono = color_stock(stk, minn)
         nombre = nombres_dep.get(dep, dep)
@@ -336,17 +322,17 @@ async def _mostrar_stock_codigo(message, codigo: str):
         lineas.append(f"🛒 Precio ML: _sin precio L4 cargado_")
 
     # En tránsito
-    if transito and transito[0] and int(transito[0]) > 0:
-        lineas.append(f"\n✈️ En tránsito: *{int(transito[0])} uds* (Invoice {transito[1] or '?'}, {str(transito[2] or '')[:10]})")
+    if transito and transito.get("en_transito") and int(transito["en_transito"]) > 0:
+        lineas.append(f"\n✈️ En tránsito: *{int(transito['en_transito'])} uds* (Invoice {transito.get('invoice_id') or '?'}, {str(transito.get('fecha') or '')[:10]})")
     else:
         lineas.append(f"\n✈️ En tránsito: _ninguno_")
 
     # Sugerencia IA
     if opt:
-        dem = max(0.0, float(opt[0] or 0))
-        stk_actual = float(opt[1] or 0)
-        stk_opt = float(opt[2] or 0)
-        costo = float(opt[3] or 0)
+        dem = max(0.0, float(opt.get("demanda_promedio") or 0))
+        stk_actual = float(opt.get("stock_actual") or 0)
+        stk_opt = float(opt.get("stock_optimo") or 0)
+        costo = float(opt.get("costo_reposicion") or 0)
         if dem > 0 and stk_actual < stk_opt:
             dias = int(stk_actual / (dem / 30)) if dem > 0 else 999
             a_pedir = int(stk_opt - stk_actual)
@@ -395,34 +381,31 @@ async def cmd_precio(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def _mostrar_precio_codigo(message, codigo: str):
-    import os as _osp
-    _db = _osp.path.join(_osp.path.dirname(_osp.path.abspath(__file__)), "roker_nexus.db")
-    conn = sqlite3.connect(_db)
-    cur = conn.execute("SELECT lista_1, lista_4 FROM precios WHERE codigo=? ORDER BY fecha DESC LIMIT 1", (codigo,))
-    row = cur.fetchone()
-    cur2 = conn.execute("SELECT descripcion, marca FROM articulos WHERE codigo=?", (codigo,))
-    art = cur2.fetchone()
+    from database import execute_query as _eq
+    pr_rows = _eq("SELECT lista_1, lista_4 FROM precios WHERE codigo=? ORDER BY fecha DESC LIMIT 1", (codigo,))
+    row = pr_rows[0] if pr_rows else None
+    art_rows = _eq("SELECT descripcion, marca FROM articulos WHERE codigo=?", (codigo,))
+    art = art_rows[0] if art_rows else None
     # Stock total
-    cur3 = conn.execute("""
-        SELECT SUM(s.stock) FROM stock_snapshots s
-        JOIN (SELECT codigo, MAX(fecha) mf FROM stock_snapshots WHERE codigo=? GROUP BY 1) lx
+    stk_rows = _eq("""
+        SELECT SUM(s.stock) AS total FROM stock_snapshots s
+        JOIN (SELECT codigo, MAX(fecha) mf FROM stock_snapshots WHERE codigo=? GROUP BY codigo) lx
           ON s.codigo=lx.codigo AND s.fecha=lx.mf
         WHERE s.codigo=?
     """, (codigo, codigo))
-    stk_row = cur3.fetchone()
-    conn.close()
+    stk_total = stk_rows[0].get("total") if stk_rows else None
 
     if not row:
         await message.reply_text(f"❓ Sin precios para `{codigo}`.", parse_mode="Markdown")
         return
 
-    desc = art[0] if art else codigo
-    marca = f" ({art[1]})" if art and art[1] else ""
+    desc = art["descripcion"] if art else codigo
+    marca = f" ({art['marca']})" if art and art.get("marca") else ""
     tasa = _get_tasa()
-    l1_usd = float(row[0] or 0)
-    l4_ars = float(row[1] or 0)
+    l1_usd = float(row.get("lista_1") or 0)
+    l4_ars = float(row.get("lista_4") or 0)
     l1_ars = l1_usd * tasa
-    stock = int(stk_row[0] or 0) if stk_row else 0
+    stock = int(stk_total or 0)
 
     # Alerta si bajo stock
     alerta_stock = ""
@@ -464,8 +447,8 @@ async def cmd_quiebres(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton("Top 50", callback_data="quiebres_top_50"),
         ],
         [
-            InlineKeyboardButton("🏭 San José", callback_data="quiebres_dep_SAN_JOSE"),
-            InlineKeyboardButton("🏪 Larrea", callback_data="quiebres_dep_LARREA"),
+            InlineKeyboardButton("🏭 San José", callback_data="quiebres_dep_SJ"),
+            InlineKeyboardButton("🏪 Larrea", callback_data="quiebres_dep_LAR"),
             InlineKeyboardButton("📊 Todos", callback_data="quiebres_dep_TODOS"),
         ],
     ]
@@ -483,7 +466,7 @@ async def _mostrar_quiebres(message, top: int = 10, deposito: str = None):
         return
     total = len(df)
     df = df.head(top)
-    dep_label = {"SAN_JOSE": "San José", "LARREA": "Larrea", None: "todos los depósitos"}.get(deposito, deposito)
+    dep_label = {"SJ": "San José", "LAR": "Larrea", None: "todos los depósitos"}.get(deposito, deposito)
     lineas = [f"🔴 *Top {top} quiebres — {dep_label}* ({total} total)\n"]
     for _, row in df.iterrows():
         desc = (row.get("descripcion") or row.get("codigo", "?"))[:35]
@@ -690,23 +673,20 @@ async def cmd_config(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def _guardar_config(message, clave: str, valor: float):
     """Guarda un valor de configuración y confirma."""
+    from database import execute_query as _eq
     if clave == "tasa_usd":
-        _db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "roker_nexus.db")
-        conn = sqlite3.connect(_db_path)
         try:
-            conn.execute(
+            _eq(
                 "INSERT OR REPLACE INTO tasas_cambio (moneda, fecha, usd_ars) VALUES ('USD', date('now'), ?)",
-                (valor,)
+                (valor,), fetch=False
             )
         except Exception:
-            conn.execute(
+            _eq(
                 "INSERT OR REPLACE INTO tasas_cambio (fecha, usd_ars) VALUES (date('now'), ?)",
-                (valor,)
+                (valor,), fetch=False
             )
-        conn.execute("INSERT OR REPLACE INTO configuracion (clave,valor,descripcion) VALUES(?,?,?)",
-                    ("tasa_usd_ars", str(int(valor)), "USD a ARS"))
-        conn.commit()
-        conn.close()
+        _eq("INSERT OR REPLACE INTO configuracion (clave,valor,descripcion) VALUES(?,?,?)",
+            ("tasa_usd_ars", str(int(valor)), "USD a ARS"), fetch=False)
         await message.reply_text(
             f"✅ *Dólar actualizado*\n💵 USD/ARS = *${valor:,.0f}*",
             parse_mode="Markdown"
@@ -736,13 +716,9 @@ async def _guardar_config(message, clave: str, valor: float):
             parse_mode="Markdown"
         )
     elif clave == "rmb":
-        import sqlite3 as _sq3, os as _os3
-        _db3 = _os3.path.join(_os3.path.dirname(_os3.path.abspath(__file__)), "roker_nexus.db")
-        _c3 = _sq3.connect(_db3)
-        _c3.execute("INSERT OR REPLACE INTO configuracion (clave,valor,descripcion) VALUES(?,?,?)",
-                    ("tasa_rmb_usd", str(valor), "RMB Yuan a ARS"))
-        _c3.commit()
-        _c3.close()
+        from database import execute_query as _eq
+        _eq("INSERT OR REPLACE INTO configuracion (clave,valor,descripcion) VALUES(?,?,?)",
+            ("tasa_rmb_usd", str(valor), "RMB Yuan a ARS"), fetch=False)
         await message.reply_text(
             f"✅ *Yuan actualizado*\n🇨🇳 RMB/ARS = *${valor:,.2f}*",
             parse_mode="Markdown"
@@ -795,8 +771,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ── MENÚ PRINCIPAL ──
     elif data == "menu_quiebres":
         keyboard = [[
-            InlineKeyboardButton("🏭 San José", callback_data="quiebres_dep_SAN_JOSE"),
-            InlineKeyboardButton("🏪 Larrea",   callback_data="quiebres_dep_LARREA"),
+            InlineKeyboardButton("🏭 San José", callback_data="quiebres_dep_SJ"),
+            InlineKeyboardButton("🏪 Larrea",   callback_data="quiebres_dep_LAR"),
             InlineKeyboardButton("📋 Todos",    callback_data="quiebres_dep_TODOS"),
         ], [InlineKeyboardButton("❌ Cancelar", callback_data="cancelar")]]
         await query.message.edit_text("📊 *Quiebres* — ¿Qué depósito?", parse_mode="Markdown",
@@ -884,23 +860,20 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.message.edit_text("🔄 Consultando tránsito...")
         except Exception:
             pass
-        import sqlite3 as _sq, os as _ost
-        _db = _ost.path.join(_ost.path.dirname(_ost.path.abspath(__file__)), "roker_nexus.db")
-        conn = _sq.connect(_db)
-        cur = conn.execute("""
+        from database import execute_query as _eq
+        rows = _eq("""
             SELECT p.codigo, a.descripcion, p.cantidad, p.proveedor, p.fecha_estimada
             FROM pedidos_transito p
             LEFT JOIN articulos a ON p.codigo=a.codigo
             WHERE p.estado='en_transito'
             ORDER BY p.fecha_estimada LIMIT 20
         """)
-        rows = cur.fetchall(); conn.close()
         if not rows:
             await query.message.edit_text("🚚 Sin pedidos en tránsito al momento.")
         else:
             lineas = ["🚚 *Pedidos en tránsito:*\n"]
-            for cod, desc, cant, prov, fecha in rows:
-                lineas.append(f"• `{cod}` {desc or ''}\n  {int(cant)} uds | {prov or '?'} | eta {fecha or '?'}")
+            for r in rows:
+                lineas.append(f"• `{r['codigo']}` {r.get('descripcion') or ''}\n  {int(r.get('cantidad') or 0)} uds | {r.get('proveedor') or '?'} | eta {r.get('fecha_estimada') or '?'}")
             await query.message.edit_text("\n".join(lineas), parse_mode="Markdown")
 
     # ── Rastrear pedido/tránsito ──
@@ -921,8 +894,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineKeyboardButton("💰 Ver precio",     callback_data=f"precio_cod_{cod}"),
             ],
             [
-                InlineKeyboardButton("📦 Stock San José", callback_data=f"stock_dep_{cod}_SAN_JOSE"),
-                InlineKeyboardButton("📦 Stock Larrea",   callback_data=f"stock_dep_{cod}_LARREA"),
+                InlineKeyboardButton("📦 Stock San José", callback_data=f"stock_dep_{cod}_SJ"),
+                InlineKeyboardButton("📦 Stock Larrea",   callback_data=f"stock_dep_{cod}_LAR"),
             ],
             [
                 InlineKeyboardButton("⛔ Lista negra",    callback_data=f"negra_add_{cod}"),
@@ -936,7 +909,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     # ── Stock de un depósito específico (artículo + depósito) ──
-    elif data.startswith("stock_dep_") and not any(data == f"stock_dep_{d}" for d in ("SAN_JOSE", "LARREA", "TODOS")):
+    elif data.startswith("stock_dep_") and not any(data == f"stock_dep_{d}" for d in ("SJ", "LAR", "TODOS")):
         partes = data.replace("stock_dep_", "").rsplit("_", 1)
         if len(partes) == 2 and not partes[1].isdigit():
             cod = partes[0]
@@ -981,10 +954,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "cfg_tasa_usd":
         _set_estado(user_id, "tasa_usd")
-        conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.abspath(__file__)), "roker_nexus.db"))
-        cur = conn.execute("SELECT usd_ars FROM tasas_cambio ORDER BY fecha DESC LIMIT 1")
-        row = cur.fetchone(); conn.close()
-        actual = f"${row[0]:,.0f}" if row else "no registrado"
+        from database import execute_query as _eq
+        tasa_rows = _eq("SELECT usd_ars FROM tasas_cambio ORDER BY fecha DESC LIMIT 1")
+        actual = f"${tasa_rows[0]['usd_ars']:,.0f}" if tasa_rows else "no registrado"
         await query.message.edit_text(
             f"💵 *Tipo de cambio USD*\nValor actual: *{actual}*\n\nEscribí el nuevo valor:",
             parse_mode="Markdown"
@@ -1007,10 +979,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ── Stock: selección de depósito para resumen ──
     elif data.startswith("stock_dep_"):
         deposito = data.replace("stock_dep_", "")
-        import sqlite3 as _sq
-        conn = _sq.connect("roker_nexus.db")
+        from database import execute_query as _eq
         if deposito == "TODOS":
-            cur = conn.execute("""
+            rows = _eq("""
                 SELECT s.deposito,
                        COUNT(*) as total,
                        SUM(CASE WHEN s.stock=0 THEN 1 ELSE 0 END) as sin_stock,
@@ -1019,20 +990,19 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 JOIN (SELECT codigo, deposito, MAX(fecha) mf FROM stock_snapshots GROUP BY codigo, deposito) lx
                   ON s.codigo=lx.codigo AND s.deposito=lx.deposito AND s.fecha=lx.mf
                 GROUP BY s.deposito
-                ORDER BY CASE s.deposito WHEN 'SAN_JOSE' THEN 1 WHEN 'LARREA' THEN 2 ELSE 3 END
+                ORDER BY CASE s.deposito WHEN 'SJ' THEN 1 WHEN 'LAR' THEN 2 ELSE 3 END
             """)
-            rows = cur.fetchall()
-            conn.close()
             if not rows:
                 await query.message.edit_text("📦 Sin datos. Cargá archivos primero.")
                 return
-            nombres = {"SAN_JOSE": "🏭 San José", "LARREA": "🏪 Larrea", "ES_LOCAL": "🏬 Local"}
+            nombres = {"SJ": "🏭 San José", "LAR": "🏪 Larrea", "SAR": "🏬 Sarmiento"}
             lineas = ["📊 *Resumen por depósito*\n"]
-            for dep, total, sin_stk, bajo in rows:
-                lineas.append(f"{nombres.get(dep, dep)}\n  Total: *{total}* | 🔴 {sin_stk} | 🟡 {bajo}")
+            for r in rows:
+                dep = r["deposito"]
+                lineas.append(f"{nombres.get(dep, dep)}\n  Total: *{r['total']}* | 🔴 {r['sin_stock']} | 🟡 {r['bajo_min']}")
             await query.message.edit_text("\n".join(lineas), parse_mode="Markdown")
         else:
-            cur = conn.execute("""
+            rows = _eq("""
                 SELECT s.codigo, a.descripcion, s.stock, s.stock_minimo
                 FROM stock_snapshots s
                 JOIN (SELECT codigo, MAX(fecha) mf FROM stock_snapshots WHERE deposito=? GROUP BY codigo) lx
@@ -1041,15 +1011,13 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 WHERE s.deposito=? AND s.stock=0
                 ORDER BY a.descripcion LIMIT 15
             """, (deposito, deposito))
-            rows = cur.fetchall()
-            conn.close()
-            nombre_dep = {"SAN_JOSE": "San José", "LARREA": "Larrea"}.get(deposito, deposito)
+            nombre_dep = {"SJ": "San José", "LAR": "Larrea", "SAR": "Sarmiento"}.get(deposito, deposito)
             if not rows:
                 await query.message.edit_text(f"✅ *{nombre_dep}* — Sin quiebres al momento.", parse_mode="Markdown")
                 return
             lineas = [f"🔴 *Quiebres en {nombre_dep}*\n"]
-            for cod, desc, stk, mn in rows:
-                lineas.append(f"`{cod}` {desc or ''}: *{int(stk)}* uds")
+            for r in rows:
+                lineas.append(f"`{r['codigo']}` {r.get('descripcion') or ''}: *{int(r['stock'])}* uds")
             await query.message.edit_text("\n".join(lineas), parse_mode="Markdown")
 
     # ── Stock: código directo desde lista ──
@@ -1082,7 +1050,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             # Solo depósito → pedir cuántos
             dep = resto
-            dep_label = {"SAN_JOSE": "San José", "LARREA": "Larrea", "TODOS": "Todos"}.get(dep, dep)
+            dep_label = {"SJ": "San José", "LAR": "Larrea", "TODOS": "Todos"}.get(dep, dep)
             keyboard = [[
                 InlineKeyboardButton("Top 10", callback_data=f"quiebres_dep_{dep}_10"),
                 InlineKeyboardButton("Top 20", callback_data=f"quiebres_dep_{dep}_20"),
@@ -1121,12 +1089,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ── Lista negra: negra_add_ (alias de negra_ok_) ──
     elif data.startswith("negra_add_"):
         codigo = data.replace("negra_add_", "")
-        import sqlite3 as _sq2
-        _conn2 = _sq2.connect(os.path.join(os.path.dirname(os.path.abspath(__file__)), "roker_nexus.db"))
-        _cur2 = _conn2.execute("SELECT descripcion FROM articulos WHERE codigo=?", (codigo,))
-        _art2 = _cur2.fetchone()
-        _conn2.close()
-        _desc2 = _art2[0] if _art2 else codigo
+        from database import execute_query as _eq
+        _art2_rows = _eq("SELECT descripcion FROM articulos WHERE codigo=?", (codigo,))
+        _desc2 = _art2_rows[0]["descripcion"] if _art2_rows else codigo
         keyboard_neg = [[
             InlineKeyboardButton(f"⛔ Sí, bloquear", callback_data=f"negra_ok_{codigo}"),
             InlineKeyboardButton("❌ Cancelar", callback_data="cancelar"),
@@ -1145,13 +1110,11 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ── Lista negra: confirmar ──
     elif data.startswith("negra_ok_"):
         codigo = data.replace("negra_ok_", "")
-        import sqlite3 as _sq
-        conn = _sq.connect("roker_nexus.db")
-        cur = conn.execute("SELECT descripcion, marca FROM articulos WHERE codigo=?", (codigo,))
-        art = cur.fetchone()
-        conn.close()
+        from database import execute_query as _eq
+        _art_rows = _eq("SELECT descripcion, marca FROM articulos WHERE codigo=?", (codigo,))
+        art = _art_rows[0] if _art_rows else None
         agregar_a_lista_negra(codigo)
-        desc = f"{art[0]}" if art else codigo
+        desc = art["descripcion"] if art else codigo
         await query.message.edit_text(
             f"⛔ *{desc}* (`{codigo}`) agregado a lista negra.",
             parse_mode="Markdown"
@@ -1417,13 +1380,11 @@ async def _buscar_en_transito_pedido(codigo: str) -> str:
     Busca si un artículo está en tránsito o pedido.
     Retorna texto con archivo origen, hoja y renglón para ubicarlo rápido.
     """
-    import sqlite3 as _sq
-    conn = _sq.connect("roker_nexus.db")
-
+    from database import execute_query as _eq
     lineas = []
 
     # ── Buscar en tránsito ──
-    cur = conn.execute("""
+    rows_transito = _eq("""
         SELECT p.codigo, a.descripcion, p.cantidad, p.proveedor,
                p.fecha_pedido, p.fecha_estimada, p.archivo_origen,
                p.hoja_origen, p.renglon_origen, p.estado, p.notas
@@ -1432,26 +1393,25 @@ async def _buscar_en_transito_pedido(codigo: str) -> str:
         WHERE UPPER(p.codigo) = UPPER(?)
         ORDER BY p.fecha_pedido DESC LIMIT 5
     """, (codigo,))
-    rows_transito = cur.fetchall()
 
     if rows_transito:
         lineas.append("🚚 *EN TRÁNSITO:*")
         for row in rows_transito:
-            cod, desc, cant, prov, f_ped, f_eta, archivo, hoja, renglon, estado, notas = row
+            estado = row.get("estado", "")
             estado_emoji = {"en_transito": "🚢", "en_aduana": "🛃", "entregado": "✅"}.get(estado, "📦")
             lineas.append(
-                f"{estado_emoji} *{int(cant or 0)} uds* — {prov or '?'}"
-                f"   📅 Pedido: {f_ped or '?'} | ETA: {f_eta or '?'}"
+                f"{estado_emoji} *{int(row.get('cantidad') or 0)} uds* — {row.get('proveedor') or '?'}"
+                f"   📅 Pedido: {row.get('fecha_pedido') or '?'} | ETA: {row.get('fecha_estimada') or '?'}"
             )
-            if archivo:
-                lineas.append(f"   📄 Archivo: `{archivo}`")
-            if hoja:
-                lineas.append(f"   📋 Hoja: *{hoja}*" + (f" — Renglón *{renglon}*" if renglon else ""))
-            if notas:
-                lineas.append(f"   💬 {notas}")
+            if row.get("archivo_origen"):
+                lineas.append(f"   📄 Archivo: `{row['archivo_origen']}`")
+            if row.get("hoja_origen"):
+                lineas.append(f"   📋 Hoja: *{row['hoja_origen']}*" + (f" — Renglón *{row['renglon_origen']}*" if row.get("renglon_origen") else ""))
+            if row.get("notas"):
+                lineas.append(f"   💬 {row['notas']}")
 
     # ── Buscar en cotizaciones/pedidos ──
-    cur2 = conn.execute("""
+    rows_cot = _eq("""
         SELECT ci.codigo, ci.descripcion, ci.cantidad_caja, ci.precio_usd,
                c.proveedor, c.invoice_id, c.fecha, c.archivo_origen, c.hoja_origen
         FROM cotizacion_items ci
@@ -1459,24 +1419,20 @@ async def _buscar_en_transito_pedido(codigo: str) -> str:
         WHERE UPPER(ci.codigo) = UPPER(?)
         ORDER BY c.fecha DESC LIMIT 3
     """, (codigo,))
-    rows_cot = cur2.fetchall()
 
     if rows_cot:
         if lineas:
             lineas.append("")
         lineas.append("📋 *EN COTIZACIONES:*")
         for row in rows_cot:
-            cod, desc, cant, precio, prov, invoice, fecha, archivo, hoja = row
             lineas.append(
-                f"• {prov or '?'} — Invoice *{invoice or '?'}* ({fecha or '?'})"
-                f"   Cant: {int(cant or 0)} uds | USD {precio or 0:.2f}"
+                f"• {row.get('proveedor') or '?'} — Invoice *{row.get('invoice_id') or '?'}* ({row.get('fecha') or '?'})"
+                f"   Cant: {int(row.get('cantidad_caja') or 0)} uds | USD {float(row.get('precio_usd') or 0):.2f}"
             )
-            if archivo:
-                lineas.append(f"   📄 `{archivo}`")
-            if hoja:
-                lineas.append(f"   📋 Hoja: *{hoja}*")
-
-    conn.close()
+            if row.get("archivo_origen"):
+                lineas.append(f"   📄 `{row['archivo_origen']}`")
+            if row.get("hoja_origen"):
+                lineas.append(f"   📋 Hoja: *{row['hoja_origen']}*")
 
     if not lineas:
         return None
@@ -1499,7 +1455,7 @@ async def _responder_busqueda_opciones(msg, resultados: list, termino: str):
             ],
             [
                 InlineKeyboardButton("🚚 Tránsito/Pedido", callback_data=f"pedido_cod_{cod}"),
-                InlineKeyboardButton("📦 Stock San José",  callback_data=f"stock_dep_{cod}_SAN_JOSE"),
+                InlineKeyboardButton("📦 Stock San José",  callback_data=f"stock_dep_{cod}_SJ"),
             ],
             [
                 InlineKeyboardButton("⛔ Lista negra",    callback_data=f"negra_add_{cod}"),
@@ -1873,11 +1829,9 @@ async def alerta_quiebres(context: ContextTypes.DEFAULT_TYPE):
 # ── Helpers ───────────────────────────────────────────────────
 def _get_tasa() -> float:
     try:
-        conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.abspath(__file__)), "roker_nexus.db"))
-        cur = conn.execute("SELECT usd_ars FROM tasas_cambio ORDER BY fecha DESC LIMIT 1")
-        row = cur.fetchone()
-        conn.close()
-        return float(row[0]) if row else MONEDA_USD_ARS
+        from database import execute_query as _eq
+        rows = _eq("SELECT usd_ars FROM tasas_cambio ORDER BY fecha DESC LIMIT 1")
+        return float(rows[0]["usd_ars"]) if rows else MONEDA_USD_ARS
     except Exception:
         return MONEDA_USD_ARS
 
@@ -1939,12 +1893,9 @@ async def _mostrar_pedido_codigo(message, codigo: str, desc: str = ""):
 def _get_tasa_str() -> str:
     """Retorna la tasa USD/ARS como string formateado."""
     try:
-        import sqlite3 as _sq, os as _os
-        db = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "roker_nexus.db")
-        conn = _sq.connect(db)
-        row = conn.execute("SELECT usd_ars FROM tasas_cambio ORDER BY fecha DESC LIMIT 1").fetchone()
-        conn.close()
-        return f"${row[0]:,.0f}" if row else "no registrado"
+        from database import execute_query as _eq
+        rows = _eq("SELECT usd_ars FROM tasas_cambio ORDER BY fecha DESC LIMIT 1")
+        return f"${rows[0]['usd_ars']:,.0f}" if rows else "no registrado"
     except Exception:
         return "no registrado"
 
