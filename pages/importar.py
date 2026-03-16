@@ -291,10 +291,11 @@ def render():
     </p>
     """, unsafe_allow_html=True)
 
-    tab_auto, tab_manual, tab_historial = st.tabs([
+    tab_auto, tab_manual, tab_historial, tab_guia = st.tabs([
         "⚡ Carga automática",
         "🗂️ Por tipo de archivo",
-        "📋 Historial"
+        "📋 Historial",
+        "📖 Guía de archivos",
     ])
 
     # ── Tab 1: Carga automática ───────────────────────────────
@@ -383,6 +384,9 @@ def render():
                 _procesar_archivo(f_manual, forzar_tipo=tipo_sel)
 
     # ── Tab 3: Historial ──────────────────────────────────────
+    with tab_guia:
+        _tab_guia()
+
     with tab_historial:
         from database import query_to_df
         df_log = query_to_df("""
