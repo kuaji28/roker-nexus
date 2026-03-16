@@ -667,105 +667,104 @@ def _procesar_archivo(f, forzar_tipo: str = None):
 
         with col_status:
             if not tipo:
+                # ── Tipo no reconocido: selector manual ────────────
                 st.warning("⚠️ Tipo no reconocido")
+                # (el panel de selección se muestra abajo, fuera de la columna)
 
-        if not tipo:
-            # Ofrecer selección manual de tipo + depósito
-            st.markdown(f"""
-            <div style="background:rgba(255,159,10,.1);border:1px solid rgba(255,159,10,.3);
-                        border-radius:8px;padding:12px 16px;margin:4px 0 8px">
-                <div style="font-size:12px;font-weight:600;color:#FF9F0A;margin-bottom:6px">
-                    ❓ No se pudo detectar el tipo de archivo automáticamente
-                </div>
-                <div style="font-size:11px;color:var(--nx-text2)">
-                    El nombre <code>{f.name}</code> no coincide con ningún patrón conocido.<br>
-                    Seleccioná el tipo manualmente para continuar, o renombrá el archivo y volvé a subirlo.
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            col_forzar_tipo, col_forzar_dep = st.columns([2, 1])
-            with col_forzar_tipo:
-                tipo_forzado = st.selectbox(
-                    "¿Qué tipo de archivo es?",
-                    options=[""] + list(INSTRUCCIONES.keys()),
-                    format_func=lambda k: (
-                        "— Seleccioná el tipo —" if k == ""
-                        else f"{INSTRUCCIONES[k]['icono']} {INSTRUCCIONES[k]['titulo']}"
-                    ),
-                    key=f"forzar_tipo_{f.name}",
-                )
-            with col_forzar_dep:
-                dep_forzado = st.selectbox(
-                    "Depósito (si es Stock)",
-                    options=["Auto", "SAN JOSE", "LARREA", "ESLOCAL"],
-                    key=f"forzar_dep_{f.name}",
-                    help="Solo relevante para archivos de stock",
-                )
-
-            if tipo_forzado:
-                if st.button(f"Importar como {INSTRUCCIONES[tipo_forzado]['titulo']}", key=f"btn_forzar_{f.name}"):
-                    # Si es stock, renombrar internamente con prefijo de depósito
-                    if tipo_forzado == "stock" and dep_forzado != "Auto":
-                        import io
-                        prefixed_name = f"{dep_forzado} {f.name}"
-                        # Crear objeto compatible con el importador
-                        class _FakeFile:
-                            def __init__(self, orig, new_name):
-                                self._orig = orig
-                                self.name = new_name
-                            def read(self): return self._orig.read()
-                            def seek(self, *a): return self._orig.seek(*a)
-                            def getvalue(self): return self._orig.getvalue()
-                        f_wrapped = _FakeFile(f, prefixed_name)
-                        _procesar_archivo(f_wrapped, forzar_tipo=tipo_forzado)
+            else:
+                # ── Tipo detectado: importar ────────────────────────
+                with st.spinner("Importando..."):
+                    from importers import get_importador
+                    imp = get_importador(tipo)
+                    if imp:
+                        resultado = imp.importar(f)
                     else:
-                        _procesar_archivo(f, forzar_tipo=tipo_forzado)
-            else:
-                st.caption("💡 También podés ir a la pestaña **📖 Guía de archivos** para saber cómo renombrarlo.")
-            return
+                        st.error("Sin importador")
+                        st.divider()
+                        return
 
-            with st.spinner("Importando..."):
-                from importers import get_importador
-                imp = get_importador(tipo)
-                if imp:
-                    resultado = imp.importar(f)
+                if resultado.exitoso:
+                    st.success(f"✅ {fmt_num(resultado.filas_ok)} filas")
+                    # Registrar en file tracker
+                    try:
+                        from database import update_archivo_tracker
+                        deposito = resultado.metadata.get("deposito", "") if resultado.metadata else ""
+                        update_archivo_tracker(tipo, deposito, resultado.filas_ok, f.name)
+                    except Exception:
+                        pass
+                    # Notificación Telegram
+                    try:
+                        from utils.helpers import notificar_telegram, notificar_picos_demanda
+                        import threading
+                        _msg = (f"📥 *Archivo cargado*\n`{f.name}`\n"
+                                f"✅ {resultado.filas_ok} filas importadas")
+                        notificar_telegram(_msg)
+                        threading.Thread(target=notificar_picos_demanda, daemon=True).start()
+                    except Exception:
+                        pass
+                    # Backup automático
+                    try:
+                        from pages.sistema import _llamar_backup_auto
+                        _llamar_backup_auto()
+                    except Exception:
+                        pass
+                    # Mostrar metadata
+                    if resultado.metadata:
+                        _mostrar_metadata(resultado.metadata, tipo)
                 else:
-                    st.error("Sin importador")
-                    return
+                    st.error(f"❌ {resultado.mensaje}")
 
-            if resultado.exitoso:
-                st.success(f"✅ {fmt_num(resultado.filas_ok)} filas")
-                # Registrar en file tracker
-                try:
-                    from database import update_archivo_tracker
-                    deposito = resultado.metadata.get("deposito", "") if resultado.metadata else ""
-                    update_archivo_tracker(tipo, deposito, resultado.filas_ok, f.name)
-                except Exception:
-                    pass
-                # Notificación Telegram
-                try:
-                    from utils.helpers import notificar_telegram, notificar_picos_demanda
-                    import threading
-                    _msg = (f"📥 *Archivo cargado*\n`{f.name}`\n"
-                            f"✅ {resultado.filas_ok} filas importadas")
-                    notificar_telegram(_msg)
-                    threading.Thread(target=notificar_picos_demanda, daemon=True).start()
-                except Exception:
-                    pass
-                # Backup automático
-                try:
-                    from pages.sistema import _llamar_backup_auto
-                    _llamar_backup_auto()
-                except Exception:
-                    pass
-                # Mostrar metadata
-                if resultado.metadata:
-                    _mostrar_metadata(resultado.metadata, tipo)
-            else:
-                st.error(f"❌ {resultado.mensaje}")
+    # ── Panel de selección manual (solo cuando tipo es desconocido) ──
+    if not tipo:
+        st.markdown(f"""
+        <div style="background:rgba(255,159,10,.1);border:1px solid rgba(255,159,10,.3);
+                    border-radius:8px;padding:12px 16px;margin:4px 0 8px">
+            <div style="font-size:12px;font-weight:600;color:#FF9F0A;margin-bottom:6px">
+                ❓ No se pudo detectar el tipo de archivo automáticamente
+            </div>
+            <div style="font-size:11px;color:var(--nx-text2)">
+                El nombre <code>{f.name}</code> no coincide con ningún patrón conocido.<br>
+                Seleccioná el tipo manualmente, o renombrá el archivo y volvé a subirlo.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        st.divider()
+        col_forzar_tipo, col_forzar_dep = st.columns([2, 1])
+        with col_forzar_tipo:
+            tipo_forzado = st.selectbox(
+                "¿Qué tipo de archivo es?",
+                options=[""] + list(INSTRUCCIONES.keys()),
+                format_func=lambda k: (
+                    "— Seleccioná el tipo —" if k == ""
+                    else f"{INSTRUCCIONES[k]['icono']} {INSTRUCCIONES[k]['titulo']}"
+                ),
+                key=f"forzar_tipo_{f.name}",
+            )
+        with col_forzar_dep:
+            dep_forzado = st.selectbox(
+                "Depósito (si es Stock)",
+                options=["Auto", "SAN JOSE", "LARREA", "ESLOCAL"],
+                key=f"forzar_dep_{f.name}",
+                help="Solo relevante para archivos de stock",
+            )
+
+        if tipo_forzado:
+            if st.button(f"Importar como {INSTRUCCIONES[tipo_forzado]['titulo']}", key=f"btn_forzar_{f.name}"):
+                if tipo_forzado == "stock" and dep_forzado != "Auto":
+                    class _FakeFile:
+                        def __init__(self, orig, new_name):
+                            self._orig = orig
+                            self.name = new_name
+                        def read(self): return self._orig.read()
+                        def seek(self, *a): return self._orig.seek(*a)
+                        def getvalue(self): return self._orig.getvalue()
+                    _procesar_archivo(_FakeFile(f, f"{dep_forzado} {f.name}"), forzar_tipo=tipo_forzado)
+                else:
+                    _procesar_archivo(f, forzar_tipo=tipo_forzado)
+        else:
+            st.caption("💡 También podés ir a la pestaña **📖 Guía de archivos** para saber cómo renombrarlo.")
+
+    st.divider()
 
 
 def _mostrar_metadata(meta: dict, tipo: str):
