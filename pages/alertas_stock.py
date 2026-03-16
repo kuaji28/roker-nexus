@@ -164,3 +164,18 @@ Muchos SKUs (≥10) bajaron al menos un 30% al mismo tiempo.
 Si configuraste el bot de Telegram en el sidebar, las alertas también se envían
 al chat configurado en tiempo real cuando importás el archivo.
         """)
+
+    # ── IA contextual ──────────────────────────────────────────
+    from utils.ia_widget import nx_ai_widget
+    nx_ai_widget(
+        page_key  = "alertas",
+        titulo    = "🤖 Analizar alertas con IA",
+        subtitulo = "Interpretá las alertas y priorizá acciones",
+        sugeridas = [
+            ("🎯 Priorizar alertas",    "¿Cuál de estas alertas es más crítica y por qué? ¿Por dónde arranco?"),
+            ("📦 ¿Qué pedir urgente?",  "Basándote en las alertas activas, ¿qué artículos deberían ir en el próximo pedido?"),
+            ("⚠️ Anomalías recientes",  "¿Hay alguna caída de stock que no se explica solo por ventas?"),
+            ("📋 Redactar informe",     "Redactá un resumen de las alertas actuales para reportar a Diego."),
+        ],
+        collapsed = True,
+    )

@@ -495,6 +495,22 @@ def render():
     else:
         st.dataframe(df_log, hide_index=True, width="stretch")
 
+    # ── IA contextual ──────────────────────────────────────────
+    from utils.ia_widget import nx_ai_widget, ctx_dashboard
+    nx_ai_widget(
+        page_key  = "dashboard",
+        titulo    = "🤖 Resumen ejecutivo con IA",
+        subtitulo = "Preguntale al sistema sobre el estado general del negocio",
+        sugeridas = [
+            ("📊 Resumen del día",    "Dame un resumen ejecutivo del estado actual del sistema: stock, alertas, pedidos en tránsito."),
+            ("🔴 Stockouts urgentes", "¿Qué artículos están en cero y tienen alta demanda? Ordená por urgencia."),
+            ("💡 ¿Qué haría ahora?",  "Dada la situación actual, ¿cuál es la acción más importante que debería tomar hoy?"),
+            ("📈 Oportunidades",      "¿Hay alguna oportunidad de venta o reposición que estoy perdiendo según los datos?"),
+        ],
+        context_fn = ctx_dashboard,
+        collapsed  = True,
+    )
+
 
 def _grafico_marcas(df: pd.DataFrame):
     if df.empty: st.caption("Sin datos"); return
