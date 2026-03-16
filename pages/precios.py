@@ -239,3 +239,19 @@ def render():
                         c4.metric("Lista 4 (ML)", fmt_usd(row.get("lista_4",0)))
                         c5.metric("Lista 5", fmt_usd(row.get("lista_5",0)))
                         st.markdown(f"**ARS (L1):** {fmt_ars(usd_a_ars(row.get('lista_1',0), tasa))} · **ARS (ML):** {fmt_ars(usd_a_ars(row.get('lista_4',0), tasa))}")
+
+    # ── IA contextual ──────────────────────────────────────────
+    from utils.ia_widget import nx_ai_widget, ctx_precios
+    nx_ai_widget(
+        page_key  = "precios",
+        titulo    = "🤖 Analizar precios con IA",
+        subtitulo = "Consultá sobre competitividad, márgenes y estrategia de precios",
+        sugeridas = [
+            ("💰 ¿Precios competitivos?",  "¿Nuestros precios de Lista 1 y Lista 4 son competitivos en el mercado actual?"),
+            ("📉 Márgenes bajos",          "¿Qué artículos tienen márgenes muy bajos o negativos en Lista 4 (ML)?"),
+            ("🏷️ Sugerencia de precios",   "Sugerí ajustes de precio para mejorar el margen en MercadoLibre sin perder ventas."),
+            ("⚖️ L1 vs ML",               "¿Vale la pena vender en ML frente al canal mayorista considerando las comisiones?"),
+        ],
+        context_fn = ctx_precios,
+        collapsed  = True,
+    )

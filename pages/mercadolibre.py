@@ -88,6 +88,22 @@ def render():
     with tabs[5]:
         _tab_reporte()
 
+    # ── IA contextual ──────────────────────────────────────────
+    from utils.ia_widget import nx_ai_widget, ctx_mercadolibre
+    nx_ai_widget(
+        page_key  = "mercadolibre",
+        titulo    = "🤖 Estrategia ML con IA",
+        subtitulo = "Optimizá publicaciones, precios y competitividad en MercadoLibre",
+        sugeridas = [
+            ("🏷️ ¿Qué publicar?",         "¿Qué artículos debería abrir como nuevas publicaciones en ML según stock y demanda?"),
+            ("🆚 Análisis competencia",    "¿Cómo estamos posicionados frente a la competencia en ML para los módulos principales?"),
+            ("💸 Comisiones ML",           "Calculá qué precio de Lista 4 necesito para mantener margen del 20% después de comisiones ML."),
+            ("🔍 Términos de búsqueda",    "Sugerí términos de búsqueda ML optimizados para nuestros módulos más vendidos."),
+        ],
+        context_fn = ctx_mercadolibre,
+        collapsed  = True,
+    )
+
 
 # ─────────────────────────────────────────────────────────────
 # TAB 1 — COMPARADOR
