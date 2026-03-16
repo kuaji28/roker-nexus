@@ -73,13 +73,22 @@ def extract_rows(js_text: str) -> list:
         raise ValueError("Could not find JSON array in file")
     return json.loads(m.group(1))
 
+# ── Row sanitizers (fix type mismatches between batch files and Supabase) ─────
+def sanitize_rows(table: str, rows: list) -> list:
+    if table == "ventas":
+        # Supabase has cantidad as INTEGER but batch files store floats (40.0)
+        for r in rows:
+            if "cantidad" in r and r["cantidad"] is not None:
+                r["cantidad"] = int(r["cantidad"])
+    return rows
+
 # ── Push one batch ────────────────────────────────────────────────────────────
 def push_batch(table: str, filename: str) -> dict:
     fpath = BATCH_DIR / filename
     if not fpath.exists():
         return {"skip": True, "reason": "file not found"}
 
-    rows = extract_rows(fpath.read_text(encoding="utf-8"))
+    rows = sanitize_rows(table, extract_rows(fpath.read_text(encoding="utf-8")))
 
     conflict_cols = ON_CONFLICT.get(table, "")
     url = (f"{SUPABASE_URL}/{table}?on_conflict={conflict_cols}"
