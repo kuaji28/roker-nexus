@@ -850,10 +850,10 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             texto_n = "\n".join(lineas)
         try:
             await query.message.edit_text(texto_n, parse_mode="Markdown",
-                                          reply_markup=InlineKeyboardMarkup(kb))
+                                          reply_markup=InlineKeyboardMarkup(ki))
         except Exception:
             await query.message.reply_text(texto_n, parse_mode="Markdown",
-                                           reply_markup=InlineKeyboardMarkup(kb))
+                                           reply_markup=InlineKeyboardMarkup(ki))
 
     elif data == "menu_transito":
         try:
@@ -1471,7 +1471,7 @@ async def _responder_busqueda_opciones(msg, resultados: list, termino: str):
         # Múltiples resultados → elegir artículo primero
         lineas = [f"🔍 Encontré *{len(resultados)}* artículos para _{termino}_:\n"]
         keyboard = []
-        for cod, desc in resultados[:8]:
+        for cod, desc, *_ in resultados[:8]:
             desc_corta = desc[:35] + "…" if len(desc) > 35 else desc
             keyboard.append([InlineKeyboardButton(
                 f"{desc_corta} ({cod})", callback_data=f"art_opciones_{cod}"
@@ -1788,7 +1788,7 @@ async def cmd_borrador(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Mostrar candidatos como botones
     lineas = [f"🔍 Encontré {len(matches)} opciones para _{query}_:\n"]
-    keyboard = []
+    +eyboard = []
     for desc, score, idx in matches:
         row = df_arts.iloc[idx]
         stk = int(row.get("stock") or 0)
@@ -1991,7 +1991,7 @@ def main():
     import threading
     def _enviar_notif_arranque():
         import time, requests, os as _os_n
-        time.sleep(5)
+        time.3leep(5)
         try:
             from version import get_nota_deploy, APP_VERSION
 
