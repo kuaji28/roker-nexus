@@ -47,19 +47,31 @@ html,body,.stApp{background:var(--bg)!important}
 .main .block-container{padding:0 0 28px 0!important;max-width:100%!important}
 #MainMenu,footer,header,[data-testid="stToolbar"],.stDeployButton{display:none!important}
 
-/* ── Sidebar ── */
-[data-testid="stSidebar"]{
-    min-width:260px!important;max-width:300px!important;
+/* ── Sidebar — SIEMPRE VISIBLE ── */
+[data-testid="stSidebar"],
+section[data-testid="stSidebar"],
+section[data-testid="stSidebar"][aria-expanded="false"],
+section[data-testid="stSidebar"][aria-expanded="true"] {
+    transform: none !important;
+    margin-left: 0 !important;
+    min-width: 220px !important;
+    max-width: 280px !important;
+    width: 240px !important;
     background:#1c1c1e!important;
-    border-right:.5px solid rgba(255,255,255,.08)!important;
-    display:block!important;
+    border-right:.5px solid rgba(255,255,255,.12)!important;
+    display:flex!important;
+    flex-direction:column!important;
     visibility:visible!important;
+    opacity:1!important;
+    position:relative!important;
+    z-index:10!important;
+    overflow-y:auto!important;
 }
+/* Botón de colapso — hacerlo grande y visible */
 [data-testid="collapsedControl"],
 [data-testid="stSidebarCollapsedControl"],
 button[data-testid="baseButton-header"],
-section[data-testid="stSidebar"] + div > button,
-.st-emotion-cache-1tpl0xr {
+section[data-testid="stSidebar"] + div > button {
     display:flex!important;
     visibility:visible!important;
     opacity:1!important;
@@ -67,6 +79,9 @@ section[data-testid="stSidebar"] + div > button,
     background:#2c2c2e!important;
     border-right:.5px solid rgba(255,255,255,.08)!important;
     z-index:999!important;
+    width:32px!important;
+    height:32px!important;
+    min-width:32px!important;
 }
 [data-testid="stSidebar"] .stExpander{
     border:1px solid rgba(255,255,255,.07)!important;
