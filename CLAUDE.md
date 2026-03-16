@@ -92,6 +92,22 @@
 - **Módulos** llegan por avión (proveedor Mecánico / AITECH local) → reposición más rápida
 - Productos discontinuados: aquellos que no tuvieron buen desempeño o calidad deficiente → no reordenar (Lista Negra)
 
+## Contexto estratégico EL CELU (marzo 2026)
+
+### Tensión interna sobre el modelo de negocio
+- **Pablo y Mariano** están impulsando reducir el presupuesto de módulos y pivotar hacia **electrodomésticos** — modelo tipo Frávega (cadena líder de electro en Argentina).
+- **El problema:** ese pivot requiere capital, escala y posicionamiento de marca que EL CELU no tiene. Frávega es un jugador completamente diferente.
+- **La realidad del negocio:** los módulos siempre fueron el **anchor product** — el imán que trae clientes al local. El técnico que compra un módulo también compra flex, adhesivo, vidrio, herramientas. Si no hay módulos → el cliente va a la competencia → y lleva todo lo demás también.
+
+### Compresión de márgenes en módulos
+- Antes del gobierno Milei (apertura importaciones): casi nadie importaba módulos en Argentina → EL CELU tenía ventaja competitiva → márgenes altos.
+- Hoy: importación libre → muchos competidores → márgenes comprimidos → Diego se queja de tener que vender casi al costo para no perder ventas.
+- **Esto no significa que los módulos dejaron de ser estratégicos** — significa que el modelo de rentabilidad cambió. Son menos rentables por unidad pero siguen siendo el driver de tráfico y ventas cruzadas.
+
+### Implicancia para la auditoría
+- El argumento de Pablo/Mariano para cortar presupuesto de módulos es "márgenes bajos".
+- El contraargumento de Roker: mostrar el **valor indirecto** de los módulos como generadores de clientes + ventas cruzadas, y el **costo de oportunidad** de los stockouts (ventas perdidas + clientes que no vuelven).
+
 ## Estrategia auditoría silenciosa
 - **Baseline:** métricas ene–nov 2025 (antes de Mariano, con códigos ya separados)
 - **Comparación:** dic 2025 - mar 2026 (gestión Mariano+Pablo, solo 3-4 meses)
