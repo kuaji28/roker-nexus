@@ -94,7 +94,8 @@ def detectar_deposito_del_nombre(nombre: str) -> Optional[str]:
 
     Soporta dos formatos:
       1. Prefijo corto al inicio (nuevo): "SJ Planilla de Stock_15-03-2026 14-42-37.xlsx"
-         Códigos: SJ, LAR, SAR, FML, DML, MER, RMA, MUE
+         Códigos: SJ/JS, LAR, SAR, FML/FULLML, DML/ML, MER/MERG, RMA/RM, MUE, DTM
+         También soporta archivos con solo el prefijo: "JS.XLS", "LAR.XLS", etc.
       2. Palabra clave en cualquier parte (legado): "Planilla Stock San Jose.xls"
     """
     # ── 1. Prefijo corto al inicio del nombre ─────────────────────────────
