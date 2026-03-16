@@ -239,6 +239,51 @@ if not USE_POSTGRES:
     </div>
     """, unsafe_allow_html=True)
 
+# ══════════════════════════════════════════════════════════════════
+# BOT TELEGRAM — Singleton 24/7
+# Arranca UNA sola vez por proceso de Streamlit.
+# El flag _BOT_STARTED es a nivel módulo: si Streamlit hace rerun
+# del script, la variable de módulo ya está seteada → no arranca dos veces.
+# ══════════════════════════════════════════════════════════════════
+_BOT_STARTED = False
+
+def _start_telegram_bot():
+    """Lanza el bot de Telegram en un thread daemon. Solo corre una vez por proceso."""
+    global _BOT_STARTED
+    if _BOT_STARTED:
+        return
+    try:
+        from config import TELEGRAM_TOKEN as _TK
+        if not _TK:
+            return  # Sin token configurado, no arranca
+    except Exception:
+        import os
+        if not os.getenv("TELEGRAM_TOKEN", ""):
+            return
+
+    try:
+        import threading
+        import asyncio
+
+        def _run_bot():
+            try:
+                # Crear nuevo event loop para el thread
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                from telegram_bot import main as _bot_main
+                _bot_main()
+            except Exception as _bot_err:
+                print(f"⚠️ Bot Telegram detenido: {_bot_err}")
+
+        t = threading.Thread(target=_run_bot, name="TelegramBot", daemon=True)
+        t.start()
+        _BOT_STARTED = True
+        print("🤖 Bot Telegram arrancado en background")
+    except Exception as e:
+        print(f"⚠️ No se pudo iniciar el bot: {e}")
+
+_start_telegram_bot()
+
 # ── Importar páginas ───────────────────────────────────────────
 import pages.importar      as pg_importar
 import pages.compras       as pg_compras
