@@ -67,6 +67,10 @@ def _get_kpis(filtro_prov: str = "Ambos") -> dict:
         if df.empty:
             return {"ok": False}
 
+        # Fix Cartesian product: LEFT JOIN precios genera N filas por código
+        # (una fila por cada importación de lista de precios → 20 imports = 20x filas)
+        df = df.drop_duplicates(subset=["codigo"], keep="last")
+
         # Filtrar módulos
         df = df[df["descripcion"].apply(_es_modulo)].copy()
         df["tipo"] = df["codigo"].apply(_tipo)
@@ -83,8 +87,12 @@ def _get_kpis(filtro_prov: str = "Ambos") -> dict:
         # Datos numéricos
         df["stock_actual"]     = df["stock_actual"].fillna(0).astype(float)
         df["demanda_promedio"] = df["demanda_promedio"].fillna(0).clip(lower=0)
-        df["costo_reposicion"] = df["costo_reposicion"].fillna(0)
-        df["lista_4"]          = df["lista_4"].fillna(0)
+        df["costo_reposicion"] = df["costo_reposicion"].fillna(0).astype(float)
+        df["lista_1"]          = df["lista_1"].fillna(0).astype(float)
+        df["lista_4"]          = df["lista_4"].fillna(0).astype(float)
+        # Fallback: costo_reposicion=0 cuando se importó sin lista de precios → usar lista_1
+        mask_nc = df["costo_reposicion"] <= 0
+        df.loc[mask_nc, "costo_reposicion"] = df.loc[mask_nc, "lista_1"]
 
         # Tránsito real desde cotizaciones
         transito_map = _get_transito_por_codigo()
@@ -305,14 +313,14 @@ def render():
     k1,k2,k3,k4,k5,k6 = st.columns(6)
     with k1: _kpi("Total", kpis["total_mods"], "AI-TECH + Mecánico", "azul")
     with k2: _kpi("Sin Stock", kpis["fr_sin"]+kpis["mec_sin"], "Acción inmediata", "rojo")
-    with k3: _kpi("Bajo Mínimo", kpis["fr_bajo"]+kpis["mec_bajo"], "Proxima compra", "amarillo")
+    with k3: _kpi("Bajo Mínimo", kpis["fr_bajo"]+kpis["mec_bajo"], "Próxima compra", "amarillo")
     with k4: _kpi("✈️ En Tránsito", kpis["en_transito_items"], "SKUs con pedido", "teal")
     with k5: _kpi("Cob. Promedio", f"{kpis['cob_prom']:.0f}d", "Días cobertura global", "verde")
     with k6: _kpi("Overrides", kpis["overrides"], "Demanda manual", "azul")
 
     # ── 4 KPIs financieros ───────────────────────────────────
     f1,f2,f3,f4 = st.columns(4)
-    with f1: _kpi("💼 Valor Inventario", f"USD {kpis['valor_inv'']:,.0f}",
+    with f1: _kpi("💼 Valor Inventario", f"USD {kpis['valor_inv']:,.0f}",
                    f"≈ ARS ${kpis['valor_inv']*tasa:,.0f}", "purp")
     with f2: _kpi("💳 Inversión Req.", f"USD {kpis['inv_tot']:,.0f}",
                    f"≈ ARS ${kpis['inv_tot']*tasa:,.0f}", "amarillo")
