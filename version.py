@@ -1,8 +1,19 @@
 """ROKER NEXUS — Control de versiones"""
-APP_VERSION = "v2.2.0"
+APP_VERSION = "v2.3.0"
 APP_BUILD   = "2026-03-15"
 
 CHANGELOG = [
+    {
+        "version": "v2.3.0",
+        "fecha": "2026-03-15",
+        "cambios": [
+            "🤖 IA contextual en 9 páginas: Dashboard, Alertas, Inventario, Auditoría, Cotizaciones, Precios, ML, Borrador, Defensa",
+            "📖 Importar: nuevo tab Guía de archivos con renombrador rápido y pasos paso a paso",
+            "📥 Importar: selector manual de tipo cuando el archivo no es reconocido automáticamente",
+            "🧠 SYSTEM_PROMPT actualizado con contexto completo del negocio (Roker, El Celu, situación actual)",
+            "🐛 Fix: código muerto en _procesar_archivo (spinner después del return) corregido",
+        ]
+    },
     {
         "version": "v2.2.0",
         "fecha": "2026-03-15",
