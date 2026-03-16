@@ -191,7 +191,7 @@ def _panel_salud_datos():
     if ok_count == total:
         st.markdown(
             f'<div style="text-align:right;margin-bottom:4px">'
-            f'<span style="font-size:11px;color:#34C759">✓ Todos los datos al día ({total}/{total})</span>'
+            f'<span style="font-size:11px;color:#34C759">✅ Todos los datos al día ({total}/{total})</span>'
             f'</div>',
             unsafe_allow_html=True,
         )
