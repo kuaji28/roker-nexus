@@ -78,10 +78,18 @@
 | Enero 2026 | Liquidación masiva MSAMA02S (7.384 uds vendidas). Stock → 0. |
 | 15/03/2026 | Fecha de relevamiento actual. |
 
+## Proveedores de módulos
+| Proveedor | Estado | Notas |
+|-----------|--------|-------|
+| **Mecánico** | ✅ ACTIVO — prioridad actual | Único proveedor autorizado para órdenes de compra por decisión de Diego. Códigos numéricos en Flexxus. |
+| **FR (AITECH)** | ⏸️ SUSPENDIDO temporalmente | Proveedor histórico +15 años. Diego decidió pausar compras por reducción de presupuesto. Puede retomarse en cualquier momento sin previo aviso. Códigos alfabéticos (MS..., MM..., MX...). |
+
+> ⚠️ **Regla activa:** Todo pedido de reposición de módulos va SOLO a Mecánico hasta nueva orden de Diego. Los módulos AITECH en stock se venden hasta agotarse, sin reposición por ahora.
+
 ## Lógica de importaciones (no módulos)
 - La mayoría de accesorios y electro llegan **por barco desde China** → lead time largo (30-60+ días)
 - Periodos sin stock en accesorios/electro son normales por ciclo de barco, NO necesariamente mismanagement
-- **Módulos** llegan por avión (proveedor AITECH local / mecánicos varios) → reposición más rápida
+- **Módulos** llegan por avión (proveedor Mecánico / AITECH local) → reposición más rápida
 - Productos discontinuados: aquellos que no tuvieron buen desempeño o calidad deficiente → no reordenar (Lista Negra)
 
 ## Estrategia auditoría silenciosa
