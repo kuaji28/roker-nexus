@@ -48,25 +48,34 @@ STAFF_CORRECTORES = ["Lorena Rodriguez", "Ezequiel Firmapaz", "Matias Toledano"]
 #  DATOS
 # ──────────────────────────────────────────────────────────────
 
-def _stock_para_analisis() -> pd.DataFrame:
-    """Lee el último snapshot de stock disponible (SAN JOSE primero)."""
+def _stock_para_analisis(solo_ultimos_3m: bool = False) -> pd.DataFrame:
+    """Lee el último snapshot de stock disponible (SAN JOSE primero).
+    Si solo_ultimos_3m=True, filtra solo artículos con actividad en los últimos 90 días."""
     try:
+        filtro_fecha = ""
+        if solo_ultimos_3m:
+            filtro_fecha = "AND s.fecha >= date('now', '-90 days')"
+
         # Intentar SAN JOSE (SJ) — el más completo
-        df = query_to_df("""
-            SELECT codigo, descripcion, rubro, deposito, fecha
-            FROM stock_snapshots
-            WHERE deposito = 'SJ'
-            ORDER BY fecha DESC
-            LIMIT 1
+        df = query_to_df(f"""
+            SELECT s.codigo, s.descripcion, s.rubro, s.deposito, s.fecha
+            FROM stock_snapshots s
+            INNER JOIN (
+                SELECT codigo, MAX(fecha) AS max_fecha
+                FROM stock_snapshots
+                WHERE deposito = 'SJ' {filtro_fecha}
+                GROUP BY codigo
+            ) lx ON s.codigo = lx.codigo AND s.fecha = lx.max_fecha AND s.deposito = 'SJ'
         """)
         if df.empty:
             # Fallback: cualquier snapshot disponible
-            df = query_to_df("""
+            df = query_to_df(f"""
                 SELECT s.codigo, s.descripcion, s.rubro, s.deposito, s.fecha
                 FROM stock_snapshots s
                 INNER JOIN (
                     SELECT deposito, MAX(fecha) AS max_fecha
                     FROM stock_snapshots
+                    {('WHERE ' + filtro_fecha.replace('AND ', '')) if solo_ultimos_3m else ''}
                     GROUP BY deposito
                 ) latest ON s.deposito = latest.deposito AND s.fecha = latest.max_fecha
             """)
@@ -154,11 +163,25 @@ def _insertar_anomalia_manual(codigo: str, tipo: str, descripcion: str,
 #  ANÁLISIS: CORRER DETECCIÓN
 # ──────────────────────────────────────────────────────────────
 
-def _correr_analisis() -> dict:
+def _correr_analisis(solo_ultimos_3m: bool = False) -> dict:
     """Ejecuta el motor de calidad sobre el stock actual y persiste en DB."""
     df_stock = _stock_completo_ultimas_fechas()
     if df_stock.empty:
         return {"ok": False, "msg": "No hay datos de stock cargados. Importá al menos un archivo de stock primero."}
+
+    # Filtro 3 meses: solo artículos con actividad reciente
+    if solo_ultimos_3m:
+        try:
+            from database import execute_query as _eq2
+            codigos_activos = _eq2("""
+                SELECT DISTINCT codigo FROM stock_snapshots
+                WHERE fecha >= date('now', '-90 days')
+            """, fetch=True)
+            if codigos_activos:
+                set_activos = {r["codigo"] for r in codigos_activos}
+                df_stock = df_stock[df_stock["codigo"].isin(set_activos)]
+        except Exception:
+            pass
 
     errores = detectar_errores_calidad(df_stock)
 
