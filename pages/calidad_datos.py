@@ -357,13 +357,22 @@ def render():
     st.markdown("---")
 
     # ── Barra de acciones ──
-    col_btn1, col_btn2, col_spacer = st.columns([2, 2, 6])
+    col_btn1, col_toggle, col_btn2, col_spacer = st.columns([2, 2, 2, 4])
+
+    with col_toggle:
+        solo_3m = st.toggle(
+            "📅 Solo últimos 3 meses",
+            value=True,
+            key="calidad_solo_3m",
+            help="Filtra el análisis a artículos con actividad en los últimos 90 días. "
+                 "Reduce ruido del catálogo histórico sin actividad reciente.",
+        )
 
     with col_btn1:
         if st.button("🔄 Analizar ahora", type="primary", use_container_width=True,
                      help="Corre el motor de detección sobre el stock actual en la DB"):
             with st.spinner("Analizando datos..."):
-                resultado = _correr_analisis()
+                resultado = _correr_analisis(solo_ultimos_3m=solo_3m)
             if resultado["ok"]:
                 st.session_state["calidad_ultimo_analisis"] = datetime.now().strftime("%H:%M:%S")
                 st.success(
@@ -371,6 +380,7 @@ def render():
                     f"{resultado['items_analizados']:,} ítems · "
                     f"{resultado['total_detectados']} errores detectados · "
                     f"**{resultado['nuevos_en_db']} nuevos** en la DB"
+                    + (" (filtro 3 meses activo)" if solo_3m else "")
                 )
                 st.rerun()
             else:
