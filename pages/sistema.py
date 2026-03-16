@@ -110,10 +110,11 @@ def render():
                 if st.button("📨 Enviar notificación de prueba", key="btn_tg_test"):
                     from utils.helpers import notificar_telegram
                     notificar_telegram(
-                        "\U0001f514 *Roker Nexus — Sistema OK*\n"
-                        "Notificaciones Telegram activas. 16/03/2026"
+                        "🔔 *Roker Nexus — Test OK*\n"
+                        "Sistema operativo. Notificaciones Telegram activas.\n"
+                        "16/03/2026 — v2.3.0"
                     )
-                    st.success("\u2705 Mensaje enviado a Telegram.")
+                    st.success("✅ Mensaje enviado a Telegram.")
     except Exception:
         pass
 
