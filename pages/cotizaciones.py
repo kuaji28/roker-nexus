@@ -56,6 +56,19 @@ def render():
         "✅ Historial",
     ])
 
+    # Auto-switch tab after save/state change (JS click on target tab)
+    _target_tab = st.session_state.pop("ir_a_tab", None)
+    if _target_tab is not None:
+        st.markdown(
+            f"""<script>
+            setTimeout(function(){{
+                var tabs = window.parent.document.querySelectorAll('[data-baseweb="tab"]');
+                if (tabs && tabs[{_target_tab}]) tabs[{_target_tab}].click();
+            }}, 200);
+            </script>""",
+            unsafe_allow_html=True,
+        )
+
     with tabs[0]:
         _tab_nuevo_pedido()
 
@@ -223,6 +236,7 @@ def _tab_nuevo_pedido():
         if st.button("💾 Guardar pedido", type="primary", width='stretch'):
             _guardar_cotizacion(datos, items_con_match)
             st.success(f"✅ Pedido #{datos['invoice_id']} guardado como PENDIENTE")
+            st.session_state["ir_a_tab"] = 1  # saltar a ✈️ En Tránsito tras rerun
             st.rerun()
 
     with col_export:
