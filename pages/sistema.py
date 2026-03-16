@@ -104,21 +104,19 @@ def render():
     # ── Test Telegram ──
     try:
         from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
-        if TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
-            col_tg1, col_tg2, _ = st.columns([2, 2, 6])
-            with col_tg1:
-                if st.button("📨 Enviar notificación de prueba", key="btn_tg_test"):
-                    from utils.helpers import notificar_telegram
-                    notificar_telegram(
-                        "🔔 *Roker Nexus — Test OK*\n"
-                        "Sistema operativo. Notificaciones Telegram activas.\n"
-                        "16/03/2026 — v2.3.0"
-                    )
-                    st.success("✅ Mensaje enviado a Telegram.")
-    except Exception:
-        pass
+        if TELEGRAM_TOKEN:
+            if st.button("📨 Enviar notificación de prueba", key="btn_tg_test"):
+                from utils.helpers import notificar_telegram
+                notificar_telegram(
+                    "🔔 *Roker Nexus — Test OK*\n"
+                    "Sistema operativo. Notificaciones Telegram activas.\n"
+                    "16/03/2026 — v2.3.0"
+                )
+                st.success("✅ Mensaje enviado a Telegram.")
+    except Exception as e:
+        st.warning(f"⚠️ Telegram config: {e}")
 
-        # ── Base de datos ──
+    # ── Base de datos ──
     st.markdown("### 📊 Base de datos")
     try:
         from database import execute_query
