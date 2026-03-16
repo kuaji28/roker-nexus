@@ -2030,33 +2030,30 @@ def main():
             time=datetime.time(13, 0, tzinfo=tz),
             days=(0, 1, 2, 3, 4),
         )
-        # Notificación de deploy al arrancar
-        job_queue.run_once(_notificar_deploy, when=3)
+        # NOTA: job_queue.run_once para _notificar_deploy eliminado —
+        # la notificación de deploy la maneja _enviar_notif_arranque con dedup por archivo.
+        pass
 
     print("🤖 Roker Nexus Bot iniciado. Ctrl+C para detener.")
 
-    # Notificación de arranque (backup directo, sin job_queue)
+    # Notificación de arranque — una sola vez, con dedup por archivo /tmp
     import threading
     def _enviar_notif_arranque():
-        import time, requests
+        import time, requests, os as _os_n
         time.sleep(5)
         try:
             from version import get_nota_deploy, APP_VERSION
-            # Solo notificar si cambió la versión (evitar spam en reinicios)
-            import sqlite3 as _sq, os as _os_n
-            _db_n = _os_n.path.join(_os_n.path.dirname(_os_n.path.abspath(__file__)), "roker_nexus.db")
-            try:
-                _conn_n = _sq.connect(_db_n)
-                _row_n = _conn_n.execute(
-                    "SELECT valor FROM configuracion WHERE clave='ultima_version_notif'"
-                ).fetchone()
-                _ultima = _row_n[0] if _row_n else ""
-                _conn_n.close()
-            except Exception:
-                _ultima = ""
 
-            if _ultima == APP_VERSION:
-                print(f"ℹ️  Versión {APP_VERSION} ya notificada, omitiendo")
+            # Dedup: usar archivo /tmp para evitar duplicados en el mismo proceso.
+            # /tmp persiste mientras el proceso esté corriendo. Al reiniciar el servidor
+            # (nuevo deploy real) se borra → envía la nueva versión.
+            _flag_file = f"/tmp/.nexus_notif_{APP_VERSION.replace('.', '_')}"
+            if _os_n.path.exists(_flag_file):
+                print(f"ℹ️  Versión {APP_VERSION} ya notificada en este proceso, omitiendo")
+                return
+
+            if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+                print("ℹ️  Sin token/chat_id de Telegram — notificación omitida")
                 return
 
             texto = get_nota_deploy()
@@ -2067,15 +2064,9 @@ def main():
                 "parse_mode": "Markdown"
             }, timeout=10)
             if r.status_code == 200:
-                # Guardar versión notificada
+                # Crear flag para no re-enviar en reinicios del mismo proceso
                 try:
-                    _conn2 = _sq.connect(_db_n)
-                    _conn2.execute(
-                        "INSERT OR REPLACE INTO configuracion (clave, valor, descripcion) VALUES (?,?,?)",
-                        ("ultima_version_notif", APP_VERSION, "Última versión notificada por Telegram")
-                    )
-                    _conn2.commit()
-                    _conn2.close()
+                    open(_flag_file, "w").close()
                 except Exception:
                     pass
                 print(f"✅ Notificación deploy {APP_VERSION} enviada")
