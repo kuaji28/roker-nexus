@@ -40,6 +40,8 @@ def render():
         "🔍 Investigar",
         "⛔ Lista Negra",
         "📋 Anomalías",
+        "✏️ Demanda Manual",
+        "🔗 Alias de Códigos",
     ])
 
     # ── Tab Quiebres ──────────────────────────────────────────
@@ -261,6 +263,14 @@ def render():
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+
+    # ── Tab Demanda Manual ────────────────────────────────────
+    with tabs[5]:
+        _tab_demanda_manual()
+
+    # ── Tab Alias de Códigos ──────────────────────────────────
+    with tabs[6]:
+        _tab_alias_codigos()
 
 
 def _ficha_investigacion(codigo: str):
