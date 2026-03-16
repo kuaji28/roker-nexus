@@ -273,6 +273,222 @@ def render():
         _tab_alias_codigos()
 
 
+def _tab_demanda_manual():
+    """Demanda manual integrada — override de demanda cuando Flexxus muestra 0."""
+    from database import execute_query as _exec
+
+    st.markdown("""
+    <h3 style="margin:0 0 4px">✏️ Demanda Manual</h3>
+    <p style="color:var(--nx-text2);font-size:13px;margin-bottom:12px">
+    Override cuando el ERP muestra 0 por quiebre de stock real. La demanda manual tiene prioridad.</p>
+    """, unsafe_allow_html=True)
+
+    st.info("💡 Usá esto cuando Flexxus muestra 0 ventas porque te quedaste sin stock. Ingresá la demanda mensual real.")
+
+    # Asegurar tabla
+    try:
+        _exec("""CREATE TABLE IF NOT EXISTS demanda_manual (
+            codigo TEXT PRIMARY KEY, demanda_manual REAL NOT NULL,
+            nota TEXT, actualizado TEXT DEFAULT (datetime('now')))""", fetch=False)
+    except Exception:
+        pass
+
+    c1, c2, c3 = st.columns([3, 1, 1])
+    with c1: filtro_dm = st.text_input("🔍 Filtrar", "", key="inv_dm_f")
+    with c2: solo_cero_dm = st.checkbox("Solo ERP=0", True, key="inv_dm_z")
+    with c3: prov_dm = st.selectbox("Proveedor", ["Todos", "AI-TECH", "Mecánico"], key="inv_dm_p")
+
+    try:
+        df_dm = query_to_df("""
+            SELECT o.codigo, COALESCE(a.descripcion, o.descripcion) as articulo,
+                   o.demanda_promedio as dem_erp, o.stock_actual,
+                   COALESCE(dm.demanda_manual, 0) as dem_manual,
+                   CASE WHEN SUBSTR(o.codigo,1,1) BETWEEN '0' AND '9' THEN 'Mecánico' ELSE 'AI-TECH' END as proveedor
+            FROM optimizacion o
+            LEFT JOIN articulos a ON o.codigo=a.codigo
+            LEFT JOIN demanda_manual dm ON o.codigo=dm.codigo
+            ORDER BY o.demanda_promedio ASC, o.codigo
+        """)
+    except Exception as e:
+        st.error(f"Error: {e}")
+        return
+
+    if df_dm.empty:
+        st.info("Sin datos. Cargá primero el archivo de Optimización de Stock.")
+        return
+
+    if filtro_dm:
+        mask = (df_dm["articulo"].str.upper().str.contains(filtro_dm.upper(), na=False) |
+                df_dm["codigo"].str.upper().str.contains(filtro_dm.upper(), na=False))
+        df_dm = df_dm[mask]
+    if solo_cero_dm:
+        df_dm = df_dm[df_dm["dem_erp"] == 0]
+    if prov_dm != "Todos":
+        df_dm = df_dm[df_dm["proveedor"] == prov_dm]
+
+    st.caption(f"{len(df_dm):,} artículos")
+    df_dm_e = df_dm[["codigo", "articulo", "proveedor", "stock_actual", "dem_erp", "dem_manual"]].reset_index(drop=True)
+
+    edited_dm = st.data_editor(df_dm_e, width="stretch", hide_index=True, height=500,
+        column_config={
+            "codigo":       st.column_config.TextColumn("Código", disabled=True),
+            "articulo":     st.column_config.TextColumn("Artículo", disabled=True, width="large"),
+            "proveedor":    st.column_config.TextColumn("Prov.", disabled=True, width="small"),
+            "stock_actual": st.column_config.NumberColumn("Stock", disabled=True, format="%d"),
+            "dem_erp":      st.column_config.NumberColumn("Dem. ERP", disabled=True, format="%.1f"),
+            "dem_manual":   st.column_config.NumberColumn("Dem. Manual ✏️", min_value=0, format="%.1f",
+                                help="0 = eliminar override"),
+        }, num_rows="fixed", key="inv_dm_editor")
+
+    if st.button("💾 Guardar cambios", type="primary", key="inv_dm_save"):
+        cambios_dm = 0
+        for i, row in edited_dm.iterrows():
+            nueva_dm = float(row["dem_manual"] or 0)
+            vieja_dm = float(df_dm_e.iloc[i]["dem_manual"] or 0)
+            if abs(nueva_dm - vieja_dm) > 0.01:
+                try:
+                    if nueva_dm <= 0:
+                        _exec("DELETE FROM demanda_manual WHERE codigo=?", (row["codigo"],), fetch=False)
+                    else:
+                        _exec("""INSERT INTO demanda_manual (codigo,demanda_manual,nota,actualizado)
+                            VALUES(?,?,?,datetime('now')) ON CONFLICT(codigo) DO UPDATE SET
+                            demanda_manual=excluded.demanda_manual, actualizado=datetime('now')
+                        """, (row["codigo"], nueva_dm, ""), fetch=False)
+                    cambios_dm += 1
+                except Exception as e:
+                    st.error(f"Error guardando {row['codigo']}: {e}")
+        if cambios_dm:
+            st.success(f"✅ {cambios_dm} override(s) guardados.")
+            st.rerun()
+        else:
+            st.info("Sin cambios.")
+
+
+def _tab_alias_codigos():
+    """Gestor de alias de códigos — mapeo de nombres alternativos a códigos Flexxus."""
+    from database import execute_query as _exec
+
+    st.markdown("""
+    <h3 style="margin:0 0 4px">🔗 Alias de Códigos</h3>
+    <p style="color:var(--nx-text2);font-size:13px;margin-bottom:12px">
+    Asocia nombres alternativos (apodos, modelos cortos) a códigos Flexxus reales.
+    Mejora el matching fuzzy en el Borrador de Pedido.</p>
+    """, unsafe_allow_html=True)
+
+    # Asegurar tabla
+    try:
+        _exec("""CREATE TABLE IF NOT EXISTS codigo_aliases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo_flexxus TEXT NOT NULL,
+            alias TEXT NOT NULL,
+            descripcion TEXT DEFAULT '',
+            activo INTEGER DEFAULT 1,
+            creado_en TEXT DEFAULT (datetime('now')),
+            UNIQUE(codigo_flexxus, alias))""", fetch=False)
+    except Exception:
+        pass
+
+    # Agregar nuevo alias
+    with st.expander("➕ Agregar alias", expanded=False):
+        col_a1, col_a2, col_a3, col_a4 = st.columns([2, 2, 3, 1])
+        with col_a1:
+            nuevo_cod = st.text_input("Código Flexxus", placeholder="Ej: MSAMA06.", key="alias_cod")
+        with col_a2:
+            nuevo_alias = st.text_input("Alias / Apodo", placeholder="Ej: sam a06 oled", key="alias_txt")
+        with col_a3:
+            nuevo_desc = st.text_input("Descripción (opcional)", key="alias_desc")
+        with col_a4:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Agregar", key="alias_add", type="primary"):
+                if nuevo_cod.strip() and nuevo_alias.strip():
+                    try:
+                        _exec("""INSERT OR IGNORE INTO codigo_aliases
+                            (codigo_flexxus, alias, descripcion)
+                            VALUES (?, ?, ?)""",
+                            (nuevo_cod.strip().upper(), nuevo_alias.strip().lower(), nuevo_desc.strip()),
+                            fetch=False)
+                        st.success(f"✅ Alias '{nuevo_alias}' → {nuevo_cod.upper()} agregado")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+                else:
+                    st.warning("Completá código y alias.")
+
+    # Búsqueda y tabla
+    buscar_alias = st.text_input("🔍 Buscar en alias", placeholder="Ej: a06, moto g, iphone...", key="alias_buscar")
+
+    try:
+        if buscar_alias:
+            df_al = query_to_df("""
+                SELECT id, codigo_flexxus, alias, descripcion, activo, creado_en
+                FROM codigo_aliases
+                WHERE (UPPER(alias) LIKE ? OR UPPER(codigo_flexxus) LIKE ?)
+                  AND activo = 1
+                ORDER BY codigo_flexxus, alias
+            """, (f"%{buscar_alias.upper()}%", f"%{buscar_alias.upper()}%"))
+        else:
+            df_al = query_to_df("""
+                SELECT id, codigo_flexxus, alias, descripcion, activo, creado_en
+                FROM codigo_aliases
+                WHERE activo = 1
+                ORDER BY codigo_flexxus, alias
+            """)
+    except Exception as e:
+        st.error(f"Error cargando aliases: {e}")
+        return
+
+    if df_al.empty:
+        st.info("No hay alias cargados todavía. Usá el formulario de arriba para agregar.")
+        return
+
+    st.caption(f"{len(df_al)} alias activos")
+
+    # Tabla con opción de borrar
+    for _, row in df_al.iterrows():
+        col1, col2, col3, col4 = st.columns([2, 3, 3, 1])
+        with col1:
+            st.markdown(f"`{row.get('codigo_flexxus','')}`")
+        with col2:
+            st.markdown(f"<span style='font-size:13px;color:var(--text)'>{row.get('alias','')}</span>",
+                        unsafe_allow_html=True)
+        with col3:
+            st.markdown(f"<span style='font-size:12px;color:var(--text2)'>{row.get('descripcion','') or '—'}</span>",
+                        unsafe_allow_html=True)
+        with col4:
+            if st.button("🗑️", key=f"del_alias_{row['id']}", help="Eliminar alias"):
+                try:
+                    _exec("UPDATE codigo_aliases SET activo=0 WHERE id=?", (int(row["id"]),), fetch=False)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+    # Importar aliases desde Excel
+    with st.expander("📤 Importar aliases desde Excel"):
+        st.caption("Col A = Código Flexxus · Col B = Alias · Col C = Descripción (opcional)")
+        f_al = st.file_uploader("Archivo Excel", type=["xlsx", "xls"], key="upload_aliases")
+        if f_al and st.button("📥 Importar", type="primary", key="import_aliases"):
+            import pandas as pd
+            try:
+                df_imp = pd.read_excel(f_al, header=None)
+                agregados_al = 0
+                for _, row_imp in df_imp.iterrows():
+                    cod_imp = str(row_imp.iloc[0]).strip().upper()
+                    al_imp  = str(row_imp.iloc[1]).strip().lower() if len(row_imp) > 1 else ""
+                    desc_imp = str(row_imp.iloc[2]).strip() if len(row_imp) > 2 else ""
+                    if cod_imp and al_imp and cod_imp != "NAN" and al_imp != "nan":
+                        try:
+                            _exec("""INSERT OR IGNORE INTO codigo_aliases
+                                (codigo_flexxus, alias, descripcion) VALUES (?,?,?)""",
+                                (cod_imp, al_imp, desc_imp), fetch=False)
+                            agregados_al += 1
+                        except Exception:
+                            pass
+                st.success(f"✅ {agregados_al} aliases importados")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+
 def _ficha_investigacion(codigo: str):
     """Muestra historial completo de un artículo."""
     # Info básica
