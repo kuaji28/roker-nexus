@@ -191,7 +191,7 @@ def _panel_salud_datos():
     if ok_count == total:
         st.markdown(
             f'<div style="text-align:right;margin-bottom:4px">'
-            f'<span style="font-size:11px;color:#34C759">✅ Todos los datos al día ({total}/{total})</span>'
+            f'<span style="font-size:11px;color:#34C759">✓ Todos los datos al día ({total}/{total})</span>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -248,7 +248,7 @@ def render():
         <p style="color:var(--nx-text2);font-size:12px;margin:0">Vista ejecutiva de módulos — AI-TECH + Mecánico</p>
         """, unsafe_allow_html=True)
     with c_f1:
-        filtro_prov = st.selectbox("Proveedor", ["Ambos","AI-TECH","Mecánico"], index=0, key="dash_prov",
+        filtro_prov = st.selectbox("Proveedor", ["Mecánico","AI-TECH","Ambos"], index=0, key="dash_prov",
                                     label_visibility="collapsed")
     with c_f2:
         top_n = st.selectbox("Top", [5,10,15,20,30,50], index=1, key="dash_topn",
@@ -305,14 +305,14 @@ def render():
     k1,k2,k3,k4,k5,k6 = st.columns(6)
     with k1: _kpi("Total", kpis["total_mods"], "AI-TECH + Mecánico", "azul")
     with k2: _kpi("Sin Stock", kpis["fr_sin"]+kpis["mec_sin"], "Acción inmediata", "rojo")
-    with k3: _kpi("Bajo Mínimo", kpis["fr_bajo"]+kpis["mec_bajo"], "Próxima compra", "amarillo")
+    with k3: _kpi("Bajo Mínimo", kpis["fr_bajo"]+kpis["mec_bajo"], "Proxima compra", "amarillo")
     with k4: _kpi("✈️ En Tránsito", kpis["en_transito_items"], "SKUs con pedido", "teal")
     with k5: _kpi("Cob. Promedio", f"{kpis['cob_prom']:.0f}d", "Días cobertura global", "verde")
     with k6: _kpi("Overrides", kpis["overrides"], "Demanda manual", "azul")
 
     # ── 4 KPIs financieros ───────────────────────────────────
     f1,f2,f3,f4 = st.columns(4)
-    with f1: _kpi("💼 Valor Inventario", f"USD {kpis['valor_inv']:,.0f}",
+    with f1: _kpi("💼 Valor Inventario", f"USD {kpis['valor_inv'']:,.0f}",
                    f"≈ ARS ${kpis['valor_inv']*tasa:,.0f}", "purp")
     with f2: _kpi("💳 Inversión Req.", f"USD {kpis['inv_tot']:,.0f}",
                    f"≈ ARS ${kpis['inv_tot']*tasa:,.0f}", "amarillo")
