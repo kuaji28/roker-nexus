@@ -303,11 +303,51 @@ def render():
     with tab_auto:
         st.markdown("### Arrastrá uno o varios archivos")
         st.markdown(
-            "<p style='color:var(--nx-text2);font-size:13px;margin-bottom:16px'>"
+            "<p style='color:var(--nx-text2);font-size:13px;margin-bottom:12px'>"
             "El sistema detecta si es de Flexxus, AI-TECH o Mariano automáticamente."
             "</p>",
             unsafe_allow_html=True
         )
+
+        # ── Banner recordatorio: nomenclatura de Planilla de Stock ──
+        st.markdown("""
+        <div style="background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.45);
+                    border-radius:10px;padding:12px 16px;margin-bottom:16px">
+            <div style="font-size:13px;font-weight:700;color:#FF9F0A;margin-bottom:8px">
+                ⚠️ Acordate — la Planilla de Stock necesita prefijo en el nombre
+            </div>
+            <div style="font-size:12px;color:var(--nx-text2);margin-bottom:8px">
+                Flexxus siempre genera el mismo nombre genérico
+                <code style="color:#FF9F0A">Planilla de Stock_DD-MM-YYYY HH-MM-SS.xlsx</code>
+                sin importar de qué depósito es.<br>
+                El sistema no puede saber el depósito si no le agregás el prefijo.
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <div style="background:rgba(50,215,75,.12);border:1px solid rgba(50,215,75,.3);
+                            border-radius:8px;padding:6px 12px;font-size:12px">
+                    <span style="color:#32D74B;font-weight:700">SAN JOSE</span><br>
+                    <code style="color:#eee">SJ_stock_2026-03-15.xlsx</code><br>
+                    <span style="font-size:10px;color:var(--nx-text3)">o: <code>SJ Planilla de Stock_...</code></span>
+                </div>
+                <div style="background:rgba(10,132,255,.12);border:1px solid rgba(10,132,255,.3);
+                            border-radius:8px;padding:6px 12px;font-size:12px">
+                    <span style="color:#0A84FF;font-weight:700">LARREA</span><br>
+                    <code style="color:#eee">LAR_stock_2026-03-15.xlsx</code><br>
+                    <span style="font-size:10px;color:var(--nx-text3)">o: <code>LAR Planilla de Stock_...</code></span>
+                </div>
+                <div style="background:rgba(191,90,242,.12);border:1px solid rgba(191,90,242,.3);
+                            border-radius:8px;padding:6px 12px;font-size:12px">
+                    <span style="color:#BF5AF2;font-weight:700">ES LOCAL / SARMIENTO</span><br>
+                    <code style="color:#eee">ESLOCAL_stock_2026-03-15.xlsx</code><br>
+                    <span style="font-size:10px;color:var(--nx-text3)">o: <code>LAR Planilla de Stock_...</code></span>
+                </div>
+            </div>
+            <div style="margin-top:8px;font-size:11px;color:var(--nx-text3)">
+                💡 ¿No sabés cómo renombrarlo? Usá el <strong>Renombrador rápido</strong> en la pestaña
+                <strong>📖 Guía de archivos</strong> — pegás el nombre de Flexxus y te dice exactamente qué poner.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         uploaded = st.file_uploader(
             "Soltá tus archivos acá",
