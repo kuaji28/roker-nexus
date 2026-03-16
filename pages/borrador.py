@@ -47,6 +47,7 @@ def render():
         "✏️ Agregar ítems",
         "📋 Borrador actual",
         "📤 Exportar a Lote",
+        "👻 Ghost SKUs",
     ])
 
     with tabs[0]:
@@ -55,6 +56,8 @@ def render():
         _tab_borrador()
     with tabs[2]:
         _tab_exportar()
+    with tabs[3]:
+        _tab_ghost_skus()
 
 
 # ─────────────────────────────────────────────────────────────
