@@ -645,6 +645,91 @@ def _optimizar_roi(df: pd.DataFrame, tope: float) -> pd.DataFrame:
     return pd.DataFrame(seleccionados) if seleccionados else df.head(0)
 
 
+def _tab_ghost_skus():
+    """Ghost SKUs integrado — módulos pedidos antes de tener código en Flexxus."""
+    st.markdown("""
+    <h3 style="margin:0 0 4px">👻 Ghost SKUs</h3>
+    <p style="color:var(--nx-text2);font-size:13px;margin-bottom:12px">
+    Módulos pedidos antes de tener código asignado en Flexxus.</p>
+    """, unsafe_allow_html=True)
+
+    try:
+        execute_query("""CREATE TABLE IF NOT EXISTS ghost_skus (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            modelo_descripcion TEXT NOT NULL, proveedor_tipo TEXT DEFAULT 'MECÁNICO',
+            cantidad_estimada REAL DEFAULT 0, estado TEXT DEFAULT 'PENDIENTE',
+            codigo_vinculado TEXT DEFAULT '', notas TEXT DEFAULT '',
+            origen TEXT DEFAULT 'WEB', fecha_creacion TEXT DEFAULT (datetime('now')),
+            fecha_vinculacion TEXT)""", fetch=False)
+    except Exception:
+        pass
+
+    if st.toggle("➕ Agregar Ghost SKU", key="brd_gs_toggle"):
+        c1, c2, c3 = st.columns([3, 1.5, 1])
+        with c1:
+            modelo_gs = st.text_input("Descripción *", placeholder="Ej: Samsung A06 módulo OLED", key="brd_gs_mod")
+        with c2:
+            prov_gs = st.selectbox("Proveedor", ["MECÁNICO", "FR"], key="brd_gs_prov")
+        with c3:
+            qty_gs = st.number_input("Cant.", 0, value=0, step=10, key="brd_gs_qty")
+        notas_gs = st.text_area("Notas", height=60, key="brd_gs_notas")
+        if st.button("👻 Crear", type="primary", key="brd_gs_crear"):
+            if not modelo_gs.strip():
+                st.error("Ingresá la descripción.")
+            else:
+                execute_query(
+                    "INSERT INTO ghost_skus (modelo_descripcion,proveedor_tipo,cantidad_estimada,notas) VALUES(?,?,?,?)",
+                    (modelo_gs, prov_gs, float(qty_gs), notas_gs), fetch=False)
+                st.success("✅ Ghost SKU creado")
+                st.rerun()
+
+    st.divider()
+    filtro_gs = st.selectbox("Estado", ["PENDIENTE", "VINCULADO", "CANCELADO", "Todos"], key="brd_gs_est")
+    w_gs = f"WHERE estado='{filtro_gs}'" if filtro_gs != "Todos" else ""
+    df_gs = query_to_df(f"SELECT * FROM ghost_skus {w_gs} ORDER BY fecha_creacion DESC")
+
+    if df_gs.empty:
+        st.info(f"No hay Ghost SKUs en {filtro_gs}.")
+        return
+
+    st.caption(f"{len(df_gs)} Ghost SKU(s)")
+
+    for _, row in df_gs.iterrows():
+        gid  = int(row["id"])
+        mod  = str(row["modelo_descripcion"])
+        prov = str(row["proveedor_tipo"])
+        qty  = int(row.get("cantidad_estimada", 0) or 0)
+        est  = str(row["estado"])
+        vinc = str(row.get("codigo_vinculado", "") or "")
+        notas_r = str(row.get("notas", "") or "")
+        emoji_gs = {"PENDIENTE": "🟡", "VINCULADO": "🟢", "CANCELADO": "⛔"}.get(est, "⚪")
+
+        with st.container():
+            st.markdown(f"**{emoji_gs} ID {gid}** — {mod[:60]} | {prov} | {qty} u")
+            c1_gs, c2_gs = st.columns([3, 2])
+            with c1_gs:
+                st.write(f"**Estado:** {est} | **Prov:** {prov}")
+                if notas_r: st.write(f"**Notas:** {notas_r}")
+                if vinc:    st.write(f"**Código vinculado:** `{vinc}`")
+            with c2_gs:
+                if est == "PENDIENTE":
+                    cod_gs = st.text_input("Código ERP", key=f"brd_gs_c_{gid}", placeholder="Ej: MSAMA06.")
+                    ca_gs, cb_gs = st.columns(2)
+                    with ca_gs:
+                        if st.button("🔗 Vincular", key=f"brd_gs_v_{gid}"):
+                            if cod_gs.strip():
+                                execute_query(
+                                    "UPDATE ghost_skus SET estado='VINCULADO', codigo_vinculado=?, fecha_vinculacion=datetime('now') WHERE id=?",
+                                    (cod_gs.strip(), gid), fetch=False)
+                                st.success("✅")
+                                st.rerun()
+                    with cb_gs:
+                        if st.button("❌ Cancelar", key=f"brd_gs_x_{gid}"):
+                            execute_query("UPDATE ghost_skus SET estado='CANCELADO' WHERE id=?",
+                                          (gid,), fetch=False)
+                            st.rerun()
+
+
 def _crear_lote_desde_borrador(df: pd.DataFrame, nombre: str, total: float):
     """Crea un lote de compra en pedidos_lotes desde el borrador confirmado."""
     tope = float(get_config("presupuesto_lote_1", float) or 100000)
