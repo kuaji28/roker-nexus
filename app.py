@@ -1,5 +1,5 @@
 """
-ROKER NEXUS v2.2.0 — El Celu
+RIKER NEXUS v2.2.0 — El Celu
 Navegación lateral agrupada por función
 """
 import streamlit as st
@@ -254,7 +254,7 @@ if not USE_POSTGRES:
     </div>
     """, unsafe_allow_html=True)
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════
 # BOT TELEGRAM — Singleton 24/7
 # Arranca UNA sola vez por proceso de Streamlit.
 # El flag _BOT_STARTED es a nivel módulo: si Streamlit hace rerun
@@ -351,6 +351,7 @@ _n_alertas = 0
 if _HAS_ALERTAS:
     try:
         from modules.stock_alertas import count_alertas_sin_ver
+        _er
         _n_alertas = count_alertas_sin_ver()
         if _n_alertas > 0:
             _alerta_badge = f" ({_n_alertas})"
@@ -382,7 +383,7 @@ def _render_sidebar():
                     padding-bottom:.8rem;border-bottom:.5px solid rgba(255,255,255,.08)">
           <div style="width:34px;height:34px;border-radius:10px;
                       background:linear-gradient(135deg,#0A84FF,#5AC8FA);
-                      display:flex;align-items:center;justify-content:center;font-size:17px">⚡</div>
+                      display:flex;align-items:center;justify-content:center;font-size:17px"~⚡</div>
           <div>
             <div style="font-weight:700;font-size:.9rem;color:#F2F2F7">ROKER NEXUS</div>
             <div style="font-size:.6rem;color:#545458;letter-spacing:.08em">{APP_VERSION} · El Celu</div>
