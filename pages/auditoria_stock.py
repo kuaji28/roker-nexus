@@ -119,6 +119,22 @@ def render():
     with tabs[3]:
         _tab_ayuda()
 
+    # ── IA contextual ──────────────────────────────────────────
+    from utils.ia_widget import nx_ai_widget, ctx_auditoria
+    nx_ai_widget(
+        page_key  = "auditoria",
+        titulo    = "🤖 Auditoría asistida con IA",
+        subtitulo = "Interpretá variaciones, detectá anomalías y construí el argumento para Diego",
+        sugeridas = [
+            ("🔍 Explicar variaciones",   "¿Qué pueden explicar las variaciones de stock que ves? ¿Son normales o sospechosas?"),
+            ("🚨 ¿Algo raro?",            "¿Hay algún movimiento de stock que no se justifica con las ventas registradas?"),
+            ("📋 Redactar hallazgos",     "Redactá un resumen de hallazgos de auditoría para reportar a Diego y Walter."),
+            ("🛡️ Argumento presupuesto",  "¿Cómo uso estos datos para defender el presupuesto de módulos ante Diego?"),
+        ],
+        context_fn = ctx_auditoria,
+        collapsed  = True,
+    )
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 1: COMPARACIÓN DE ARCHIVOS

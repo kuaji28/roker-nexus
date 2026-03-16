@@ -272,6 +272,22 @@ def render():
     with tabs[6]:
         _tab_alias_codigos()
 
+    # ── IA contextual ──────────────────────────────────────────
+    from utils.ia_widget import nx_ai_widget, ctx_inventario
+    nx_ai_widget(
+        page_key  = "inventario",
+        titulo    = "🤖 Analizar inventario con IA",
+        subtitulo = "Consultá sobre stock, reposición, anomalías y prioridades",
+        sugeridas = [
+            ("🔴 ¿Qué reponer urgente?",    "¿Qué artículos necesito reponer con más urgencia según stock y demanda actual?"),
+            ("📊 Análisis de críticos",      "Analizá los artículos con stock bajo o en cero. ¿Cuáles son riesgo real de quiebre?"),
+            ("💡 Sugerencia de lote",        "Basándote en el stock actual y la demanda, sugerí un lote de compra para esta semana."),
+            ("⚠️ Demanda invisible",        "¿Qué artículos probablemente tienen demanda pero no se detecta porque el stock está en cero?"),
+        ],
+        context_fn = ctx_inventario,
+        collapsed  = True,
+    )
+
 
 def _tab_demanda_manual():
     """Demanda manual integrada — override de demanda cuando Flexxus muestra 0."""
