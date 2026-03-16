@@ -204,18 +204,20 @@ GUIA_DETALLADA = {
         "nombre_alternativo": "— (no necesita renombrado)",
         "pasos": [
             "1️⃣  Ir a Flexxus: **Informes → Ventas por Artículo**",
-            "2️⃣  Seleccionar la vista **'Resumida'** (no la detallada)",
-            "3️⃣  **Rango de fechas:** últimos 30-90 días (ej: 01/01/2026 al 15/03/2026)",
-            "4️⃣  Sin filtro de artículo — exportar TODAS las ventas",
-            "5️⃣  Sin filtro de depósito — ventas de todos los locales",
-            "6️⃣  Exportar a Excel",
+            "2️⃣  Seleccionar la vista **'Resumida'** (no la detallada — la detallada genera un archivo enorme)",
+            "3️⃣  **Fecha desde:** primer día del mes anterior (ej: 01/02/2026)",
+            "4️⃣  **Fecha hasta:** hoy (ej: 15/03/2026) — SIEMPRE hasta hoy",
+            "   ⚠️ NUNCA poner más de 3 meses de rango — el archivo se vuelve enorme y tarda mucho",
+            "5️⃣  Artículo / Código: **dejar en blanco** — todas las ventas sin filtro",
+            "6️⃣  Depósito: **dejar en blanco** — ventas de TODOS los locales juntos",
+            "7️⃣  Exportar a Excel",
             "   ✅ El nombre con 'Resumida' es reconocido automáticamente",
-            "   📅 Para análisis de 6 meses: desde el 01/10/2025",
         ],
         "errores_comunes": [
-            "❌ Usar la vista detallada (sin 'Resumida') → el sistema no la reconoce",
+            "❌ Usar la vista detallada (sin 'Resumida') → archivo gigante, el sistema no lo reconoce",
+            "❌ Poner rango mayor a 3 meses → el archivo puede tener +100.000 filas y tardar mucho",
             "❌ Filtrar por un solo depósito → se pierden ventas de Larrea o SAN JOSE",
-            "❌ Rango muy corto (7 días) → demanda promedio poco representativa",
+            "❌ Filtrar por artículo o rubro → se pierden ventas del resto del catálogo",
         ],
     },
     "compras": {
@@ -228,17 +230,19 @@ GUIA_DETALLADA = {
         "nombre_alternativo": "— (no necesita renombrado)",
         "pasos": [
             "1️⃣  Ir a Flexxus: **Informes → Compras → Por Marca** (o similar)",
-            "2️⃣  **Activar:** Facturas (FA/FB) + Notas de Crédito (NC)",
-            "3️⃣  **Activar:** Remitos de Entrada (RE)",
-            "4️⃣  Rango de fechas: el mes completo que querés analizar",
-            "5️⃣  Sin filtro de marca — todas las marcas",
-            "6️⃣  Exportar a Excel",
+            "2️⃣  **Fecha desde:** primer día del mes actual (ej: 01/03/2026)",
+            "3️⃣  **Fecha hasta:** hoy (ej: 15/03/2026)",
+            "4️⃣  **Activar:** Facturas (FA/FB) + Notas de Crédito (NC)",
+            "5️⃣  **Activar:** Remitos de Entrada (RE) — importante para ver la mercadería ingresada",
+            "6️⃣  Marca / Proveedor: **dejar en blanco** — todas las marcas",
+            "7️⃣  Exportar a Excel",
             "   ✅ El nombre con 'por Marca' es reconocido automáticamente",
-            "   ⚠️ NO usar la versión 'Resumida' — ese nombre lo confunde con Ventas",
+            "   ⚠️ NO usar la versión 'Resumida' — ese nombre lo confunde con el archivo de Ventas",
         ],
         "errores_comunes": [
-            "❌ No activar Remitos RE → no aparecen las compras de mercadería",
+            "❌ No activar Remitos RE → no aparecen las compras de mercadería (solo facturas)",
             "❌ El nombre tiene 'Resumida' → el sistema lo confunde con Ventas",
+            "❌ Poner rango mayor a 2 meses → archivo innecesariamente grande",
         ],
     },
     "cotizacion_aitech": {
@@ -377,9 +381,48 @@ def render():
                 nombres_vistos[nombre_limpio] = f.name
                 _procesar_archivo(f)
 
-        # Checklist de archivos necesarios
-        with st.expander("📋 ¿Qué archivos necesito cargar?"):
+        # ── Checklist de precarga + estrategia de filtros ──────
+        with st.expander("📋 ¿Qué archivos cargo hoy y con qué filtros?", expanded=False):
             _checklist_archivos()
+
+            st.markdown("---")
+            st.markdown("""
+            <div style="font-size:13px;font-weight:700;color:var(--nx-text);margin-bottom:10px">
+                🗓️ Estrategia de filtros — reglas base
+            </div>
+            """, unsafe_allow_html=True)
+
+            REGLAS = [
+                ("📦", "Planilla de Stock (cualquier depósito)",
+                 "Fecha: EN BLANCO · Rubro: EN BLANCO · Artículo: EN BLANCO · Solo filtrar por depósito",
+                 "#FF9F0A", "⚠️ Sin prefijo en el nombre = el sistema no sabe de qué depósito es"),
+                ("📊", "Optimización de Stock",
+                 "Super Rubro: MODULOS · Período: 6 meses · Demanda promedio: 30 días · Depósito: EN BLANCO",
+                 "#0A84FF", "⚠️ Sin Super Rubro MODULOS = archivo enorme y lento"),
+                ("💰", "Lista de Precios",
+                 "Sin filtros · Todas las listas (1 a 5) · Moneda: USD · Incluir P.Comp",
+                 "#32D74B", "⚠️ Exportar en ARS = todos los precios van a estar mal"),
+                ("📈", "Ventas por Artículo",
+                 "Vista: RESUMIDA · Fecha desde: 1ro del mes anterior · Fecha hasta: HOY · Sin otros filtros",
+                 "#BF5AF2", "⚠️ Rango > 3 meses = archivo enorme, tarda mucho (pasó en agosto)"),
+                ("🛍️", "Compras por Marca",
+                 "Fecha desde: 1ro del mes actual · Fecha hasta: HOY · Activar FA+NC+RE · Sin otros filtros",
+                 "#BF5AF2", "⚠️ Sin RE = no aparecen las compras de mercadería"),
+            ]
+
+            for icono, nombre, config, color, alerta in REGLAS:
+                st.markdown(f"""
+                <div style="border-left:3px solid {color};padding:8px 12px;margin-bottom:8px;
+                            background:var(--nx-surface2,#1c1c1e);border-radius:0 8px 8px 0">
+                    <div style="font-size:12px;font-weight:700;color:var(--nx-text);margin-bottom:3px">
+                        {icono} {nombre}
+                    </div>
+                    <div style="font-size:11px;color:var(--nx-text2);margin-bottom:4px">
+                        {config}
+                    </div>
+                    <div style="font-size:10px;color:{color}">{alerta}</div>
+                </div>
+                """, unsafe_allow_html=True)
 
     # ── Tab 2: Por tipo ───────────────────────────────────────
     with tab_manual:
