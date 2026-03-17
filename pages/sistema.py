@@ -73,26 +73,27 @@ def render():
             _estado_card("🗄️ Supabase", False, f"Error: {str(e)[:60]}", "SUPABASE_URL")
 
     with col2:
-        # Telegram
+        # Telegram -- leer siempre fresco desde st.secrets (no usar config cacheado)
         try:
-            from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
-            if TELEGRAM_TOKEN:
+            tg_token   = _read_telegram_token()
+            tg_chat_id = _read_telegram_chat_id()
+            if tg_token:
                 import requests
                 r = requests.get(
-                    f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getMe",
+                    f"https://api.telegram.org/bot{tg_token}/getMe",
                     timeout=5
                 )
                 if r.status_code == 200:
                     bot_name = r.json().get("result", {}).get("username", "?")
                     _estado_card("📱 Telegram Bot", True,
-                                 f"@{bot_name} activo — Chat ID: {TELEGRAM_CHAT_ID}",
+                                 f"@{bot_name} activo -- Chat ID: {tg_chat_id}",
                                  "TELEGRAM_TOKEN")
                 else:
-                    _estado_card("📱 Telegram Bot", False, "Token inválido", "TELEGRAM_TOKEN")
+                    _estado_card("📱 Telegram Bot", False, "Token invalido", "TELEGRAM_TOKEN")
             else:
                 _estado_card("📱 Telegram Bot", False, "Sin token configurado", "TELEGRAM_TOKEN")
         except Exception as e:
-            _estado_card("📱 Telegram Bot", False, f"Sin conexión: {str(e)[:50]}", "TELEGRAM_TOKEN")
+            _estado_card("📱 Telegram Bot", False, f"Sin conexion: {str(e)[:50]}", "TELEGRAM_TOKEN")
 
         # Railway (Bot)
         _estado_card("🚂 Railway Bot", True,
