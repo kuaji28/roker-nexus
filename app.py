@@ -538,6 +538,10 @@ def _render_sidebar():
 try:
     _render_sidebar()
 except Exception as _sb_err:
+    # Re-raise Streamlit control-flow exceptions so nav buttons work
+    _err_type = type(_sb_err).__name__
+    if any(x in _err_type for x in ("RerunException", "StopException", "StopExecution")):
+        raise
     with st.sidebar:
         st.error(f"⚠️ Error en sidebar: {_sb_err}")
         st.caption("Recargá la página para reintentar.")
