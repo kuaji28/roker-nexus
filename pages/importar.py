@@ -946,3 +946,16 @@ def _checklist_archivos():
         </div>"""
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
+
+
+# -- Entry point for Streamlit native page routing (/~/+/importar) --
+# When app.py imports this module it calls render() explicitly.
+# When Streamlit's multi-page router runs this file directly,
+# we need to call render() here -- but only if we're the main script.
+import sys as _sys
+_am_standalone = not any(
+    getattr(m, "__file__", "") and "app.py" in getattr(m, "__file__", "")
+    for m in _sys.modules.values() if m is not None
+)
+if _am_standalone:
+    render()
