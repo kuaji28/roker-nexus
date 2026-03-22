@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Roker Nexus — Supabase Data Pusher</title>
+<style>
+body { font-family: monospace; background: #0e1117; color: #fafafa; padding: 20px; }
+h2 { color: #ff4b4b; }
+#status { background: #262730; padding: 15px; border-radius: 8px; white-space: pre; overflow-y: auto; max-height: 400px; font-size: 13px; }
+#progress { background: #262730; padding: 10px; border-radius: 8px; margin: 10px 0; }
+.bar { background: #ff4b4b; height: 20px; border-radius: 4px; transition: width 0.3s; }
+button { background: #ff4b4b; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; margin: 5px; }
+input[type=file] { display: none; }
+label { background: #262730; color: #fafafa; border: 1px solid #555; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
+</style>
+</head>
+<body>
+<h2>🚀 Roker Nexus — Supabase Data Pusher</h2>
+<p>Select the <strong>nexus_push_data.json</strong> file to push all data to Supabase.</p>
+
+<label for="fileInput">📂 Select nexus_push_data.json</label>
+<input type="file" id="fileInput" accept=".json">
+
+<div id="progress" style="display:none">
+  <div id="progressLabel">Loading...</div>
+  <div style="background:#1a1a2e;border-radius:4px;margin-top:8px">
+    <div class="bar" id="progressBar" style="width:0%"></div>
+  </div>
+</div>
+
+<div id="status">Waiting for file...</div>
+
+<script>
+const log = (msg) => {
+  const s = document.getElementById('status');
+  const ts = new Date().toISOString().substring(11,19);
+  s.textContent = `[${ts}] ${msg}\n` + s.textContent;
+};
+
+const setProgress = (done, total, rows) => {
+  const pct = Math.round(100 * done / total);
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent =
+    `${done}/${total} batches (${pct}%) — ${rows.toLocaleString()} rows pushed`;
+};
+
+document.getElementById('fileInput').addEventListener('change', async function() {
+  const file = this.files[0];
+  if (!file) return;
+
+  document.getElementById('progress').style.display = 'block';
+  log(`Reading ${file.name} (${(file.size/1e6).toFixed(1)} MB)...`);
+
+  let manifest;
+  try {
+    const text = await file.text();
+    manifest = JSON.parse(text);
+    log(`Loaded: ${manifest.batch_count} batches, ${manifest.total_rows.toLocaleString()} total rows`);
+  } catch(e) {
+    log('ERROR parsing JSON: ' + e);
+    return;
+  }
+
+  const SUPA = manifest.supa_url;
+  const KEY = manifest.supa_key;
+  const batches = manifest.batches;
+  const PARALLEL = 5;
+
+  let pushed = 0, errors = 0, done = 0;
+
+  async function pushOne(batch) {
+    const prefer = `return=minimal,resolution=${batch.resolution}`;
+    const r = await fetch(`${SUPA}/rest/v1/${batch.table}`, {
+      method: 'POST',
+      headers: {
+        'apikey': KEY,
+        'Authorization': `Bearer ${KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': prefer
+      },
+      body: JSON.stringify(batch.rows)
+    });
+    if (r.status >= 200 && r.status < 300) {
+      return batch.rows.length;
+    } else {
+      const err = await r.text().catch(() => r.status);
+      log(`  ⚠ ${batch.table} HTTP ${r.status}: ${String(err).substring(0, 100)}`);
+      return 0;
+    }
+  }
+
+  log(`Starting push: ${batches.length} batches in groups of ${PARALLEL}...`);
+
+  for (let i = 0; i < batches.length; i += PARALLEL) {
+    const chunk = batches.slice(i, i + PARALLEL);
+    try {
+      const results = await Promise.all(chunk.map(pushOne));
+      pushed += results.reduce((a,b) => a+b, 0);
+      done += chunk.length;
+      const errCount = results.filter(r => r === 0).length;
+      errors += errCount;
+      setProgress(done, batches.length, pushed);
+      if (i % 50 === 0 || i + PARALLEL >= batches.length) {
+        log(`Batch ${done}/${batches.length}: ${pushed.toLocaleString()} rows OK, ${errors} errors`);
+      }
+    } catch(e) {
+      errors += chunk.length;
+      done += chunk.length;
+      log(`ERROR at batch ${i}: ${e}`);
+    }
+  }
+
+  log(`✅ COMPLETE! Pushed ${pushed.toLocaleString()}/${manifest.total_rows.toLocaleString()} rows. Errors: ${errors}`);
+  setProgress(batches.length, batches.length, pushed);
+});
+</script>
+</body>
+</html>

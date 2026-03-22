@@ -49,11 +49,23 @@
 | **Dólar blue** | Tipo de cambio informal ARG. Hoy: 1 USD = $1.415 ARS. Auto-fetch dolarapi.com. |
 | **Auditoría silenciosa** | Verificación independiente de datos para presentar a Walter/Diego sin pasar por Pablo/Mariano. |
 
+## Telegram Bot — Roker IA
+| Campo | Valor |
+|-------|-------|
+| **Bot username** | @Rokeriabot |
+| **Bot name** | Roker IA |
+| **Bot token** | `8600755595:AAEfMyQKYNI_wrCORNKTJB6u2xsW3JanFJg` |
+| **Chat ID de Roker** | `5427210648` |
+| **Telegram user** | @Roker91 (Sergio) |
+
+> ⚠️ **IMPORTANTE:** Este token y chat ID se usan para enviar notificaciones y resultados de tests directamente a Roker por Telegram. NUNCA olvidar estos datos — Roker ya los proporcionó varias veces.
+
 ## Proyectos
 | Nombre | Descripción |
 |--------|-------------|
 | **Roker Nexus** | Sistema de gestión inventario en Streamlit + Supabase. En producción en Streamlit Cloud. |
-| **Bot Telegram** | Bot para consultas móviles de stock, precios, pedidos, tipo de cambio. Pendiente construir. |
+| **Bot Telegram** | Bot @Rokeriabot para consultas móviles de stock, precios, pedidos, tipo de cambio. Token y chat ID arriba. |
+| **Dylan Restaurant** | POS para restaurante peruano. Streamlit + SQLite, deploy Railway. Repo: kuaji28/dylan-restaurant. |
 | **Auditoría v1** | Presentación para Walter y Diego: déficit presupuesto módulos, pérdidas RMA, grey zone remitos. |
 | **Guía Operativa** | Documentación paso a paso con capturas Flexxus para delegar tareas. |
 
