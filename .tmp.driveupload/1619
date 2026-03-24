@@ -1,0 +1,328 @@
+0000000000000000000000000000000000000000 38b4dbc66a5aaa952d154cc92c9ce53225c0ea6d Sergio <kuaji28@gmail.com> 1773422727 -0300	commit (initial): Roker Nexus v1.0
+38b4dbc66a5aaa952d154cc92c9ce53225c0ea6d 0000000000000000000000000000000000000000 Sergio <kuaji28@gmail.com> 1773422727 -0300	Branch: renamed refs/heads/master to refs/heads/main
+0000000000000000000000000000000000000000 38b4dbc66a5aaa952d154cc92c9ce53225c0ea6d Sergio <kuaji28@gmail.com> 1773422727 -0300	Branch: renamed refs/heads/master to refs/heads/main
+38b4dbc66a5aaa952d154cc92c9ce53225c0ea6d 1648f86224b3231076d78c8b7c5f34255678771d Sergio <kuaji28@gmail.com> 1773423904 -0300	commit: fix: dashboard maneja BD vacia
+1648f86224b3231076d78c8b7c5f34255678771d 7a63d77bb6c1ef59a9b7e8806911c9b21ea0b51b Sergio <kuaji28@gmail.com> 1773424498 -0300	commit: style: One UI 8 theme
+7a63d77bb6c1ef59a9b7e8806911c9b21ea0b51b 444fc476b4b8edd1265fcf57d2995aa70ca0a6b7 Sergio <kuaji28@gmail.com> 1773424743 -0300	commit: fix: importador optimizacion robusto
+444fc476b4b8edd1265fcf57d2995aa70ca0a6b7 5b6ff2f318f20363c7292714772c08f018840045 Sergio <kuaji28@gmail.com> 1773425065 -0300	commit: fix: SQL ambiguous deposito + deprecaciones
+5b6ff2f318f20363c7292714772c08f018840045 ae530e6e4ecc06aeabb20323b340fd292b09ad2e Sergio <kuaji28@gmail.com> 1773425657 -0300	commit: config: Railway bot deployment
+ae530e6e4ecc06aeabb20323b340fd292b09ad2e 0b1361bc6cf21687f0abed53084f9a521f019e80 Sergio <kuaji28@gmail.com> 1773427053 -0300	commit: style: One UI gris autentico + sidebar visible
+0b1361bc6cf21687f0abed53084f9a521f019e80 2332cbcca249123ffc1f3e029eed189d7f2fd7a2 Sergio <kuaji28@gmail.com> 1773427328 -0300	commit: fix: agregar funciones lista negra para bot
+2332cbcca249123ffc1f3e029eed189d7f2fd7a2 a4ea28816a41e8c4f3c0316fdc10cf625cca620a Sergio <kuaji28@gmail.com> 1773428140 -0300	commit: fix: bot decorator + sidebar centro fijo
+a4ea28816a41e8c4f3c0316fdc10cf625cca620a 947308b182642ec6e0923f9fa2b2886cc60ce4d9 Sergio <kuaji28@gmail.com> 1773429057 -0300	commit: feat: busqueda por descripcion, top selector, negra inteligente
+947308b182642ec6e0923f9fa2b2886cc60ce4d9 3ab102d37d5c9b86bc4833b942e85f77e6701350 Sergio <kuaji28@gmail.com> 1773429439 -0300	commit: design: One UI 8 completo + version v1.4.0 + sidebar fix
+3ab102d37d5c9b86bc4833b942e85f77e6701350 0982e9ece51cc3ea23a7b294799eb03933f5fb89 Sergio <kuaji28@gmail.com> 1773430453 -0300	commit: feat: v1.4.0 One UI 8 + notif deploy + sidebar mobile
+0982e9ece51cc3ea23a7b294799eb03933f5fb89 ee7e4bac19794c8a0c3b6e40cda1de78f4f8ef16 Sergio <kuaji28@gmail.com> 1773430997 -0300	commit: fix: sidebar hamburger JS robusto - mobile y desktop
+ee7e4bac19794c8a0c3b6e40cda1de78f4f8ef16 6752ccf6bea421297a2b070e822787a86ca6fe8a Sergio <kuaji28@gmail.com> 1773431368 -0300	commit: fix: sidebar CSS nativo sin JS, boton real clickeable
+6752ccf6bea421297a2b070e822787a86ca6fe8a 10234f9e5d9cd7a7958445699621b0502f8f0dbf Sergio <kuaji28@gmail.com> 1773431658 -0300	commit: fix: sidebar DOM real + telegram notif directa v1.4.1
+10234f9e5d9cd7a7958445699621b0502f8f0dbf 78acf53073052597668cfb08365aba283e374029 Sergio <kuaji28@gmail.com> 1773431903 -0300	commit: fix: navegacion horizontal - sin sidebar
+78acf53073052597668cfb08365aba283e374029 406a1616ea6ebd03508d176d379addae10c1907f Sergio <kuaji28@gmail.com> 1773432470 -0300	commit: fix: DataFrame.str error en todos los importadores Flexxus
+406a1616ea6ebd03508d176d379addae10c1907f ee364b879d74ce249d381e839fa511b2f613711e Sergio <kuaji28@gmail.com> 1773432837 -0300	commit: feat: bot interactivo con menu, saludos y opciones por articulo
+ee364b879d74ce249d381e839fa511b2f613711e 40b3474fb0cde00599b1b5220f17753566478202 Sergio <kuaji28@gmail.com> 1773433505 -0300	commit: fix: 3 errores importadores - aitech fillna, precios descripcion, optimizacion UNIQUE
+40b3474fb0cde00599b1b5220f17753566478202 a783c4dc03a1146706bf98c3c3d374f8f6bb6fc2 Sergio <kuaji28@gmail.com> 1773434205 -0300	commit: fix: aitech defensivo + sqlite3 import en optimizacion
+a783c4dc03a1146706bf98c3c3d374f8f6bb6fc2 cdcd4149bc42465efb8c2ddf999d9fb84ed7348e Sergio <kuaji28@gmail.com> 1773435102 -0300	commit: fix: bot funciones faltantes + /pedido + importadores
+cdcd4149bc42465efb8c2ddf999d9fb84ed7348e c8a438a3e74cff30ba1aad5bd9fa61e79f50ab8b Sergio <kuaji28@gmail.com> 1773435988 -0300	commit: fix: chat_input solo en asistente + UNIQUE optimizacion + bot funciones
+c8a438a3e74cff30ba1aad5bd9fa61e79f50ab8b c592a6bce3379fd09b5a8b1514be84666a34ecdd Sergio <kuaji28@gmail.com> 1773436117 -0300	commit: fix: await buscar_articulos + quiebres dep + dolar/negra + escape Hola
+c592a6bce3379fd09b5a8b1514be84666a34ecdd f2093980ea008d326d53fd150209c283af194cb6 Sergio <kuaji28@gmail.com> 1773436586 -0300	commit: fix: UNIQUE optimizacion truncate + bot await + quiebres + dolar/negra
+f2093980ea008d326d53fd150209c283af194cb6 8b6fae3fb47b4f6f6fab7728555181f5a785ab7e Sergio <kuaji28@gmail.com> 1773437022 -0300	commit: fix: aitech upsert + dashboard usa optimizacion si no hay stock
+8b6fae3fb47b4f6f6fab7728555181f5a785ab7e ceae0f87ff2edf168d8cf9389d3e395e57a5b9f7 Sergio <kuaji28@gmail.com> 1773437913 -0300	commit: fix: nav doble + aitech formato real + duplicados + dashboard fallback
+ceae0f87ff2edf168d8cf9389d3e395e57a5b9f7 05e3464070185849f76e87066ef54968f1984503 Sergio <kuaji28@gmail.com> 1773444640 -0300	commit: auto: actualizacion 2026-03-13 20:30
+05e3464070185849f76e87066ef54968f1984503 803fd5a83fffbd8c847b1ac563a8df5ec6a5d2ca Sergio <kuaji28@gmail.com> 1773445513 -0300	commit: auto: actualizacion 2026-03-13 20:45
+803fd5a83fffbd8c847b1ac563a8df5ec6a5d2ca c042d19de49735feab38a2a250a302c6ea1b8bbb Sergio <kuaji28@gmail.com> 1773446687 -0300	commit: auto: actualizacion 2026-03-13 21:04
+c042d19de49735feab38a2a250a302c6ea1b8bbb e7f4a8f13dfc08cc1211199eef5a35c1ba80c36a Sergio <kuaji28@gmail.com> 1773447109 -0300	commit: auto: actualizacion 2026-03-13 21:11
+e7f4a8f13dfc08cc1211199eef5a35c1ba80c36a a028ec8a3476bf501f26d3b736fb2a22093e11a8 Sergio <kuaji28@gmail.com> 1773447502 -0300	commit: auto: actualizacion 2026-03-13 21:18
+a028ec8a3476bf501f26d3b736fb2a22093e11a8 84e3c32577d4c60563ac6a375332c9ed6c48cdd0 Sergio <kuaji28@gmail.com> 1773450238 -0300	commit: auto: actualizacion 2026-03-13 22:03
+84e3c32577d4c60563ac6a375332c9ed6c48cdd0 673df9d82c9145ac8d9aab04050d937c6117eb97 Sergio <kuaji28@gmail.com> 1773451142 -0300	commit: auto: actualizacion 2026-03-13 22:19
+673df9d82c9145ac8d9aab04050d937c6117eb97 c139221aa1fe3823c5c338a273352b1a6827ac88 Sergio <kuaji28@gmail.com> 1773451745 -0300	commit: auto: actualizacion 2026-03-13 22:29
+c139221aa1fe3823c5c338a273352b1a6827ac88 de381d172c15a7c76ffdd5ba71b4c14959fab55a Sergio <kuaji28@gmail.com> 1773452017 -0300	commit: auto: actualizacion 2026-03-13 22:33
+de381d172c15a7c76ffdd5ba71b4c14959fab55a 2c5acf2b2d6edb3ea57bc4dafc756a4e25af088d Sergio <kuaji28@gmail.com> 1773452439 -0300	commit: auto: actualizacion 2026-03-13 22:40
+2c5acf2b2d6edb3ea57bc4dafc756a4e25af088d af294dda15f87dcd24945602cdf25f613053fbf7 Sergio <kuaji28@gmail.com> 1773453252 -0300	commit: auto: actualizacion 2026-03-13 22:54
+af294dda15f87dcd24945602cdf25f613053fbf7 744a4b8054dc6848586ece71983234e7916b501d Sergio <kuaji28@gmail.com> 1773454095 -0300	commit: auto: actualizacion 2026-03-13 23:08
+744a4b8054dc6848586ece71983234e7916b501d 63b051cf7804934bf2b24808d4eb3b12e8cef997 Sergio <kuaji28@gmail.com> 1773456020 -0300	commit: auto: actualizacion 2026-03-13 23:40
+63b051cf7804934bf2b24808d4eb3b12e8cef997 33d64d81d34fc27c437bdc2961b6b5e3bb0c6b56 Sergio <kuaji28@gmail.com> 1773457495 -0300	commit: auto: actualizacion 2026-03-14 00:04
+33d64d81d34fc27c437bdc2961b6b5e3bb0c6b56 72d2615468f221779eff9af74bf524867a1b1a3e Sergio <kuaji28@gmail.com> 1773458398 -0300	commit: auto: actualizacion 2026-03-14 00:19
+72d2615468f221779eff9af74bf524867a1b1a3e 78ba59462ee7804861f82d59fbf38e4e34344696 Sergio <kuaji28@gmail.com> 1773459362 -0300	commit: auto: actualizacion 2026-03-14 00:36
+78ba59462ee7804861f82d59fbf38e4e34344696 d0249e5da0e9654fcbeb3d06cdf0cd4660c840ed Sergio <kuaji28@gmail.com> 1773459784 -0300	commit: auto: actualizacion 2026-03-14 00:43
+d0249e5da0e9654fcbeb3d06cdf0cd4660c840ed e849452cb482bb770df4a2c039d8d91756e2c5b3 Sergio <kuaji28@gmail.com> 1773460386 -0300	commit: auto: actualizacion 2026-03-14 00:53
+e849452cb482bb770df4a2c039d8d91756e2c5b3 309bde9b03ec00d10c6931fa77cfe58cdd1d41ad Sergio <kuaji28@gmail.com> 1773460598 -0300	commit: auto: actualizacion 2026-03-14 00:56
+309bde9b03ec00d10c6931fa77cfe58cdd1d41ad 1cea18c0a8b085cac43a53a0e69024d84bc4320e Sergio <kuaji28@gmail.com> 1773460780 -0300	commit: auto: actualizacion 2026-03-14 00:59
+1cea18c0a8b085cac43a53a0e69024d84bc4320e 172d83d3e3ce8bbf9f47a9a1104ae093a749a27e Sergio <kuaji28@gmail.com> 1773460882 -0300	commit: fix: sacar keys hardcodeadas + init_db tolerante v1.6.2
+172d83d3e3ce8bbf9f47a9a1104ae093a749a27e 0360ecd1475209010c294eb56ba2c844855a1ab8 Sergio <kuaji28@gmail.com> 1773461353 -0300	commit: auto: actualizacion 2026-03-14 01:09
+0360ecd1475209010c294eb56ba2c844855a1ab8 9391e14b86b8f4866b61e39c250adfc81e0fdb01 Sergio <kuaji28@gmail.com> 1773462578 -0300	commit: fix: execute_query tolerante + log_importacion v1.6.4
+9391e14b86b8f4866b61e39c250adfc81e0fdb01 897a8a087e1cc3e4a8da652d43400ba675407a07 Sergio <kuaji28@gmail.com> 1773462707 -0300	commit: auto: actualizacion 2026-03-14 01:31
+897a8a087e1cc3e4a8da652d43400ba675407a07 f243fe46f1556930b8e80461c334b5346e0df3de Sergio <kuaji28@gmail.com> 1773462996 -0300	commit: fix: CREATE TABLE explicito en Python v1.6.6
+f243fe46f1556930b8e80461c334b5346e0df3de ed60203e953ce17675740538ae85eceb7abca9ac Sergio <kuaji28@gmail.com> 1773463351 -0300	commit: fix: USE_SUPABASE=False + paths absolutos + imports defensivos v1.6.7
+ed60203e953ce17675740538ae85eceb7abca9ac c3d25967cbf7bd8b3c6386e28447ab701fb263bc Sergio <kuaji28@gmail.com> 1773463851 -0300	commit: auto: actualizacion 2026-03-14 01:50
+c3d25967cbf7bd8b3c6386e28447ab701fb263bc 7b920c05d8583390254b3fc8fd35af1612950b6b Sergio <kuaji28@gmail.com> 1773464754 -0300	commit: auto: actualizacion 2026-03-14 02:05
+7b920c05d8583390254b3fc8fd35af1612950b6b 5b2ef2a7ccb480a831099aa2ed938957f16c0780 Sergio <kuaji28@gmail.com> 1773465838 -0300	commit: auto: actualizacion 2026-03-14 02:23
+5b2ef2a7ccb480a831099aa2ed938957f16c0780 401a010c310a72e3148f521a191c2dabcca1e562 Sergio <kuaji28@gmail.com> 1773466891 -0300	commit: auto: actualizacion 2026-03-14 02:41
+401a010c310a72e3148f521a191c2dabcca1e562 ca54a73f0405c09b7b09dfbf77307b0bff91be0e Sergio <kuaji28@gmail.com> 1773468667 -0300	commit: auto: actualizacion 2026-03-14 03:11
+ca54a73f0405c09b7b09dfbf77307b0bff91be0e 15fec6f9002eeb19bcb15edb120b3c1b11d2d5e1 Sergio <kuaji28@gmail.com> 1773469240 -0300	commit: auto: actualizacion 2026-03-14 03:20
+15fec6f9002eeb19bcb15edb120b3c1b11d2d5e1 4b8649de3dae517fb0c9ffcfd4b5d229dc85dd6f Sergio <kuaji28@gmail.com> 1773470383 -0300	commit: auto: actualizacion 2026-03-14 03:39
+4b8649de3dae517fb0c9ffcfd4b5d229dc85dd6f 93e7286de534e70543dac03ac7c5c9bb1caf5023 Sergio <kuaji28@gmail.com> 1773471046 -0300	commit: auto: actualizacion 2026-03-14 03:50
+93e7286de534e70543dac03ac7c5c9bb1caf5023 fa6dfae7df88ddf047b2ad1f7129ac90cf1a6a86 Sergio <kuaji28@gmail.com> 1773471258 -0300	commit: auto: actualizacion 2026-03-14 03:54
+fa6dfae7df88ddf047b2ad1f7129ac90cf1a6a86 9544a50f0b8311183cdf38dd7594b40e518856f1 Sergio <kuaji28@gmail.com> 1773471921 -0300	commit: auto: actualizacion 2026-03-14 04:05
+9544a50f0b8311183cdf38dd7594b40e518856f1 439547058544b3ec4c149db681df1a86822d7135 Sergio <kuaji28@gmail.com> 1773472193 -0300	commit: auto: actualizacion 2026-03-14 04:09
+439547058544b3ec4c149db681df1a86822d7135 542234e3004bff3a0cf2ecd56a669047521ee42b Sergio <kuaji28@gmail.com> 1773473036 -0300	commit: auto: actualizacion 2026-03-14 04:23
+542234e3004bff3a0cf2ecd56a669047521ee42b 7ff36790b26d8ed10cf73e67c23dcb23183a0d95 Sergio <kuaji28@gmail.com> 1773473309 -0300	commit: auto: actualizacion 2026-03-14 04:28
+7ff36790b26d8ed10cf73e67c23dcb23183a0d95 cf52aec9686a21ba1db326e095344b55cd6f0a31 Sergio <kuaji28@gmail.com> 1773473581 -0300	commit: auto: actualizacion 2026-03-14 04:33
+cf52aec9686a21ba1db326e095344b55cd6f0a31 af5f1dfb28bbb145ea25b323b748b0eec21ce319 Sergio <kuaji28@gmail.com> 1773473853 -0300	commit: auto: actualizacion 2026-03-14 04:37
+af5f1dfb28bbb145ea25b323b748b0eec21ce319 180678024099bf0a97eabcfe753583405212cddb Sergio <kuaji28@gmail.com> 1773474121 -0300	commit: HOTFIX: requirements sin conflictos
+180678024099bf0a97eabcfe753583405212cddb c3e5dc43c150282d58e20ba09c72a2cd51c7f82e Sergio <kuaji28@gmail.com> 1773474125 -0300	commit: auto: actualizacion 2026-03-14 04:42
+c3e5dc43c150282d58e20ba09c72a2cd51c7f82e 641c8169dcd44e3eb47c4834be3676e32ebd65c5 Sergio <kuaji28@gmail.com> 1773474367 -0300	commit: auto: actualizacion 2026-03-14 04:46
+641c8169dcd44e3eb47c4834be3676e32ebd65c5 e5fdb1c23ebb411a22493ed000d034543db54e34 Sergio <kuaji28@gmail.com> 1773474428 -0300	commit: auto: actualizacion 2026-03-14 04:47
+e5fdb1c23ebb411a22493ed000d034543db54e34 e0ffe424a3b80aa74408ef7d6f7955e7b16ea9a2 Sergio <kuaji28@gmail.com> 1773474700 -0300	commit: auto: actualizacion 2026-03-14 04:51
+e0ffe424a3b80aa74408ef7d6f7955e7b16ea9a2 bf79d0ffc3c8711f43f8c4b25baebfb6244fd032 Sergio <kuaji28@gmail.com> 1773474792 -0300	commit: auto: actualizacion 2026-03-14 04:53
+bf79d0ffc3c8711f43f8c4b25baebfb6244fd032 bd803fd361f56c2cfa2d315011668befb550cb36 Sergio <kuaji28@gmail.com> 1773505510 -0300	commit: force update v2.5.0
+bd803fd361f56c2cfa2d315011668befb550cb36 d5d9c0c491d2c9c13d80b4f03eaff2c773956ea1 Sergio <kuaji28@gmail.com> 1773505818 -0300	commit: auto: 2026-03-14 13:30
+d5d9c0c491d2c9c13d80b4f03eaff2c773956ea1 4d03700b88c7e95d6990b8901dfbf20e0a89c5fd Sergio <kuaji28@gmail.com> 1773505969 -0300	commit: auto: 2026-03-14 13:32
+4d03700b88c7e95d6990b8901dfbf20e0a89c5fd 04564879fb77058e54a442a8dd78d5223a9ed154 Sergio <kuaji28@gmail.com> 1773519885 -0300	commit: auto: 2026-03-14 17:24
+04564879fb77058e54a442a8dd78d5223a9ed154 a6fada72e4d6b6694b1d6ac8a268dd37f74baea0 Sergio <kuaji28@gmail.com> 1773527910 -0300	commit: auto: 2026-03-14 19:38
+a6fada72e4d6b6694b1d6ac8a268dd37f74baea0 e02112726008cf7278d7d0fb6eb0659799b1edb5 Sergio <kuaji28@gmail.com> 1773540984 -0300	commit: auto: 2026-03-14 23:16
+e02112726008cf7278d7d0fb6eb0659799b1edb5 7d5a24526463287ce5c16d489fb9763c3bd872ba Sergio <kuaji28@gmail.com> 1773551722 -0300	commit: auto: 2026-03-15 02:15
+7d5a24526463287ce5c16d489fb9763c3bd872ba 9b32bc0efe467661878dd84f00d8df42968ae6be Sergio <kuaji28@gmail.com> 1773552136 -0300	commit: auto: 2026-03-15 02:22
+9b32bc0efe467661878dd84f00d8df42968ae6be 291963fd866b6d418c6960daa87e5487b8833c04 Sergio <kuaji28@gmail.com> 1773552288 -0300	commit: auto: 2026-03-15 02:24
+291963fd866b6d418c6960daa87e5487b8833c04 f5a68714bf3317f8b856d4582c083b1086cf6ca4 Sergio <kuaji28@gmail.com> 1773552320 -0300	commit: auto: 2026-03-15 02:25
+f5a68714bf3317f8b856d4582c083b1086cf6ca4 8f7bf62a635702fd5954e937178b9dbf1bf5b225 Sergio <kuaji28@gmail.com> 1773552351 -0300	commit: auto: 2026-03-15 02:25
+8f7bf62a635702fd5954e937178b9dbf1bf5b225 9026bd7d9f8f02c5fac2046911abd5404eef2ac7 Sergio <kuaji28@gmail.com> 1773552443 -0300	commit: auto: 2026-03-15 02:27
+9026bd7d9f8f02c5fac2046911abd5404eef2ac7 d3c367d784f2d3e82a7662571869816c7f3121b9 Sergio <kuaji28@gmail.com> 1773553076 -0300	commit: auto: 2026-03-15 02:37
+d3c367d784f2d3e82a7662571869816c7f3121b9 384d1403a20aa03e9adb5f826d7314290e5ffe47 Sergio <kuaji28@gmail.com> 1773553167 -0300	commit: auto: 2026-03-15 02:39
+384d1403a20aa03e9adb5f826d7314290e5ffe47 f58b009bfb99bf734d6c20517b46b1db2c5158eb Sergio <kuaji28@gmail.com> 1773553198 -0300	commit: auto: 2026-03-15 02:39
+f58b009bfb99bf734d6c20517b46b1db2c5158eb 944e6d1f5c4e3522caf3c500ae2ffb782f053d9c Sergio <kuaji28@gmail.com> 1773553409 -0300	commit: auto: 2026-03-15 02:43
+944e6d1f5c4e3522caf3c500ae2ffb782f053d9c 2ee076405d36b717087ee850fa1fe4dbe3ba5014 Sergio <kuaji28@gmail.com> 1773553440 -0300	commit: auto: 2026-03-15 02:44
+2ee076405d36b717087ee850fa1fe4dbe3ba5014 bae0dbb9ad38d53f2ac39d98d93588f3d26edcd4 Sergio <kuaji28@gmail.com> 1773553471 -0300	commit: auto: 2026-03-15 02:44
+bae0dbb9ad38d53f2ac39d98d93588f3d26edcd4 fdf01c3963d6a01ff5439f78db62cf892eba8190 Sergio <kuaji28@gmail.com> 1773553713 -0300	commit: auto: 2026-03-15 02:48
+fdf01c3963d6a01ff5439f78db62cf892eba8190 86b932eecc68fe22ccf34211efbf144f9847011a Sergio <kuaji28@gmail.com> 1773553745 -0300	commit: auto: 2026-03-15 02:49
+86b932eecc68fe22ccf34211efbf144f9847011a d678b81a650ac285f8be86d0fae60ff8e6502ed8 Sergio <kuaji28@gmail.com> 1773553775 -0300	commit: auto: 2026-03-15 02:49
+d678b81a650ac285f8be86d0fae60ff8e6502ed8 d3b25d50bbb763097c059b149bb59366b6707a2d Sergio <kuaji28@gmail.com> 1773554077 -0300	commit: auto: 2026-03-15 02:54
+d3b25d50bbb763097c059b149bb59366b6707a2d e054bc55dfab5bd15fd13c340463a392ae5422b7 Sergio <kuaji28@gmail.com> 1773554678 -0300	commit: auto: 2026-03-15 03:04
+e054bc55dfab5bd15fd13c340463a392ae5422b7 b57084414cca651abda2e3ecdb72ca491966e541 Sergio <kuaji28@gmail.com> 1773554709 -0300	commit: auto: 2026-03-15 03:05
+b57084414cca651abda2e3ecdb72ca491966e541 3cf850dfb9ef9b3573165ff0cfbe599476e17b67 Sergio <kuaji28@gmail.com> 1773554740 -0300	commit: auto: 2026-03-15 03:05
+3cf850dfb9ef9b3573165ff0cfbe599476e17b67 822a55eca9f3c590d24575591550006ce07a87b5 Sergio <kuaji28@gmail.com> 1773555944 -0300	commit: auto: 2026-03-15 03:25
+822a55eca9f3c590d24575591550006ce07a87b5 3857a8e71c4f1d769e348e4c2b290cad2f6a47a6 Sergio <kuaji28@gmail.com> 1773555976 -0300	commit: auto: 2026-03-15 03:26
+3857a8e71c4f1d769e348e4c2b290cad2f6a47a6 b07ccf125fc6e6d051ec943cfe4cc3e20d7e2591 Sergio <kuaji28@gmail.com> 1773556007 -0300	commit: auto: 2026-03-15 03:26
+b07ccf125fc6e6d051ec943cfe4cc3e20d7e2591 9a4b849823639374b871a0e482ebe7ef7cfec10b Sergio <kuaji28@gmail.com> 1773556037 -0300	commit: auto: 2026-03-15 03:27
+9a4b849823639374b871a0e482ebe7ef7cfec10b d81599f0d23b2671f7c0bf6c47ecbf0d1d5cd267 Sergio <kuaji28@gmail.com> 1773556068 -0300	commit: auto: 2026-03-15 03:27
+d81599f0d23b2671f7c0bf6c47ecbf0d1d5cd267 699cad5bd8b2c588c63208d1c4b10700884fee4f Sergio <kuaji28@gmail.com> 1773556099 -0300	commit: auto: 2026-03-15 03:28
+699cad5bd8b2c588c63208d1c4b10700884fee4f fb92512b1e9ecd0fdcc84f33bf350d286fd7215d Sergio <kuaji28@gmail.com> 1773556460 -0300	commit: auto: 2026-03-15 03:34
+fb92512b1e9ecd0fdcc84f33bf350d286fd7215d 4f3ff308fd87fc5e9c3dc3c2b925bde0371f4c7c Sergio <kuaji28@gmail.com> 1773556491 -0300	commit: auto: 2026-03-15 03:34
+4f3ff308fd87fc5e9c3dc3c2b925bde0371f4c7c a955904be3c61aa779b1c29e4f8e59ff6f01d860 Sergio <kuaji28@gmail.com> 1773556522 -0300	commit: auto: 2026-03-15 03:35
+a955904be3c61aa779b1c29e4f8e59ff6f01d860 e3836e117e6b28ff8ecbeff48f186227d43981f6 Sergio <kuaji28@gmail.com> 1773556553 -0300	commit: auto: 2026-03-15 03:35
+e3836e117e6b28ff8ecbeff48f186227d43981f6 a3b8a3666f80cc4fa108e9a0c10cb1e039fe96ad Sergio <kuaji28@gmail.com> 1773556584 -0300	commit: auto: 2026-03-15 03:36
+a3b8a3666f80cc4fa108e9a0c10cb1e039fe96ad 50cd6634cc55e8fc278cd8afb160cb86c771be2d Sergio <kuaji28@gmail.com> 1773556614 -0300	commit: auto: 2026-03-15 03:36
+50cd6634cc55e8fc278cd8afb160cb86c771be2d 4a52804aa633b58aad5250f34d362756e5d41685 Sergio <kuaji28@gmail.com> 1773556645 -0300	commit: auto: 2026-03-15 03:37
+4a52804aa633b58aad5250f34d362756e5d41685 e3ddb91383f176a2634d5dee7c881422e3563f5e Sergio <kuaji28@gmail.com> 1773556916 -0300	commit: auto: 2026-03-15 03:41
+e3ddb91383f176a2634d5dee7c881422e3563f5e e5f1d44dbe545922a76b7c75489e50c5fe1bc577 Sergio <kuaji28@gmail.com> 1773556947 -0300	commit: auto: 2026-03-15 03:42
+e5f1d44dbe545922a76b7c75489e50c5fe1bc577 8ae6c4e173217eb79a5cff5ae69847ccf305fc3e Sergio <kuaji28@gmail.com> 1773557189 -0300	commit: auto: 2026-03-15 03:46
+8ae6c4e173217eb79a5cff5ae69847ccf305fc3e f8f8d7def109316fa5c5b9a5ddedc6b080ecd055 Sergio <kuaji28@gmail.com> 1773557218 -0300	commit: auto: 2026-03-15 03:46
+f8f8d7def109316fa5c5b9a5ddedc6b080ecd055 0d9ec77529d508c3508aa92f45d56b6214492d5a Sergio <kuaji28@gmail.com> 1773557250 -0300	commit: auto: 2026-03-15 03:47
+0d9ec77529d508c3508aa92f45d56b6214492d5a 4718731151385258475578cace50c80dfb8c74c5 Sergio <kuaji28@gmail.com> 1773557311 -0300	commit: auto: 2026-03-15 03:48
+4718731151385258475578cace50c80dfb8c74c5 cd8e6fe4a530365bcef732f8982fce9411268445 Sergio <kuaji28@gmail.com> 1773557341 -0300	commit: auto: 2026-03-15 03:49
+cd8e6fe4a530365bcef732f8982fce9411268445 54a250a877406a66b544dc35af64dcd0ae48fabf Sergio <kuaji28@gmail.com> 1773557373 -0300	commit: auto: 2026-03-15 03:49
+54a250a877406a66b544dc35af64dcd0ae48fabf 571b32fd73457ba932ab6761b18fffc02b3b05dd Sergio <kuaji28@gmail.com> 1773557403 -0300	commit: auto: 2026-03-15 03:50
+571b32fd73457ba932ab6761b18fffc02b3b05dd bd388defa03f4e0fd455952b79db4b12b2732640 Sergio <kuaji28@gmail.com> 1773557434 -0300	commit: auto: 2026-03-15 03:50
+bd388defa03f4e0fd455952b79db4b12b2732640 944c76bedf6b8f14293f9de5523840ef59548f4c Sergio <kuaji28@gmail.com> 1773557525 -0300	commit: auto: 2026-03-15 03:52
+944c76bedf6b8f14293f9de5523840ef59548f4c da680a1ea6b0785784d5c2079190acffb8a1a9aa Sergio <kuaji28@gmail.com> 1773557616 -0300	commit: auto: 2026-03-15 03:53
+da680a1ea6b0785784d5c2079190acffb8a1a9aa 6c7e4d2bbc29a55a23a90f309f85c609e3becb52 Sergio <kuaji28@gmail.com> 1773557646 -0300	commit: auto: 2026-03-15 03:54
+6c7e4d2bbc29a55a23a90f309f85c609e3becb52 5d54725eee8f9cee37e947fc535d54b6c7e1063c Sergio <kuaji28@gmail.com> 1773557678 -0300	commit: auto: 2026-03-15 03:54
+5d54725eee8f9cee37e947fc535d54b6c7e1063c 4588255c78335d83323265c45369a7144479aaed Sergio <kuaji28@gmail.com> 1773557950 -0300	commit: auto: 2026-03-15 03:59
+4588255c78335d83323265c45369a7144479aaed c37c17703ae29c172f856e9a19ef91a5a2e07798 Sergio <kuaji28@gmail.com> 1773557981 -0300	commit: auto: 2026-03-15 03:59
+c37c17703ae29c172f856e9a19ef91a5a2e07798 4625da83d48d8ae78d2bdbf74734416851fe831f Sergio <kuaji28@gmail.com> 1773558133 -0300	commit: auto: 2026-03-15 04:02
+4625da83d48d8ae78d2bdbf74734416851fe831f daf4241104042c850ad6cd8da0a88feaf3391fa5 Sergio <kuaji28@gmail.com> 1773574691 -0300	commit: auto: 2026-03-15 08:38
+daf4241104042c850ad6cd8da0a88feaf3391fa5 82c6892dc69cbfcf5e16377c5be81ab041a55136 Sergio <kuaji28@gmail.com> 1773574722 -0300	commit: auto: 2026-03-15 08:38
+82c6892dc69cbfcf5e16377c5be81ab041a55136 3f4d76b5f0c4ef5d3904604951aa13f8d8fffdc5 Sergio <kuaji28@gmail.com> 1773574754 -0300	commit: auto: 2026-03-15 08:39
+3f4d76b5f0c4ef5d3904604951aa13f8d8fffdc5 6cf6ab58371b0d3bd4015f4ab062f5570d256681 Sergio <kuaji28@gmail.com> 1773577492 -0300	commit: auto: 2026-03-15 09:24
+6cf6ab58371b0d3bd4015f4ab062f5570d256681 f0ff94c1de00bae90894b83f4295729330c96bdc Sergio <kuaji28@gmail.com> 1773577555 -0300	commit: auto: 2026-03-15 09:25
+f0ff94c1de00bae90894b83f4295729330c96bdc 22e911a9e9cd46df3eafab66b450abb3f51558dd Sergio <kuaji28@gmail.com> 1773577588 -0300	commit: auto: 2026-03-15 09:26
+22e911a9e9cd46df3eafab66b450abb3f51558dd 4a68ad0a3043f608b6c71cc61b0e0323840e2e12 Sergio <kuaji28@gmail.com> 1773577620 -0300	commit: auto: 2026-03-15 09:27
+4a68ad0a3043f608b6c71cc61b0e0323840e2e12 79b22c283305e17b1829239367455d4b2956882d Sergio <kuaji28@gmail.com> 1773587799 -0300	commit: auto: 2026-03-15 12:16
+79b22c283305e17b1829239367455d4b2956882d f39695750daff83e37cfb3d13cd7f42cba2f3f3b Sergio <kuaji28@gmail.com> 1773587831 -0300	commit: auto: 2026-03-15 12:17
+f39695750daff83e37cfb3d13cd7f42cba2f3f3b 76d0d4d224fd9af5406ad2f12002aee15e21321f Sergio <kuaji28@gmail.com> 1773595832 -0300	commit: auto: 2026-03-15 14:30
+76d0d4d224fd9af5406ad2f12002aee15e21321f c1ece735e8e5da2589e4c35346eb94a4bf2f6209 Sergio <kuaji28@gmail.com> 1773595863 -0300	commit: auto: 2026-03-15 14:31
+c1ece735e8e5da2589e4c35346eb94a4bf2f6209 60c03e097e46e01bec4e06f6f1f36d6788e4a002 Sergio <kuaji28@gmail.com> 1773595895 -0300	commit: auto: 2026-03-15 14:31
+60c03e097e46e01bec4e06f6f1f36d6788e4a002 d22538fd141f54e77af679f7674ffa8784d4902d Sergio <kuaji28@gmail.com> 1773595927 -0300	commit: auto: 2026-03-15 14:32
+d22538fd141f54e77af679f7674ffa8784d4902d 3c2094432e3712fa2df6606f44c1f115fc605d10 Sergio <kuaji28@gmail.com> 1773595958 -0300	commit: auto: 2026-03-15 14:32
+3c2094432e3712fa2df6606f44c1f115fc605d10 fa0921afcb6033549fc2216d4b0641677246aafc Sergio <kuaji28@gmail.com> 1773598394 -0300	commit: auto: 2026-03-15 15:13
+fa0921afcb6033549fc2216d4b0641677246aafc 9723e846921c6c701f020e5216f5ee614b863680 Sergio <kuaji28@gmail.com> 1773599567 -0300	commit: auto: 2026-03-15 15:32
+9723e846921c6c701f020e5216f5ee614b863680 972e7b1e981b4099786eeab5c5ef5106f5c6ab98 Sergio <kuaji28@gmail.com> 1773599599 -0300	commit: auto: 2026-03-15 15:33
+972e7b1e981b4099786eeab5c5ef5106f5c6ab98 d01ae4cd3d2b5b1cd91cf64121042df005b64665 Sergio <kuaji28@gmail.com> 1773599631 -0300	commit: auto: 2026-03-15 15:33
+d01ae4cd3d2b5b1cd91cf64121042df005b64665 7d1f1e731ceb5167f5cc48acb3a276aa1cbbe5b3 Sergio <kuaji28@gmail.com> 1773599662 -0300	commit: auto: 2026-03-15 15:34
+7d1f1e731ceb5167f5cc48acb3a276aa1cbbe5b3 20fbf1f7e80d9c60379f0f01ddd9c1d4e96784ec Sergio <kuaji28@gmail.com> 1773599694 -0300	commit: auto: 2026-03-15 15:34
+20fbf1f7e80d9c60379f0f01ddd9c1d4e96784ec 91c1bdae7f756a97b42dd35901f38ced290a2871 Sergio <kuaji28@gmail.com> 1773599726 -0300	commit: auto: 2026-03-15 15:35
+91c1bdae7f756a97b42dd35901f38ced290a2871 68ee9dad6273b126db8f547bb11b72c672a40859 Sergio <kuaji28@gmail.com> 1773600869 -0300	commit: auto: 2026-03-15 15:54
+68ee9dad6273b126db8f547bb11b72c672a40859 7323f31441aec9eab92448b932694559bd9a7a22 Sergio <kuaji28@gmail.com> 1773600901 -0300	commit: auto: 2026-03-15 15:55
+7323f31441aec9eab92448b932694559bd9a7a22 585784d3640b0260711ed3ac928416c40a999fb9 Sergio <kuaji28@gmail.com> 1773600992 -0300	commit: auto: 2026-03-15 15:56
+585784d3640b0260711ed3ac928416c40a999fb9 68949a2a1581bea056ca8727444e82d36ce2d9cb Sergio <kuaji28@gmail.com> 1773601024 -0300	commit: auto: 2026-03-15 15:57
+68949a2a1581bea056ca8727444e82d36ce2d9cb dbd0f8b73c36e27cd6de2f36ea9f04edaa36fc50 Sergio <kuaji28@gmail.com> 1773602863 -0300	commit: auto: 2026-03-15 16:27
+dbd0f8b73c36e27cd6de2f36ea9f04edaa36fc50 ddbd62fc7848eda75ddfc22e4a3982abd64ff42b Sergio <kuaji28@gmail.com> 1773602896 -0300	commit: auto: 2026-03-15 16:28
+ddbd62fc7848eda75ddfc22e4a3982abd64ff42b 9c9204aed996d3fa195d4c7ccf0dc6044f5bc79e Sergio <kuaji28@gmail.com> 1773602929 -0300	commit: auto: 2026-03-15 16:28
+9c9204aed996d3fa195d4c7ccf0dc6044f5bc79e 0c84f7fd20bb8f8e61d6a9171e04a1c01d8801de Sergio <kuaji28@gmail.com> 1773602961 -0300	commit: auto: 2026-03-15 16:29
+0c84f7fd20bb8f8e61d6a9171e04a1c01d8801de 0f31fc326928e516c2e189a24950c1a859baa82c Sergio <kuaji28@gmail.com> 1773602994 -0300	commit: auto: 2026-03-15 16:29
+0f31fc326928e516c2e189a24950c1a859baa82c 66772356d9df73a504f7eda5605ecfd1bce49749 Sergio <kuaji28@gmail.com> 1773603057 -0300	commit: auto: 2026-03-15 16:30
+66772356d9df73a504f7eda5605ecfd1bce49749 204d1e99b708937dbea73ec1c7204af6bb0146a5 Sergio <kuaji28@gmail.com> 1773603090 -0300	commit: auto: 2026-03-15 16:31
+204d1e99b708937dbea73ec1c7204af6bb0146a5 e589f478c0530fd01ab05e6766c8de9aef9c86fe Sergio <kuaji28@gmail.com> 1773603845 -0300	commit: auto: 2026-03-15 16:44
+e589f478c0530fd01ab05e6766c8de9aef9c86fe 49be9b4cea53bbe18e369e431619615fc1fe88b7 Sergio <kuaji28@gmail.com> 1773604119 -0300	commit: auto: 2026-03-15 16:48
+49be9b4cea53bbe18e369e431619615fc1fe88b7 50cd0a99f92eb9b0326c834cdc4a0021e42e80c2 Sergio <kuaji28@gmail.com> 1773604151 -0300	commit: auto: 2026-03-15 16:49
+50cd0a99f92eb9b0326c834cdc4a0021e42e80c2 2081bc203ecc07fa389c8a0970f64c7c0de06c19 Sergio <kuaji28@gmail.com> 1773604184 -0300	commit: auto: 2026-03-15 16:49
+2081bc203ecc07fa389c8a0970f64c7c0de06c19 14b490a77d8fe401f93f46d013a2aed00bd5a767 Sergio <kuaji28@gmail.com> 1773605391 -0300	commit: auto: 2026-03-15 17:09
+14b490a77d8fe401f93f46d013a2aed00bd5a767 da479a5f621efa0cb54a701e96baec3d1b6f13c0 Sergio <kuaji28@gmail.com> 1773616752 -0300	commit: auto: 2026-03-15 20:19
+da479a5f621efa0cb54a701e96baec3d1b6f13c0 9158cbe8bfa23bd6e5709f45a98ebf64fc37f43c Sergio <kuaji28@gmail.com> 1773617809 -0300	commit: auto: 2026-03-15 20:36
+9158cbe8bfa23bd6e5709f45a98ebf64fc37f43c 9a89860d3b498ed9a7911f2528d15c518551b57b Sergio <kuaji28@gmail.com> 1773617842 -0300	commit: auto: 2026-03-15 20:37
+9a89860d3b498ed9a7911f2528d15c518551b57b 972fd5eb527abd7ebaa6d2fe24a487f8fc5b7cc6 Sergio <kuaji28@gmail.com> 1773619050 -0300	commit: auto: 2026-03-15 20:57
+972fd5eb527abd7ebaa6d2fe24a487f8fc5b7cc6 5697134a0318d38311cb817c56ebdeb47a4db181 Sergio <kuaji28@gmail.com> 1773619445 -0300	commit: auto: 2026-03-15 21:04
+5697134a0318d38311cb817c56ebdeb47a4db181 dc08dde5a2cf5b0b0b584c13c0a39c9745b186b0 Sergio <kuaji28@gmail.com> 1773620895 -0300	commit: auto: 2026-03-15 21:28
+dc08dde5a2cf5b0b0b584c13c0a39c9745b186b0 57c004a38a0523c55049f37f22e1a378f2493c78 Sergio <kuaji28@gmail.com> 1773620927 -0300	commit: auto: 2026-03-15 21:28
+57c004a38a0523c55049f37f22e1a378f2493c78 36da8f6553f1f836a20c8b94ea422f08c9f3a3b8 Sergio <kuaji28@gmail.com> 1773621442 -0300	commit: auto: 2026-03-15 21:37
+36da8f6553f1f836a20c8b94ea422f08c9f3a3b8 5704108d2fe66ab2a605206174fe322188edef4d Sergio <kuaji28@gmail.com> 1773621475 -0300	commit: auto: 2026-03-15 21:37
+5704108d2fe66ab2a605206174fe322188edef4d be9bb6e07a08959257d6f5e4cfc060ad23a69392 Sergio <kuaji28@gmail.com> 1773623315 -0300	commit: auto: 2026-03-15 22:08
+be9bb6e07a08959257d6f5e4cfc060ad23a69392 09f5ce05df0845f158b758ef0f1ef667ad0b1eeb Sergio <kuaji28@gmail.com> 1773623349 -0300	commit: auto: 2026-03-15 22:09
+09f5ce05df0845f158b758ef0f1ef667ad0b1eeb d709efd78bdb3470d646e598641bf978be11b28b Sergio <kuaji28@gmail.com> 1773623382 -0300	commit: auto: 2026-03-15 22:09
+d709efd78bdb3470d646e598641bf978be11b28b 95664078c3c4d0e690fd269dda3ec18e1be60107 Sergio <kuaji28@gmail.com> 1773623415 -0300	commit: auto: 2026-03-15 22:10
+95664078c3c4d0e690fd269dda3ec18e1be60107 260296f132fbc9332d6be248177b9bff2adb0d2f Sergio <kuaji28@gmail.com> 1773623718 -0300	commit: auto: 2026-03-15 22:15
+260296f132fbc9332d6be248177b9bff2adb0d2f 5effe9c140dd0c7fcb8219698418670dc2d48b56 Sergio <kuaji28@gmail.com> 1773623810 -0300	commit: auto: 2026-03-15 22:16
+5effe9c140dd0c7fcb8219698418670dc2d48b56 d8eaec81e05d8273923f22228b3f09c9d193d2e9 Sergio <kuaji28@gmail.com> 1773623842 -0300	commit: auto: 2026-03-15 22:17
+d8eaec81e05d8273923f22228b3f09c9d193d2e9 b0240738fceb933a7def437076701ac7eb2e558a Sergio <kuaji28@gmail.com> 1773623873 -0300	commit: auto: 2026-03-15 22:17
+b0240738fceb933a7def437076701ac7eb2e558a 84740c6715dd824a5c56c97de097e236965985df Sergio <kuaji28@gmail.com> 1773624146 -0300	commit: auto: 2026-03-15 22:22
+84740c6715dd824a5c56c97de097e236965985df a52653af648eca4d6719c84bd4d16cc300823d5d Sergio <kuaji28@gmail.com> 1773624178 -0300	commit: auto: 2026-03-15 22:22
+a52653af648eca4d6719c84bd4d16cc300823d5d 4c191d385a2724dc1559114f8f8d66def27cd84c Sergio <kuaji28@gmail.com> 1773625021 -0300	commit: auto: 2026-03-15 22:37
+4c191d385a2724dc1559114f8f8d66def27cd84c 9b83e78c99c55e57dba84d1093e5427c2c9358ef Sergio <kuaji28@gmail.com> 1773625172 -0300	commit: auto: 2026-03-15 22:39
+9b83e78c99c55e57dba84d1093e5427c2c9358ef 7f2333bf1a0c97d305b7e53727d15b0a28bd98cc Sergio <kuaji28@gmail.com> 1773625234 -0300	commit: auto: 2026-03-15 22:40
+7f2333bf1a0c97d305b7e53727d15b0a28bd98cc 399bbeda9016ee2f66a800efc6f4593ca1763a80 Sergio <kuaji28@gmail.com> 1773625266 -0300	commit: auto: 2026-03-15 22:41
+399bbeda9016ee2f66a800efc6f4593ca1763a80 e733e4990293a47c4185aa5bcddbe5db5f0f26e7 Sergio <kuaji28@gmail.com> 1773625447 -0300	commit: auto: 2026-03-15 22:44
+e733e4990293a47c4185aa5bcddbe5db5f0f26e7 d00243a914fe46a633683cc9e77a71c52890bbc6 Sergio <kuaji28@gmail.com> 1773625509 -0300	commit: auto: 2026-03-15 22:45
+d00243a914fe46a633683cc9e77a71c52890bbc6 bf88bc30cbb7f5475bd06e456c532d8c32e2b5a9 Sergio <kuaji28@gmail.com> 1773625541 -0300	commit: auto: 2026-03-15 22:45
+bf88bc30cbb7f5475bd06e456c532d8c32e2b5a9 3b4abfbc69f1d577794bc47c2f37e3c4b85f361e Sergio <kuaji28@gmail.com> 1773625572 -0300	commit: auto: 2026-03-15 22:46
+3b4abfbc69f1d577794bc47c2f37e3c4b85f361e eb71fcf4be8d52aa1e46ff2f85f8761e4bdbb555 Sergio <kuaji28@gmail.com> 1773625604 -0300	commit: auto: 2026-03-15 22:46
+eb71fcf4be8d52aa1e46ff2f85f8761e4bdbb555 1f90f10f15d9dfabb12844d253ca3b1413737fe4 Sergio <kuaji28@gmail.com> 1773625636 -0300	commit: auto: 2026-03-15 22:47
+1f90f10f15d9dfabb12844d253ca3b1413737fe4 e71557abc5c91719fee730450e34f96698d7bec5 Sergio <kuaji28@gmail.com> 1773626178 -0300	commit: auto: 2026-03-15 22:56
+e71557abc5c91719fee730450e34f96698d7bec5 9503e06eaa18a1c7cedbd97ccaccfc0609207a60 Sergio <kuaji28@gmail.com> 1773626210 -0300	commit: auto: 2026-03-15 22:56
+9503e06eaa18a1c7cedbd97ccaccfc0609207a60 0c0a392ae141fb5cc2c770ccd8b67dedb91bd6e6 Sergio <kuaji28@gmail.com> 1773626242 -0300	commit: auto: 2026-03-15 22:57
+0c0a392ae141fb5cc2c770ccd8b67dedb91bd6e6 7dc468232cc36aa4ccb9034033088ef982f4f460 Sergio <kuaji28@gmail.com> 1773626605 -0300	commit: auto: 2026-03-15 23:03
+7dc468232cc36aa4ccb9034033088ef982f4f460 e4221515592e3e0100db54d495ae5a2542032194 Sergio <kuaji28@gmail.com> 1773626787 -0300	commit: auto: 2026-03-15 23:06
+e4221515592e3e0100db54d495ae5a2542032194 236209b84e64b94209a08ee8233c2f349b653f25 Sergio <kuaji28@gmail.com> 1773626820 -0300	commit: auto: 2026-03-15 23:07
+236209b84e64b94209a08ee8233c2f349b653f25 1686f63c2cdd09d70046e12365f6d207713375f2 Sergio <kuaji28@gmail.com> 1773626852 -0300	commit: auto: 2026-03-15 23:07
+1686f63c2cdd09d70046e12365f6d207713375f2 e034c00201edfde1878be13a95f47ebc4baf9398 Sergio <kuaji28@gmail.com> 1773626884 -0300	commit: auto: 2026-03-15 23:08
+e034c00201edfde1878be13a95f47ebc4baf9398 1e7b95d63d61797441b3e55be3cb81de5bb0512e Sergio <kuaji28@gmail.com> 1773626915 -0300	commit: auto: 2026-03-15 23:08
+1e7b95d63d61797441b3e55be3cb81de5bb0512e 8094eac71696be804cc4b5070c8fe5115bca0338 Sergio <kuaji28@gmail.com> 1773627097 -0300	commit: auto: 2026-03-15 23:11
+8094eac71696be804cc4b5070c8fe5115bca0338 a496700905085e8eb228ac99fcd8c114ffe666a8 Sergio <kuaji28@gmail.com> 1773627129 -0300	commit: auto: 2026-03-15 23:12
+a496700905085e8eb228ac99fcd8c114ffe666a8 93adf7d763f0d1b011f917a2adcf02f9f641d0a5 Sergio <kuaji28@gmail.com> 1773627161 -0300	commit: auto: 2026-03-15 23:12
+93adf7d763f0d1b011f917a2adcf02f9f641d0a5 283f7d0e945da56fa3a66897652207a8240228bd Sergio <kuaji28@gmail.com> 1773627193 -0300	commit: auto: 2026-03-15 23:13
+283f7d0e945da56fa3a66897652207a8240228bd c7c93058ea8ede2bdd79dab421ee49843b45355c Sergio <kuaji28@gmail.com> 1773627225 -0300	commit: auto: 2026-03-15 23:13
+c7c93058ea8ede2bdd79dab421ee49843b45355c fa6428bed2e5d31cba609a4f167d49f7eca1e8eb Sergio <kuaji28@gmail.com> 1773627257 -0300	commit: auto: 2026-03-15 23:14
+fa6428bed2e5d31cba609a4f167d49f7eca1e8eb bd174037c94ca912b2d9b48df45fa690d6a93d76 Sergio <kuaji28@gmail.com> 1773631947 -0300	commit: auto: 2026-03-16 00:32
+bd174037c94ca912b2d9b48df45fa690d6a93d76 87c4c18acedede83deaad0370f2c05f96c27120e Sergio <kuaji28@gmail.com> 1773632549 -0300	commit: auto: 2026-03-16 00:42
+87c4c18acedede83deaad0370f2c05f96c27120e cd169e8f0523244811edd2c6d0396f49b0c4c30d Sergio <kuaji28@gmail.com> 1773632581 -0300	commit: auto: 2026-03-16 00:43
+cd169e8f0523244811edd2c6d0396f49b0c4c30d d8b6bd2fd022ab2af79fd668cb565dce35f16935 Sergio <kuaji28@gmail.com> 1773632612 -0300	commit: auto: 2026-03-16 00:43
+d8b6bd2fd022ab2af79fd668cb565dce35f16935 98352206dcfc5ba070be41048c4a4297c5fe9637 Sergio <kuaji28@gmail.com> 1773632644 -0300	commit: auto: 2026-03-16 00:44
+98352206dcfc5ba070be41048c4a4297c5fe9637 76b532dc3d3e163991da640c9b3623767e14cb70 Sergio <kuaji28@gmail.com> 1773632676 -0300	commit: auto: 2026-03-16 00:44
+76b532dc3d3e163991da640c9b3623767e14cb70 3e9805179d630c8ced07b84b2bc7e4bee5523e97 Sergio <kuaji28@gmail.com> 1773655946 -0300	commit: auto: 2026-03-16 07:12
+3e9805179d630c8ced07b84b2bc7e4bee5523e97 2e89258620b2b11d73181a74cc19cab7c47f26d1 Roker <kuaji28@gmail.com> 1773656333 -0300	commit: fix: add ?on_conflict= params and error body printing to push_supabase.py
+2e89258620b2b11d73181a74cc19cab7c47f26d1 173d1b21516810818e7844f8a7f6d95ce8658fe4 Roker <kuaji28@gmail.com> 1773662234 -0300	commit: fix: cast ventas.cantidad float->int before Supabase upsert
+173d1b21516810818e7844f8a7f6d95ce8658fe4 4e215f913976ed2b734ecb1dded66012c71221b9 Roker <roker@elcelu.local> 1773719836 -0300	commit: Fix sidebar + overnight improvements
+4e215f913976ed2b734ecb1dded66012c71221b9 efe80b73dfbcf41237edcbf524618ebd457d7d68 Roker <roker@elcelu.local> 1773720913 -0300	commit: Telegram + Sistema + Pedido Excel
+efe80b73dfbcf41237edcbf524618ebd457d7d68 2ca1be95dbd6fe36a46d05cbe925bf5f146c55e0 Roker <roker@elcelu.local> 1773725089 -0300	commit: fix: bypass CRC-32 errors on Flexxus xlsx uploads + detect SJ_stock naming
+2ca1be95dbd6fe36a46d05cbe925bf5f146c55e0 975a61ee8931505a197c5a17c9f216de03cb6a05 Roker <roker@elcelu.local> 1773725250 -0300	commit: feat: push_flexxus.py — Windows script to import Flexxus xlsx to Supabase
+975a61ee8931505a197c5a17c9f216de03cb6a05 4bb67409f163e8755becb63cd50daa7c0d429763 Roker <roker@elcelu.local> 1773726826 -0300	commit: fix: remove redundant import re inside _tab_guia causing UnboundLocalError
+4bb67409f163e8755becb63cd50daa7c0d429763 174f02e0ecbbfdc75eca0626103b400fb41233f3 Roker <roker@elcelu.local> 1773727533 -0300	commit: fix: show Supabase as Activo when connected via DATABASE_URL (PostgreSQL)
+174f02e0ecbbfdc75eca0626103b400fb41233f3 71ea92380df240bf19dada0dbfdede9b4b431129 Roker <roker@elcelu.local> 1773727571 -0300	commit: docs: add push_flexxus.py usage instructions in Spanish
+71ea92380df240bf19dada0dbfdede9b4b431129 ec9b09479dc147f39ab8ba456d851ed0daa6c7cd Roker <roker@elcelu.local> 1773747183 -0300	commit: docs: update CLAUDE.md with session protocols, Telegram workaround, and Pedido 039 state
+ec9b09479dc147f39ab8ba456d851ed0daa6c7cd b79ecce4bdca9c8b07991be102c20cb2793a9ea3 Roker <roker@elcelu.local> 1773747539 -0300	commit: docs: add FR vs Mecanico comparison protocol (Roker instruction 17/03)
+b79ecce4bdca9c8b07991be102c20cb2793a9ea3 213f0634364fa96d9d70218b2e8acd070487536d Roker <roker@elcelu.local> 1773750286 -0300	commit: docs: update Lorena timeline - left mid-Dec, inventory done after = clean baseline
+213f0634364fa96d9d70218b2e8acd070487536d da40ecbcd3a5f80d18d8c43692beaf2f55193f7f Roker <roker@elcelu.local> 1773751511 -0300	commit: docs: add full cross-analysis results - 039 reform, dead stock, stockouts
+da40ecbcd3a5f80d18d8c43692beaf2f55193f7f d694e79a04e268f95c93e2fd54702810fdb22a72 Roker <roker@elcelu.local> 1773834215 -0300	commit: Auditoría global EL CELU completada — dashboard interactivo con todos los productos
+d694e79a04e268f95c93e2fd54702810fdb22a72 2a696f823faf4cb49f763855df8a142ccf6188fd Roker <roker@elcelu.local> 1773860416 -0300	commit: Pedidos 109 BOX + 039-2 definitivos, regla 40 días, análisis inventario
+2a696f823faf4cb49f763855df8a142ccf6188fd 37d58d41127dc54048e622183320d1787b45df52 Roker <roker@elcelu.local> 1773896308 -0300	commit: feat: demo La Cevichería — sistema POS completo con campanita global
+37d58d41127dc54048e622183320d1787b45df52 a26e004b600e74bd61403d8b15d7e0c3aac45c9f Roker <roker@elcelu.local> 1773930560 -0300	commit: feat: BAJA_CROWN_v2 — solicitud eliminación con P.Comp y Lista 1
+a26e004b600e74bd61403d8b15d7e0c3aac45c9f 95b31d3a559c087892dee9997995d7a5d8579f07 Roker <roker@elcelu.local> 1773965965 -0300	commit: Orden 40 confirmada + análisis cruce 039-2 vs 109 BOX
+95b31d3a559c087892dee9997995d7a5d8579f07 f4c5eb7aa3262bf1c3522c06ec957c1e76a3d208 Roker <roker@elcelu.local> 1774135904 -0300	commit: Fix Dylan: mesa occupada bug + login FK constraint bug
+f4c5eb7aa3262bf1c3522c06ec957c1e76a3d208 ea7569b26ac7fe592aad3f67730339293351b0aa Roker <roker@elcelu.local> 1774136005 -0300	pull --rebase origin main (start): checkout ea7569b26ac7fe592aad3f67730339293351b0aa
+ea7569b26ac7fe592aad3f67730339293351b0aa f4c5eb7aa3262bf1c3522c06ec957c1e76a3d208 Roker <roker@elcelu.local> 1774136010 -0300	rebase (abort): updating HEAD
+f4c5eb7aa3262bf1c3522c06ec957c1e76a3d208 ea7569b26ac7fe592aad3f67730339293351b0aa Roker <roker@elcelu.local> 1774136029 -0300	reset: moving to origin/main
+ea7569b26ac7fe592aad3f67730339293351b0aa 717aa78ca25d12856e1d2c0c9dc8953cb7aad189 Roker <roker@elcelu.local> 1774136042 -0300	commit: Fix Dylan: mesa ocupada bug + login FK constraint bug
+717aa78ca25d12856e1d2c0c9dc8953cb7aad189 bee069887d3b730a215d49b0761eaef042c39fb1 Roker <roker@elcelu.local> 1774208436 -0300	commit: auto: 2026-03-22 16:40
+bee069887d3b730a215d49b0761eaef042c39fb1 2966287043126b374060bc0ea818f499e51c73c5 Roker <roker@elcelu.local> 1774208488 -0300	commit: auto: 2026-03-22 16:41
+2966287043126b374060bc0ea818f499e51c73c5 4f11c90108b21582436a2a7d7e39d75006f7a32b Roker <roker@elcelu.local> 1774208542 -0300	commit: auto: 2026-03-22 16:42
+4f11c90108b21582436a2a7d7e39d75006f7a32b 3299cabff6f8c57b45d0d800a988c9bbb85d62fe Roker <roker@elcelu.local> 1774220949 -0300	commit: auto: 2026-03-22 20:09
+3299cabff6f8c57b45d0d800a988c9bbb85d62fe 8c35c907d457d2a9f217928f4199b2ed98767dda Roker <roker@elcelu.local> 1774221018 -0300	commit: auto: 2026-03-22 20:10
+8c35c907d457d2a9f217928f4199b2ed98767dda 119ff9888a73e29f45e990e8af23834677137580 Roker <roker@elcelu.local> 1774221080 -0300	commit: auto: 2026-03-22 20:11
+119ff9888a73e29f45e990e8af23834677137580 a5a5711551c92504aba04ae71d5128ccea167fec Roker <roker@elcelu.local> 1774221149 -0300	commit: auto: 2026-03-22 20:12
+a5a5711551c92504aba04ae71d5128ccea167fec 6b40764f78c1dc8dbcc9a7e19a17348fbc907945 Roker <roker@elcelu.local> 1774221220 -0300	commit: auto: 2026-03-22 20:13
+6b40764f78c1dc8dbcc9a7e19a17348fbc907945 041a804f5b0bae4cb10f5dd4f417d137eb46ab7d Roker <roker@elcelu.local> 1774221292 -0300	commit: auto: 2026-03-22 20:14
+041a804f5b0bae4cb10f5dd4f417d137eb46ab7d fc6c95079ddc0f6091f039342c8284eab8bdfb91 Roker <roker@elcelu.local> 1774221364 -0300	commit: auto: 2026-03-22 20:16
+fc6c95079ddc0f6091f039342c8284eab8bdfb91 c81a3abe3a0255de56fa5b3b0acfc60084b294d6 Roker <roker@elcelu.local> 1774221437 -0300	commit: auto: 2026-03-22 20:17
+c81a3abe3a0255de56fa5b3b0acfc60084b294d6 ed2df6539fbb64a0a5123cd9d7187f7c151f3c17 Roker <roker@elcelu.local> 1774221474 -0300	commit: auto: 2026-03-22 20:17
+ed2df6539fbb64a0a5123cd9d7187f7c151f3c17 437fb3c8d8189f8ab3215a0fbc3154c132c07eae Roker <roker@elcelu.local> 1774221506 -0300	commit: auto: 2026-03-22 20:18
+437fb3c8d8189f8ab3215a0fbc3154c132c07eae 8d66f4acdace0c4d2e2feec201b8f9433c406b74 Roker <roker@elcelu.local> 1774221537 -0300	commit: auto: 2026-03-22 20:18
+8d66f4acdace0c4d2e2feec201b8f9433c406b74 21e87891754b9bcf91d8f3800441c1c91fc83d80 Roker <roker@elcelu.local> 1774221568 -0300	commit: auto: 2026-03-22 20:19
+21e87891754b9bcf91d8f3800441c1c91fc83d80 ae5a3754e6ee3c3b5fc26c79f383c8eaa5118646 Roker <roker@elcelu.local> 1774221600 -0300	commit: auto: 2026-03-22 20:20
+ae5a3754e6ee3c3b5fc26c79f383c8eaa5118646 8af62b2894f51f937e46f74e1528c24ca3ead0bf Roker <roker@elcelu.local> 1774221632 -0300	commit: auto: 2026-03-22 20:20
+8af62b2894f51f937e46f74e1528c24ca3ead0bf c9049fc174d3367cc189a84568a1f7e1a0fd6c25 Roker <roker@elcelu.local> 1774221663 -0300	commit: auto: 2026-03-22 20:21
+c9049fc174d3367cc189a84568a1f7e1a0fd6c25 f778b983262c02aeab77bfd78eb17f02632aa412 Roker <roker@elcelu.local> 1774221695 -0300	commit: auto: 2026-03-22 20:21
+f778b983262c02aeab77bfd78eb17f02632aa412 f3ef880d64bff2975031d7b675fefa9ec6d79d7e Roker <roker@elcelu.local> 1774221726 -0300	commit: auto: 2026-03-22 20:22
+f3ef880d64bff2975031d7b675fefa9ec6d79d7e 372c491427d738325b07022c89d7be8e8e3af60f Roker <roker@elcelu.local> 1774221757 -0300	commit: auto: 2026-03-22 20:22
+372c491427d738325b07022c89d7be8e8e3af60f 1547feb84067da42c0cbe6635ada766b1e2301c8 Roker <roker@elcelu.local> 1774221788 -0300	commit: auto: 2026-03-22 20:23
+1547feb84067da42c0cbe6635ada766b1e2301c8 c2782e42943c598c870ac94dd8c76dcdf2cdbde1 Roker <roker@elcelu.local> 1774221820 -0300	commit: auto: 2026-03-22 20:23
+c2782e42943c598c870ac94dd8c76dcdf2cdbde1 cbdedccd0bdd9f93c63a8fdb2c47333ba300bea5 Roker <roker@elcelu.local> 1774221881 -0300	commit: auto: 2026-03-22 20:24
+cbdedccd0bdd9f93c63a8fdb2c47333ba300bea5 bb1576e9df0891cad7c553f127b2cc86b30357db Roker <roker@elcelu.local> 1774221912 -0300	commit: auto: 2026-03-22 20:25
+bb1576e9df0891cad7c553f127b2cc86b30357db 2565be153619a599cc1e873babe221835e495699 Roker <roker@elcelu.local> 1774221944 -0300	commit: auto: 2026-03-22 20:25
+2565be153619a599cc1e873babe221835e495699 ae39d104e61e0867ff1110adc2f5eecdab1fe906 Roker <roker@elcelu.local> 1774221975 -0300	commit: auto: 2026-03-22 20:26
+ae39d104e61e0867ff1110adc2f5eecdab1fe906 14640f68058aab9cecff23dd1dee957d838080cf Roker <roker@elcelu.local> 1774222006 -0300	commit: auto: 2026-03-22 20:26
+14640f68058aab9cecff23dd1dee957d838080cf e1e837670bde7868526b604d7b45fe93fd190a5f Roker <roker@elcelu.local> 1774222037 -0300	commit: auto: 2026-03-22 20:27
+e1e837670bde7868526b604d7b45fe93fd190a5f d7b707f5446e844244c44e96e37d7e3d94ffea46 Roker <roker@elcelu.local> 1774222069 -0300	commit: auto: 2026-03-22 20:27
+d7b707f5446e844244c44e96e37d7e3d94ffea46 b582b986ffcaf93ef164e0fdffaacc9d186d63a7 Roker <roker@elcelu.local> 1774222100 -0300	commit: auto: 2026-03-22 20:28
+b582b986ffcaf93ef164e0fdffaacc9d186d63a7 c5590c06d4966028cd81990fb76a7ada0587c4d3 Roker <roker@elcelu.local> 1774222131 -0300	commit: auto: 2026-03-22 20:28
+c5590c06d4966028cd81990fb76a7ada0587c4d3 612ead79d6519ea0585ab2def5ab672dff84fd37 Roker <roker@elcelu.local> 1774222163 -0300	commit: auto: 2026-03-22 20:29
+612ead79d6519ea0585ab2def5ab672dff84fd37 45e3bed7420bcae20c0c19e750835f1be734b57f Roker <roker@elcelu.local> 1774222194 -0300	commit: auto: 2026-03-22 20:29
+45e3bed7420bcae20c0c19e750835f1be734b57f 5dc89fb6a5b08250420d21b874d1db7715220a6e Roker <roker@elcelu.local> 1774222225 -0300	commit: auto: 2026-03-22 20:30
+5dc89fb6a5b08250420d21b874d1db7715220a6e 38679d7f4459f56237b7dbb06f6f020cda709f32 Roker <roker@elcelu.local> 1774222256 -0300	commit: auto: 2026-03-22 20:30
+38679d7f4459f56237b7dbb06f6f020cda709f32 f0b72a4d3af05c9d93aea700a95238964cc3f68c Roker <roker@elcelu.local> 1774222288 -0300	commit: auto: 2026-03-22 20:31
+f0b72a4d3af05c9d93aea700a95238964cc3f68c 87a676fe685d1c34fad5dc54ce90f4335fd793d2 Roker <roker@elcelu.local> 1774222319 -0300	commit: auto: 2026-03-22 20:31
+87a676fe685d1c34fad5dc54ce90f4335fd793d2 42bf99a04fabd5f7a047b0af2245644168442fd3 Roker <roker@elcelu.local> 1774222350 -0300	commit: auto: 2026-03-22 20:32
+42bf99a04fabd5f7a047b0af2245644168442fd3 d284b4bbe3a98ab358aed5dbc6a900244bdfbd22 Roker <roker@elcelu.local> 1774222382 -0300	commit: auto: 2026-03-22 20:33
+d284b4bbe3a98ab358aed5dbc6a900244bdfbd22 3ae8c3ae9f0a7c4cc712e7674f049b7a1bbdbc75 Roker <roker@elcelu.local> 1774222413 -0300	commit: auto: 2026-03-22 20:33
+3ae8c3ae9f0a7c4cc712e7674f049b7a1bbdbc75 4bfd2dc9e6bc5d5463e29147d33a13c6ce3fa901 Roker <roker@elcelu.local> 1774222444 -0300	commit: auto: 2026-03-22 20:34
+4bfd2dc9e6bc5d5463e29147d33a13c6ce3fa901 8f82ad7692e342e387c4fa98e79decb9165ebcc9 Roker <roker@elcelu.local> 1774222475 -0300	commit: auto: 2026-03-22 20:34
+8f82ad7692e342e387c4fa98e79decb9165ebcc9 cb88df1408f4bdebe1ea0322101aa589242bb782 Roker <roker@elcelu.local> 1774222507 -0300	commit: auto: 2026-03-22 20:35
+cb88df1408f4bdebe1ea0322101aa589242bb782 ffb626dfdac7893e0a650bbd051828e1176ebf4b Roker <roker@elcelu.local> 1774222538 -0300	commit: auto: 2026-03-22 20:35
+ffb626dfdac7893e0a650bbd051828e1176ebf4b caa42ebdbbe35987be50560c4fac7f20405043b4 Roker <roker@elcelu.local> 1774222569 -0300	commit: auto: 2026-03-22 20:36
+caa42ebdbbe35987be50560c4fac7f20405043b4 31bca12510f49b9b914e5bfdd196dddc62cc0280 Roker <roker@elcelu.local> 1774222691 -0300	commit: auto: 2026-03-22 20:38
+31bca12510f49b9b914e5bfdd196dddc62cc0280 85ca68559c46cdc8409cb9790a77c24e7b46700e Roker <roker@elcelu.local> 1774222722 -0300	commit: auto: 2026-03-22 20:38
+85ca68559c46cdc8409cb9790a77c24e7b46700e 05bac6ea6d34d79bf796c01af01b96c932f9c29c Roker <roker@elcelu.local> 1774222753 -0300	commit: auto: 2026-03-22 20:39
+05bac6ea6d34d79bf796c01af01b96c932f9c29c 704eba414f880af5e9591c78c68d439f705b0638 Roker <roker@elcelu.local> 1774222785 -0300	commit: auto: 2026-03-22 20:39
+704eba414f880af5e9591c78c68d439f705b0638 538843176fbdbe5ec3f5ef645c6188486dd969d0 Roker <roker@elcelu.local> 1774222816 -0300	commit: auto: 2026-03-22 20:40
+538843176fbdbe5ec3f5ef645c6188486dd969d0 2dcf358123d10dc853206c53a3d6e5a3e9dd38a3 Roker <roker@elcelu.local> 1774222847 -0300	commit: auto: 2026-03-22 20:40
+2dcf358123d10dc853206c53a3d6e5a3e9dd38a3 2b0341df9b20fe7a948aacf02cf725a6b099351f Roker <roker@elcelu.local> 1774222878 -0300	commit: auto: 2026-03-22 20:41
+2b0341df9b20fe7a948aacf02cf725a6b099351f 4ab4d71ce90ab463a8df8f5fc59460606f5465c7 Roker <roker@elcelu.local> 1774222910 -0300	commit: auto: 2026-03-22 20:41
+4ab4d71ce90ab463a8df8f5fc59460606f5465c7 153f7d9e396c402b52cc22f3e644224e106ccb70 Roker <roker@elcelu.local> 1774222941 -0300	commit: auto: 2026-03-22 20:42
+153f7d9e396c402b52cc22f3e644224e106ccb70 e5a9d254e180326a55b6ba5abd66b4c9f13e5aa0 Roker <roker@elcelu.local> 1774222972 -0300	commit: auto: 2026-03-22 20:42
+e5a9d254e180326a55b6ba5abd66b4c9f13e5aa0 e03746aebdbdf878539e033ad8a5b5b8dfa85a06 Roker <roker@elcelu.local> 1774223003 -0300	commit: auto: 2026-03-22 20:43
+e03746aebdbdf878539e033ad8a5b5b8dfa85a06 5f53818388b99222fecfd477026fbc5fdc9a77bd Roker <roker@elcelu.local> 1774223035 -0300	commit: auto: 2026-03-22 20:43
+5f53818388b99222fecfd477026fbc5fdc9a77bd c15ee12661db967b6ff8680ff54eb39cfadc7804 Roker <roker@elcelu.local> 1774223066 -0300	commit: auto: 2026-03-22 20:44
+c15ee12661db967b6ff8680ff54eb39cfadc7804 0acbb462ccc8662b1794144648382094fd1ef669 Roker <roker@elcelu.local> 1774223097 -0300	commit: auto: 2026-03-22 20:44
+0acbb462ccc8662b1794144648382094fd1ef669 33f0af4f85d033e3ac70f660e03bb2ae9539f1bd Roker <roker@elcelu.local> 1774223128 -0300	commit: auto: 2026-03-22 20:45
+33f0af4f85d033e3ac70f660e03bb2ae9539f1bd 713c1ae2d707bcb86da37d5ee35eaac9cfeb120f Roker <roker@elcelu.local> 1774223160 -0300	commit: auto: 2026-03-22 20:45
+713c1ae2d707bcb86da37d5ee35eaac9cfeb120f 534273ca68e66bd15a30b86206e15738a2421448 Roker <roker@elcelu.local> 1774223191 -0300	commit: auto: 2026-03-22 20:46
+534273ca68e66bd15a30b86206e15738a2421448 04c3a91deda284f60c4519420205fd769d8f094e Roker <roker@elcelu.local> 1774223222 -0300	commit: auto: 2026-03-22 20:47
+04c3a91deda284f60c4519420205fd769d8f094e d32daadc6ff7b6e9a52dce42b1adbf429c208465 Roker <roker@elcelu.local> 1774223344 -0300	commit: auto: 2026-03-22 20:49
+d32daadc6ff7b6e9a52dce42b1adbf429c208465 d8c5e10614b40aee65315662e21e58aa6abe3095 Roker <roker@elcelu.local> 1774223375 -0300	commit: auto: 2026-03-22 20:49
+d8c5e10614b40aee65315662e21e58aa6abe3095 600ce8c49e38076cc0e9d81010ae44f2035d2916 Roker <roker@elcelu.local> 1774223406 -0300	commit: auto: 2026-03-22 20:50
+600ce8c49e38076cc0e9d81010ae44f2035d2916 6030319adc9ce738ba645b6f08e1fc96106b7c8c Roker <roker@elcelu.local> 1774223437 -0300	commit: auto: 2026-03-22 20:50
+6030319adc9ce738ba645b6f08e1fc96106b7c8c 75687c7e1a0a769f8a8af8b65dfdaf95884655e7 Roker <roker@elcelu.local> 1774223469 -0300	commit: auto: 2026-03-22 20:51
+75687c7e1a0a769f8a8af8b65dfdaf95884655e7 a73127a4d4d28db91086294c7d091a47206901a0 Roker <roker@elcelu.local> 1774223500 -0300	commit: auto: 2026-03-22 20:51
+a73127a4d4d28db91086294c7d091a47206901a0 22371fdfd6b5a277dafae4958a6c18c46b9474a8 Roker <roker@elcelu.local> 1774223531 -0300	commit: auto: 2026-03-22 20:52
+22371fdfd6b5a277dafae4958a6c18c46b9474a8 0e59161847e80de48f5497eec76bcce8c17ac92d Roker <roker@elcelu.local> 1774223563 -0300	commit: auto: 2026-03-22 20:52
+0e59161847e80de48f5497eec76bcce8c17ac92d e9042e7a8f290b330de5894a9d8d568c9a4b56a9 Roker <roker@elcelu.local> 1774223594 -0300	commit: auto: 2026-03-22 20:53
+e9042e7a8f290b330de5894a9d8d568c9a4b56a9 f3c61de1201bfcb9d8a4d1acfdf2186fdf235863 Roker <roker@elcelu.local> 1774223625 -0300	commit: auto: 2026-03-22 20:53
+f3c61de1201bfcb9d8a4d1acfdf2186fdf235863 d01251d0e307c8dce8996c1c0d42a83d6bd38e4b Roker <roker@elcelu.local> 1774223656 -0300	commit: auto: 2026-03-22 20:54
+d01251d0e307c8dce8996c1c0d42a83d6bd38e4b 4629ffe398703d29b6bdfa6b4bbf8a0732915e6e Roker <roker@elcelu.local> 1774223688 -0300	commit: auto: 2026-03-22 20:54
+4629ffe398703d29b6bdfa6b4bbf8a0732915e6e ce77d12c16c2d6068d1c0304b9aaf25e3364870f Roker <roker@elcelu.local> 1774223719 -0300	commit: auto: 2026-03-22 20:55
+ce77d12c16c2d6068d1c0304b9aaf25e3364870f 4215af9691950aa1e68ac8ede346cfe354610fb7 Roker <roker@elcelu.local> 1774223750 -0300	commit: auto: 2026-03-22 20:55
+4215af9691950aa1e68ac8ede346cfe354610fb7 ec82617f4a46f796ee30fb4058a9cc4031616a79 Roker <roker@elcelu.local> 1774223781 -0300	commit: auto: 2026-03-22 20:56
+ec82617f4a46f796ee30fb4058a9cc4031616a79 42742481dd4628b7ab887767ecf9f0efa96c8bd0 Roker <roker@elcelu.local> 1774223813 -0300	commit: auto: 2026-03-22 20:56
+42742481dd4628b7ab887767ecf9f0efa96c8bd0 0bcdc11b1e3df59d9ede9d67a3a7d34886a8862b Roker <roker@elcelu.local> 1774223844 -0300	commit: auto: 2026-03-22 20:57
+0bcdc11b1e3df59d9ede9d67a3a7d34886a8862b 5fb3a6d7429d21a04fe3fe81f92132c6b38ebd44 Roker <roker@elcelu.local> 1774352740 -0300	commit: auto: 2026-03-24 08:45
+5fb3a6d7429d21a04fe3fe81f92132c6b38ebd44 21d41943392c56d562e14444947f6aeb041a7dbf Roker <roker@elcelu.local> 1774352777 -0300	commit: auto: 2026-03-24 08:46
+21d41943392c56d562e14444947f6aeb041a7dbf 72fe62a235e6c426ffea80a37a1768f6d6cae9b8 Roker <roker@elcelu.local> 1774352811 -0300	commit: auto: 2026-03-24 08:46
+72fe62a235e6c426ffea80a37a1768f6d6cae9b8 dffd0f77cd6ac016f5d4305ad200d6f19204ca15 Roker <roker@elcelu.local> 1774352844 -0300	commit: auto: 2026-03-24 08:47
+dffd0f77cd6ac016f5d4305ad200d6f19204ca15 d790e503468740897102ceb692cae0b31a8298ff Roker <roker@elcelu.local> 1774352879 -0300	commit: auto: 2026-03-24 08:47
+d790e503468740897102ceb692cae0b31a8298ff 04bd2097a4c569db1a06588315d7978d9a3bc88e Roker <roker@elcelu.local> 1774352913 -0300	commit: auto: 2026-03-24 08:48
