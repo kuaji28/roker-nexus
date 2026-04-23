@@ -5,9 +5,77 @@ import StateBadge, { UBICACION_META, RECON_META } from '../components/StateBadge
 import Icon from '../components/Icon'
 import Modal from '../components/Modal'
 import FormField from '../components/FormField'
-import { getVehiculo, updateVehiculo, getGastosByVehiculo, createGasto, getReservasByVehiculo, createReserva, getDocumentacion, upsertDocumentacion } from '../lib/supabase'
+import { getVehiculo, updateVehiculo, getGastosByVehiculo, createGasto, getReservasByVehiculo, createReserva, getDocumentacion, upsertDocumentacion, getHistorialVehiculo, addHistorialEntry } from '../lib/supabase'
 import { callAI, callAIFiles, aiConfigured } from '../lib/api'
 import { useTc } from '../hooks/useTc'
+
+// ── Publicar helpers ──────────────────────────────────────────
+export function generateChipsFromSpecs(specs = {}) {
+  const chips = []
+  if (specs.apple_carplay === true)        chips.push('Apple CarPlay')
+  if (specs.android_auto === true)         chips.push('Android Auto')
+  if (specs.carga_inalambrica === true)    chips.push('Carga inalámbrica')
+  if (specs.techo_solar === true)          chips.push('Techo solar')
+  if (specs.techo_panoramico === true)     chips.push('Techo panorámico')
+  if (specs.asientos_calefaccionados === true) chips.push('Asientos calefaccionados')
+  if (specs.asientos_electricos === true)  chips.push('Asientos eléctricos')
+  if (specs.control_crucero === true)      chips.push('Control crucero')
+  if (specs.crucero_adaptativo === true)   chips.push('Crucero adaptativo')
+  if (specs.camara_retroceso === true)     chips.push('Cámara de retroceso')
+  if (specs.abs === true)                  chips.push('ABS')
+  if (specs.esp === true)                  chips.push('ESP')
+  if (specs.frenado_autonomo === true)     chips.push('Frenado autónomo')
+  if (specs.hud === true)                  chips.push('HUD')
+  if (specs.llantas_aleacion === true)     chips.push('Llantas de aleación')
+  if (specs.alarma === true)               chips.push('Alarma')
+  if (specs.arranque_sin_llave === true)   chips.push('Keyless entry')
+  if (specs.gps_integrado === true)        chips.push('GPS integrado')
+  if (specs.bluetooth === true)            chips.push('Bluetooth')
+  if (specs.airbags)                       chips.push(`${specs.airbags} airbags`)
+  if (specs.pantalla_pulg)                 chips.push(`Pantalla ${specs.pantalla_pulg}"`)
+  if (specs.climatizacion === 'automatico') chips.push('Clima automático')
+  if (specs.climatizacion === 'bizona')    chips.push('Clima bizona')
+  if (specs.faros === 'full_led')          chips.push('Full LED')
+  if (specs.tapizado === 'cuero')          chips.push('Tapizado cuero')
+  if (specs.tapizado === 'alcantara')      chips.push('Tapizado Alcántara')
+  return chips
+}
+
+function generarMsgWhatsApp(v, chips, tc) {
+  const precioARS = v.precio_base ? `$${((v.precio_base) * (tc || 1415)).toLocaleString('es-AR')}` : 'Consultar precio'
+  const equipTop = chips.slice(0, 5).join(' · ')
+  return `🚗 *${v.marca} ${v.modelo} ${v.anio}*\n` +
+    (v.version ? `_${v.version}_\n` : '') +
+    `\n✅ ${Number(v.km_hs || 0).toLocaleString('es-AR')} km\n` +
+    `🎨 Color ${v.color || 'a confirmar'}\n` +
+    `⚙️ ${[v.transmision, v.combustible].filter(Boolean).join(' · ')}` + '\n' +
+    (equipTop ? `\n✨ ${equipTop}\n` : '') +
+    `\n💵 USD ${v.precio_base?.toLocaleString('es-AR') || '—'} / ${precioARS}\n` +
+    `\n📲 ¿Querés coordinar una prueba de manejo?`
+}
+
+const TIPO_META = {
+  ingreso:          { icono: '🚗', color: 'var(--c-accent)' },
+  estado_cambio:    { icono: '🔄', color: 'var(--c-fg-2)' },
+  foto_agregada:    { icono: '📸', color: '#8B5CF6' },
+  doc_subido:       { icono: '📄', color: '#0EA5E9' },
+  venta:            { icono: '🎉', color: '#10B981' },
+  seña:             { icono: '💰', color: '#F59E0B' },
+  lead:             { icono: '👤', color: '#6366F1' },
+  prueba_manejo:    { icono: '🔑', color: '#F97316' },
+  publicado:        { icono: '📢', color: '#22C55E' },
+  precio_cambio:    { icono: '💲', color: '#EF4444' },
+  ubicacion_cambio: { icono: '📍', color: '#84CC16' },
+  gasto:            { icono: '🔧', color: '#94A3B8' },
+  nota:             { icono: '📝', color: 'var(--c-fg-3)' },
+}
+
+function fmtFecha(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const pad = n => String(n).padStart(2, '0')
+  return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 const TIPOS_GASTO = {
   mecanica:      'Mecánica / Motor',
@@ -58,9 +126,22 @@ export default function Detalle({ onLogout }) {
   const [savingDocs, setSavingDocs] = useState(false)
   const [docsSaved, setDocsSaved]   = useState(false)
 
+  const [historial, setHistorial]           = useState([])
+  const [histLoading, setHistLoading]       = useState(false)
+  const [histNotaText, setHistNotaText]     = useState('')
+  const [savingNota, setSavingNota]         = useState(false)
+
   const [ubicacionEdit, setUbicacionEdit] = useState(false)
   const [ubicacionVal,  setUbicacionVal]  = useState('')
   const [savingUbicacion, setSavingUbicacion] = useState(false)
+
+  // ── Publicar tab state ────────────────────────────────────────
+  const [pubDesc, setPubDesc]         = useState('')
+  const [pubDescLoading, setPubDescLoading] = useState(false)
+  const [pubDescSaved, setPubDescSaved]     = useState(false)
+  const [pubDescSaving, setPubDescSaving]   = useState(false)
+  const [pubWspCopied, setPubWspCopied]     = useState(false)
+  const [pubChipsCopied, setPubChipsCopied] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -75,6 +156,28 @@ export default function Detalle({ onLogout }) {
       setDocsForm(docData)
     })
   }, [id])
+
+  // Cargar historial al montar y cuando el tab se activa
+  useEffect(() => {
+    if (tab !== 'historial') return
+    setHistLoading(true)
+    getHistorialVehiculo(id)
+      .then(setHistorial)
+      .catch(console.error)
+      .finally(() => setHistLoading(false))
+  }, [id, tab])
+
+  async function submitNota() {
+    if (!histNotaText.trim()) return
+    setSavingNota(true)
+    try {
+      await addHistorialEntry(id, 'nota', histNotaText.trim())
+      setHistNotaText('')
+      const h = await getHistorialVehiculo(id)
+      setHistorial(h)
+    } catch (e) { console.error(e) }
+    finally { setSavingNota(false) }
+  }
 
   async function saveDocs() {
     setSavingDocs(true); setDocsSaved(false)
@@ -358,9 +461,11 @@ export default function Detalle({ onLogout }) {
             ['gastos', 'cash', gastos.length > 0 ? `Gastos (${gastos.length})` : 'Gastos'],
             ['res', 'users', reservas.length > 0 ? `Reservas (${reservas.length})` : 'Reservas'],
             ['docs', 'doc', 'Documentación'],
+            ['pub', 'share', '🤖 Publicar'],
+            ['historial', 'clock', 'Historial'],
           ].map(([k, ic, l]) => (
             <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>
-              <Icon name={ic} size={13} />{l}
+              {k !== 'pub' && <Icon name={ic} size={13} />}{l}
             </button>
           ))}
         </div>
@@ -758,6 +863,93 @@ export default function Detalle({ onLogout }) {
                 {savingDocs ? 'Guardando…' : <><Icon name="check" size={14} /> Guardar documentación</>}
               </button>
               {docsSaved && <span style={{ color: 'var(--c-success)', fontSize: 13 }}>✓ Guardado</span>}
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB: HISTORIAL ── */}
+        {tab === 'historial' && (
+          <div>
+            {histLoading && <p style={{ color: 'var(--c-fg-2)', fontSize: 13 }}>Cargando historial…</p>}
+
+            {!histLoading && historial.length === 0 && (
+              <div className="banner info"><Icon name="info" size={16} />Sin eventos registrados aún.</div>
+            )}
+
+            {!histLoading && historial.length > 0 && (
+              <div style={{ position: 'relative', paddingLeft: 32 }}>
+                {/* línea vertical */}
+                <div style={{
+                  position: 'absolute', left: 10, top: 8, bottom: 8,
+                  width: 2, background: 'var(--c-border)', borderRadius: 2,
+                }} />
+
+                {historial.map((ev, i) => {
+                  const meta = TIPO_META[ev.tipo] || { icono: '•', color: 'var(--c-fg-3)' }
+                  return (
+                    <div key={ev.id} style={{ position: 'relative', marginBottom: i < historial.length - 1 ? 20 : 0 }}>
+                      {/* punto */}
+                      <div style={{
+                        position: 'absolute', left: -27, top: 2,
+                        width: 20, height: 20, borderRadius: '50%',
+                        background: 'var(--c-bg)', border: `2px solid ${meta.color}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 10, lineHeight: 1,
+                      }}>
+                        {meta.icono}
+                      </div>
+
+                      <div style={{
+                        background: 'var(--c-card)', border: '1px solid var(--c-border)',
+                        borderRadius: 'var(--r)', padding: '10px 14px',
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                          <div style={{ flex: 1 }}>
+                            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--c-fg)' }}>
+                              {ev.descripcion}
+                            </span>
+                            {ev.vendedor?.nombre && (
+                              <div style={{ fontSize: 11, color: 'var(--c-fg-3)', marginTop: 3 }}>
+                                por {ev.vendedor.nombre}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--c-fg-3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                            {fmtFecha(ev.created_at)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Agregar nota */}
+            <div style={{
+              marginTop: 24, background: 'var(--c-card)',
+              border: '1px solid var(--c-border)', borderRadius: 'var(--r)', padding: 14,
+            }}>
+              <div style={{ fontSize: 12, color: 'var(--c-fg-2)', marginBottom: 8, fontWeight: 500 }}>
+                📝 Agregar nota
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <input
+                  className="input"
+                  style={{ flex: 1 }}
+                  placeholder="Ej: Cliente llamó para consultar, revisión mecánica ok…"
+                  value={histNotaText}
+                  onChange={e => setHistNotaText(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && !savingNota && submitNota()}
+                />
+                <button
+                  className="btn primary"
+                  onClick={submitNota}
+                  disabled={savingNota || !histNotaText.trim()}
+                >
+                  {savingNota ? '…' : <><Icon name="plus" size={14} /> Agregar</>}
+                </button>
+              </div>
             </div>
           </div>
         )}
