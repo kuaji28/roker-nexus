@@ -28,9 +28,26 @@ function carroceriaToTipo(carroceria) {
   return CARROCERIA_TIPO_MAP[carroceria.toLowerCase().trim()] || null
 }
 
+// ISO 3779 position 10 VIN year decode — same logic as Streamlit vin_decoder.py
+const VIN_ANIO_MAP = {
+  A:2010, B:2011, C:2012, D:2013, E:2014, F:2015, G:2016, H:2017,
+  J:2018, K:2019, L:2020, M:2021, N:2022, P:2023, R:2024, S:2025,
+  T:2026, V:2027, W:2028, X:2029, Y:2030,
+  '1':2001,'2':2002,'3':2003,'4':2004,'5':2005,
+  '6':2006,'7':2007,'8':2008,'9':2009,
+}
+function anioDesdeVin(vin) {
+  if (!vin || vin.length < 10) return null
+  return VIN_ANIO_MAP[vin[9].toUpperCase()] || null
+}
+
 function validatePatente(pat) {
-  const p = (pat || '').toUpperCase().replace(/\s/g, '')
-  return /^[A-Z]{2}\d{3}[A-Z]{2}$/.test(p) || /^[A-Z]{3}\d{3}$/.test(p)
+  const p = (pat || '').toUpperCase().replace(/[\s\-]/g, '')
+  if (!p) return true
+  // Mercosur AB123CD, old ABC123, moto A123BCD and similar 6-8 char alphanumeric
+  return /^[A-Z]{2}\d{3}[A-Z]{2}$/.test(p)
+      || /^[A-Z]{3}\d{3}$/.test(p)
+      || /^[A-Z0-9]{5,8}$/.test(p)
 }
 
 function parseFechaDMY(str) {
@@ -180,6 +197,7 @@ export default function Ingreso({ onLogout }) {
   const [aiLoading, setAiLoading] = useState('')
   const [aiMsg, setAiMsg]       = useState(null)
   const [aiWarnings, setAiWarnings] = useState([])
+  const [isDragging, setIsDragging] = useState(false)
   const [files, setFiles]       = useState([])
   const [previews, setPreviews] = useState([])
   const [form, setForm] = useState({
@@ -213,11 +231,20 @@ export default function Ingreso({ onLogout }) {
       // Map carrocería → tipo de vehículo
       const tipoDetectado = carroceriaToTipo(data.carroceria)
 
-      // Validate año
+      // Validate año — fallback to VIN decode if OCR didn't get it
+      let anioFinal = null
+      let anioFuente = ''
       const anioNum = data.anio ? Number(data.anio) : null
-      const anioValido = anioNum && anioNum >= 1960 && anioNum <= 2030
-      if (data.anio && !anioValido) {
-        warnings.push(`Año detectado fuera de rango (${data.anio}) — verificar`)
+      if (anioNum && anioNum >= 1960 && anioNum <= 2030) {
+        anioFinal = String(anioNum)
+        anioFuente = 'OCR'
+      } else {
+        if (data.anio) warnings.push(`Año detectado fuera de rango (${data.anio}) — se intentó VIN`)
+        const anioVin = anioDesdeVin(data.nro_chasis || '')
+        if (anioVin) {
+          anioFinal = String(anioVin)
+          anioFuente = 'VIN'
+        }
       }
 
       // Validate patente
@@ -246,6 +273,8 @@ export default function Ingreso({ onLogout }) {
       if (data.fecha_inscripcion) notasExtras.push(`Inscripción: ${data.fecha_inscripcion}`)
       if (data.vencimiento_cedula) notasExtras.push(`Venc. cédula: ${data.vencimiento_cedula}`)
 
+      if (anioFuente === 'VIN') warnings.push(`Año derivado del VIN (${anioFinal}) — confirmar`)
+
       setForm(p => {
         const notasAdd = notasExtras.length
           ? (p.notas_internas ? p.notas_internas + '\n' : '') + notasExtras.join(' | ')
@@ -255,7 +284,7 @@ export default function Ingreso({ onLogout }) {
           tipo: tipoDetectado || p.tipo,
           marca: data.marca || p.marca,
           modelo: data.modelo || p.modelo,
-          anio: anioValido ? String(data.anio) : p.anio,
+          anio: anioFinal || p.anio,
           version: data.version || p.version,
           patente: patenteVal || p.patente,
           color: data.color || p.color,
@@ -268,24 +297,29 @@ export default function Ingreso({ onLogout }) {
       setAiWarnings(warnings)
 
       const confBaja = data.confianza_general === 'baja'
+      const marcaOcr = data.marca || ''
+      const modeloOcr = data.modelo || ''
+      const anioOcr = anioFinal || ''
+
       if (confBaja) {
         setAiMsg({ type: 'warning', text: 'Cédula leída con confianza baja — revisar todos los campos antes de continuar.' })
       } else {
-        // Auto-run completar-specs after successful OCR
-        setAiLoading('specs')
         let specsMsg = ''
-        try {
-          const specs = await _completarSpecs(
-            data.marca, data.modelo, data.anio,
-            data.version || '', data.nro_motor || '', data.nro_chasis || ''
-          )
-          if (specs) {
-            specsMsg = ` · Specs: ${specs.combustible || '—'} / ${specs.transmision || '—'}`
+        let specsWarning = ''
+        if (marcaOcr && modeloOcr) {
+          setAiLoading('specs')
+          try {
+            const specs = await _completarSpecs(marcaOcr, modeloOcr, anioOcr, data.version || '', data.nro_motor || '', data.nro_chasis || '')
+            if (specs) specsMsg = ` · ${specs.combustible || '—'} / ${specs.transmision || '—'}`
+          } catch (e) {
+            specsWarning = `Specs no completadas: ${e.message}`
           }
-        } catch { /* specs failure is non-blocking */ }
+        }
+        if (specsWarning) warnings.push(specsWarning)
+        const anioNote = anioFuente === 'VIN' ? ` Año del VIN (${anioFinal}).` : ''
         setAiMsg({
           type: 'success',
-          text: `Cédula leída. Datos autocargados.${tipoDetectado ? ` Tipo: ${tipoDetectado}.` : ''}${specsMsg}`,
+          text: `Cédula leída. Datos autocargados.${tipoDetectado ? ` Tipo: ${tipoDetectado}.` : ''}${anioNote}${specsMsg}`,
         })
       }
     } catch (err) {
@@ -294,7 +328,7 @@ export default function Ingreso({ onLogout }) {
   }
 
   async function handleCompletarSpecs() {
-    if (!form.marca || !form.modelo || !form.anio) return
+    if (!form.marca || !form.modelo) return
     setAiLoading('specs'); setAiMsg(null)
     try {
       const specs = await _completarSpecs(
@@ -309,7 +343,7 @@ export default function Ingreso({ onLogout }) {
   }
 
   async function handleSugerirPrecio() {
-    if (!form.marca || !form.modelo || !form.anio) return
+    if (!form.marca || !form.modelo) return
     setAiLoading('precio'); setAiMsg(null)
     try {
       const data = await callAI('/ai/sugerir-precio', {
@@ -378,20 +412,32 @@ export default function Ingreso({ onLogout }) {
         )}
 
         {step === 1 && aiConfigured() && (
-          <div className="card" style={{ marginBottom: 12 }}>
+          <div
+            className="card"
+            style={{ marginBottom: 12, outline: isDragging ? '2px dashed var(--c-accent)' : 'none' }}
+            onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={e => {
+              e.preventDefault(); setIsDragging(false)
+              const imgs = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'))
+              if (imgs.length) handleCedulaFiles({ target: { files: imgs, value: '' } })
+            }}
+          >
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 12, color: 'var(--c-fg-2)', fontWeight: 600 }}>Asistente IA</span>
+              <span style={{ fontSize: 12, color: 'var(--c-fg-2)', fontWeight: 600 }}>
+                Asistente IA {isDragging && <span style={{ color: 'var(--c-accent)' }}>— soltá la foto aquí</span>}
+              </span>
               <button className="btn secondary" disabled={!!aiLoading}
                 onClick={() => document.getElementById('cedula-scan').click()}>
                 <Icon name="image" size={14} />
                 {aiLoading === 'cedula' ? 'Escaneando…' : aiLoading === 'specs' ? 'Completando specs…' : 'Escanear cédula verde'}
               </button>
-              <button className="btn secondary" disabled={!!aiLoading || !form.marca || !form.modelo || !form.anio}
+              <button className="btn secondary" disabled={!!aiLoading || !form.marca || !form.modelo}
                 onClick={handleCompletarSpecs}>
                 <Icon name="cog" size={14} />
                 {aiLoading === 'specs' ? 'Completando…' : 'Completar specs'}
               </button>
-              <button className="btn secondary" disabled={!!aiLoading || !form.marca || !form.modelo || !form.anio}
+              <button className="btn secondary" disabled={!!aiLoading || !form.marca || !form.modelo}
                 onClick={handleSugerirPrecio}>
                 <Icon name="tag" size={14} />
                 {aiLoading === 'precio' ? 'Analizando…' : 'Sugerir precio'}
