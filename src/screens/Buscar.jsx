@@ -6,8 +6,7 @@ import Icon from '../components/Icon'
 import FormField from '../components/FormField'
 import { getVehiculos } from '../lib/supabase'
 import { useTc } from '../hooks/useTc'
-
-const MARCAS_COMUNES = ['Chevrolet', 'Ford', 'Fiat', 'Volkswagen', 'Renault', 'Peugeot', 'Citroen', 'Toyota', 'Honda', 'Nissan', 'Hyundai', 'Kia', 'BMW', 'Mercedes-Benz', 'Audi']
+import { callAI, aiConfigured } from '../lib/api'
 
 export default function Buscar({ onLogout }) {
   const TC       = useTc()
@@ -17,24 +16,31 @@ export default function Buscar({ onLogout }) {
   const [loading, setLoading]   = useState(true)
 
   const [filters, setFilters] = useState({
-    tipo: 'todos',
-    marca: '',
-    anio_min: '',
-    anio_max: '',
-    km_max: '',
-    precio_min: '',
-    precio_max: '',
-    combustible: '',
-    transmision: '',
-    search: '',
+    tipo: 'todos', marca: '', anio_min: '', anio_max: '',
+    km_max: '', precio_min: '', precio_max: '',
+    combustible: '', transmision: '', search: '',
   })
+
+  // IA ranking
+  const [preferencias, setPreferencias] = useState('')
+  const [presupuesto,  setPresupuesto]  = useState('')
+  const [ranking,      setRanking]      = useState(null)
+  const [rankLoading,  setRankLoading]  = useState(false)
+  const [rankErr,      setRankErr]      = useState('')
+
+  // Presupuesto WhatsApp
+  const [wspVeh,    setWspVeh]    = useState(null)
+  const [wspLoading, setWspLoading] = useState(false)
+  const [wspTexto,  setWspTexto]  = useState('')
 
   useEffect(() => {
     getVehiculos({ estado: 'disponible' }).then(v => { setTodos(v); setLoading(false) })
   }, [])
 
   const ff = (k) => (e) => setFilters(p => ({ ...p, [k]: e.target.value }))
-  function reset() { setFilters({ tipo: 'todos', marca: '', anio_min: '', anio_max: '', km_max: '', precio_min: '', precio_max: '', combustible: '', transmision: '', search: '' }) }
+  function reset() {
+    setFilters({ tipo: 'todos', marca: '', anio_min: '', anio_max: '', km_max: '', precio_min: '', precio_max: '', combustible: '', transmision: '', search: '' })
+  }
 
   const resultados = todos.filter(v => {
     if (filters.tipo !== 'todos' && v.tipo !== filters.tipo) return false
@@ -53,9 +59,44 @@ export default function Buscar({ onLogout }) {
     return true
   })
 
-  const activeFilters = Object.entries(filters).filter(([k, v]) => v && v !== 'todos').length
-
+  const activeFilters = Object.entries(filters).filter(([, v]) => v && v !== 'todos').length
   const marcas = [...new Set(todos.map(v => v.marca).filter(Boolean))].sort()
+
+  async function handleRanking() {
+    if (!resultados.length) return
+    setRankLoading(true); setRankErr(''); setRanking(null)
+    try {
+      const data = await callAI('/ai/ranking-vehiculos', {
+        vehiculos: resultados.slice(0, 10),
+        preferencias,
+        presupuesto_usd: presupuesto ? Number(presupuesto) : null,
+      })
+      setRanking(data.ranking || [])
+    } catch (e) {
+      setRankErr('Error IA: ' + e.message)
+    } finally { setRankLoading(false) }
+  }
+
+  async function handlePresupuestoWsp(v) {
+    setWspVeh(v); setWspTexto(''); setWspLoading(true)
+    try {
+      const data = await callAI('/ai/presupuesto-wsp', {
+        vehiculo: v,
+        precio_usd: v.precio_base,
+        tipo_cambio: TC,
+      })
+      setWspTexto(data.texto)
+    } catch (e) {
+      setWspTexto('Error: ' + e.message)
+    } finally { setWspLoading(false) }
+  }
+
+  function copyWsp() {
+    navigator.clipboard.writeText(wspTexto).catch(() => {})
+  }
+
+  // Map id → vehiculo for ranking display
+  const vehById = Object.fromEntries(todos.map(v => [String(v.id), v]))
 
   return (
     <div>
@@ -64,7 +105,7 @@ export default function Buscar({ onLogout }) {
         <div className="page-head">
           <div>
             <h1 className="page-title">Buscar para cliente</h1>
-            <p className="page-caption">Encontrá el vehículo ideal con filtros avanzados</p>
+            <p className="page-caption">Encontrá el vehículo ideal con filtros y ranking IA</p>
           </div>
           {activeFilters > 0 && (
             <button className="btn secondary" onClick={reset}>
@@ -74,7 +115,7 @@ export default function Buscar({ onLogout }) {
         </div>
 
         {/* Filtros */}
-        <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card" style={{ marginBottom: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
             <FormField label="Buscar texto">
               <input className="input" placeholder="Marca, modelo, patente…" value={filters.search} onChange={ff('search')} />
@@ -124,6 +165,110 @@ export default function Buscar({ onLogout }) {
           </div>
         </div>
 
+        {/* Panel IA Ranking */}
+        {aiConfigured() && (
+          <div className="card" style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icon name="star" size={14} style={{ stroke: 'var(--c-accent)' }} />
+              Ranking IA para el cliente
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 10, marginBottom: 10 }}>
+              <FormField label="Preferencias del cliente (texto libre)">
+                <input className="input" placeholder="Ej: familia de 5 personas, quiero bajo mantenimiento, presupuesto acotado…"
+                  value={preferencias} onChange={e => setPreferencias(e.target.value)} />
+              </FormField>
+              <FormField label="Presupuesto máx (USD)">
+                <input className="input" type="number" placeholder="Sin límite" value={presupuesto} onChange={e => setPresupuesto(e.target.value)} />
+              </FormField>
+            </div>
+            <button className="btn primary" style={{ fontSize: 13 }}
+              disabled={rankLoading || !resultados.length}
+              onClick={handleRanking}>
+              <Icon name="star" size={14} />
+              {rankLoading ? 'Analizando…' : `Rankear los ${Math.min(resultados.length, 10)} resultados`}
+            </button>
+            {rankErr && <div className="banner warning" style={{ marginTop: 10 }}><Icon name="alert" size={14} />{rankErr}</div>}
+
+            {ranking && ranking.length > 0 && (
+              <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ fontSize: 12, color: 'var(--c-fg-3)', fontWeight: 600 }}>TOP 3 recomendados</div>
+                {ranking.map((r, idx) => {
+                  const v = vehById[String(r.id)]
+                  if (!v) return null
+                  return (
+                    <div key={r.id} style={{ background: 'var(--c-bg-2)', borderRadius: 'var(--r)', padding: 14, borderLeft: `3px solid ${idx === 0 ? '#f59e0b' : idx === 1 ? '#94a3b8' : '#cd7c2f'}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: idx === 0 ? '#f59e0b' : 'var(--c-fg-2)' }}>#{idx + 1}</div>
+                        <div style={{ flex: 1 }}>
+                          <div className="v-title">{v.marca} {v.modelo} {v.anio}{v.version ? ` · ${v.version}` : ''}</div>
+                          <div className="v-meta">{v.patente || '—'} · USD {v.precio_base?.toLocaleString('es-AR')} · {v.km_hs?.toLocaleString('es-AR') || '0'} km</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--c-accent)' }}>{r.score}</div>
+                          <div style={{ fontSize: 10, color: 'var(--c-fg-3)' }}>/10</div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 13, marginBottom: 6, color: 'var(--c-fg)' }}>{r.por_que}</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
+                        <div style={{ background: 'var(--c-bg)', borderRadius: 'var(--r)', padding: '6px 10px' }}>
+                          <div style={{ color: '#22c55e', fontWeight: 600, marginBottom: 2 }}>✓ {r.punto_fuerte}</div>
+                        </div>
+                        <div style={{ background: 'var(--c-bg)', borderRadius: 'var(--r)', padding: '6px 10px' }}>
+                          <div style={{ color: 'var(--c-fg-2)', marginBottom: 2 }}>△ {r.punto_debil}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                        <button className="btn primary" style={{ fontSize: 12 }} onClick={() => navigate(`/vehiculo/${v.id}`)}>
+                          <Icon name="eye" size={13} /> Ver detalle
+                        </button>
+                        <button className="btn secondary" style={{ fontSize: 12 }} onClick={() => handlePresupuestoWsp(v)}>
+                          <Icon name="message" size={13} /> Presupuesto WSP
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Presupuesto WhatsApp modal */}
+        {wspVeh && (
+          <div className="modal-overlay" onClick={() => { setWspVeh(null); setWspTexto('') }}>
+            <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
+              <div className="modal-head">
+                <h3>Presupuesto WhatsApp</h3>
+                <button className="btn ghost" onClick={() => { setWspVeh(null); setWspTexto('') }}><Icon name="close" size={16} /></button>
+              </div>
+              <div style={{ padding: '0 20px 20px' }}>
+                <div style={{ fontSize: 13, color: 'var(--c-fg-2)', marginBottom: 10 }}>
+                  {wspVeh.marca} {wspVeh.modelo} {wspVeh.anio} · USD {wspVeh.precio_base?.toLocaleString('es-AR')}
+                </div>
+                {wspLoading ? (
+                  <p style={{ color: 'var(--c-fg-2)' }}>Generando mensaje…</p>
+                ) : (
+                  <>
+                    <textarea className="input" rows={10} readOnly value={wspTexto}
+                      style={{ width: '100%', resize: 'vertical', fontSize: 13, fontFamily: 'inherit' }} />
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                      <button className="btn primary" onClick={copyWsp}>
+                        <Icon name="clipboard" size={14} /> Copiar
+                      </button>
+                      {wspVeh.whatsapp && (
+                        <a href={`https://wa.me/${wspVeh.whatsapp?.replace(/\D/g, '')}?text=${encodeURIComponent(wspTexto)}`}
+                          target="_blank" rel="noreferrer" className="btn secondary" style={{ fontSize: 13 }}>
+                          Abrir en WA
+                        </a>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Resultados */}
         {loading ? <p style={{ color: 'var(--c-fg-2)' }}>Cargando stock…</p> : (
           <>
@@ -159,7 +304,15 @@ export default function Buscar({ onLogout }) {
                       <div style={{ fontSize: 12, color: 'var(--c-fg-2)' }}>$ {(v.precio_base * TC).toLocaleString('es-AR', { maximumFractionDigits: 0 })}</div>
                     )}
                   </div>
-                  <Icon name="chev-r" size={16} style={{ stroke: 'var(--c-fg-2)', justifySelf: 'end' }} />
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    {aiConfigured() && (
+                      <button className="btn ghost" style={{ padding: '4px 8px', fontSize: 12 }}
+                        onClick={e => { e.stopPropagation(); handlePresupuestoWsp(v) }} title="Presupuesto WSP">
+                        <Icon name="message" size={14} />
+                      </button>
+                    )}
+                    <Icon name="chev-r" size={16} style={{ stroke: 'var(--c-fg-2)' }} />
+                  </div>
                 </div>
               ))
             )}

@@ -204,6 +204,7 @@ export default function Ingreso({ onLogout }) {
   const [aiMsg, setAiMsg]       = useState(null)
   const [aiWarnings, setAiWarnings] = useState([])
   const [aiSpecs, setAiSpecs]   = useState(null)
+  const [tasacion, setTasacion] = useState(null)
   const [isDragging, setIsDragging] = useState(false)
   const [files, setFiles]       = useState([])
   const [previews, setPreviews] = useState([])
@@ -354,18 +355,20 @@ export default function Ingreso({ onLogout }) {
     } finally { setAiLoading('') }
   }
 
-  async function handleSugerirPrecio() {
+  async function handleTasacion() {
     if (!form.marca || !form.modelo) return
-    setAiLoading('precio'); setAiMsg(null)
+    setAiLoading('precio'); setAiMsg(null); setTasacion(null)
     try {
-      const data = await callAI('/ai/sugerir-precio', {
-        marca: form.marca, modelo: form.modelo, anio: Number(form.anio),
-        version: form.version, km: Number(form.km_hs) || 0,
+      const data = await callAI('/ai/tasacion', {
+        marca: form.marca, modelo: form.modelo, anio: Number(form.anio) || 0,
+        version: form.version, km: Number(form.km_hs) || 0, estado: 'bueno',
       })
+      setTasacion(data)
       setForm(p => ({ ...p, precio_base: String(data.precio_sugerido || p.precio_base) }))
-      setAiMsg({ type: 'info', text: `Precio sugerido: USD ${data.precio_sugerido?.toLocaleString('es-AR')} (rango: ${data.precio_min?.toLocaleString('es-AR')} – ${data.precio_max?.toLocaleString('es-AR')}) — confianza: ${data.confianza}` })
+      const argCtx = data.argautos_precio_usd ? ` · ArgAutos: USD ${data.argautos_precio_usd?.toLocaleString('es-AR')}` : ''
+      setAiMsg({ type: 'success', text: `Tasación: USD ${data.precio_sugerido?.toLocaleString('es-AR')} (${data.precio_min?.toLocaleString('es-AR')} – ${data.precio_max?.toLocaleString('es-AR')}) · confianza: ${data.confianza}${argCtx}` })
     } catch (err) {
-      setAiMsg({ type: 'warning', text: 'Error IA: ' + err.message })
+      setAiMsg({ type: 'warning', text: 'Error tasación: ' + err.message })
     } finally { setAiLoading('') }
   }
 
@@ -472,9 +475,9 @@ export default function Ingreso({ onLogout }) {
                 {aiLoading === 'specs' ? 'Completando…' : 'Completar specs'}
               </button>
               <button className="btn secondary" disabled={!!aiLoading || !form.marca || !form.modelo}
-                onClick={handleSugerirPrecio} style={{ fontSize: 12 }}>
+                onClick={handleTasacion} style={{ fontSize: 12 }}>
                 <Icon name="tag" size={13} />
-                {aiLoading === 'precio' ? 'Analizando…' : 'Sugerir precio'}
+                {aiLoading === 'precio' ? 'Tasando…' : 'Tasación IA'}
               </button>
             </div>
 
@@ -535,6 +538,59 @@ export default function Ingreso({ onLogout }) {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Panel de tasación */}
+            {tasacion && (
+              <div style={{ marginTop: 12, background: 'var(--c-bg-2)', borderRadius: 'var(--r)', padding: 14, borderLeft: '3px solid #22c55e' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#22c55e', marginBottom: 10, textTransform: 'uppercase', letterSpacing: .5 }}>
+                  Tasación de mercado — IA
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10 }}>
+                  {[
+                    ['Mínimo', tasacion.precio_min],
+                    ['Sugerido', tasacion.precio_sugerido],
+                    ['Máximo', tasacion.precio_max],
+                  ].map(([label, val]) => (
+                    <div key={label} style={{ background: 'var(--c-bg)', borderRadius: 'var(--r)', padding: '8px 12px', textAlign: 'center' }}>
+                      <div style={{ fontSize: 11, color: 'var(--c-fg-3)' }}>{label}</div>
+                      <div style={{ fontSize: 15, fontWeight: 700 }}>USD {val?.toLocaleString('es-AR')}</div>
+                    </div>
+                  ))}
+                </div>
+                {tasacion.argautos_precio_usd && (
+                  <div style={{ fontSize: 12, color: 'var(--c-fg-2)', marginBottom: 6 }}>
+                    <strong>ArgAutos:</strong> USD {tasacion.argautos_precio_usd?.toLocaleString('es-AR')}
+                    {tasacion.argautos_version_exacta ? ` · ${tasacion.argautos_version_exacta}` : ''}
+                  </div>
+                )}
+                {tasacion.razonamiento && (
+                  <div style={{ fontSize: 12, color: 'var(--c-fg-2)', marginBottom: 6 }}>{tasacion.razonamiento}</div>
+                )}
+                {tasacion.advertencias?.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {tasacion.advertencias.map((a, i) => (
+                      <div key={i} className="banner warning" style={{ marginBottom: 0, fontSize: 12 }}>
+                        <Icon name="alert" size={13} />{a}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <button className="btn secondary" style={{ fontSize: 12 }}
+                    onClick={() => setForm(p => ({ ...p, precio_base: String(tasacion.precio_sugerido) }))}>
+                    Usar precio sugerido
+                  </button>
+                  <button className="btn ghost" style={{ fontSize: 12 }}
+                    onClick={() => setForm(p => ({ ...p, precio_base: String(tasacion.precio_min) }))}>
+                    Usar mínimo
+                  </button>
+                  <button className="btn ghost" style={{ fontSize: 12 }}
+                    onClick={() => setForm(p => ({ ...p, precio_base: String(tasacion.precio_max) }))}>
+                    Usar máximo
+                  </button>
+                </div>
               </div>
             )}
           </div>
