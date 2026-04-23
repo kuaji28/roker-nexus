@@ -442,6 +442,26 @@ export async function createFinanciamiento({ vehiculo_id, deudor_nombre, deudor_
   return fin
 }
 
+// ── Historial del vehículo ────────────────────────────────────
+export async function getHistorialVehiculo(vehiculoId) {
+  const { data, error } = await supabase
+    .from('vehiculos_historial')
+    .select('*, vendedor:vendedores(nombre)')
+    .eq('vehiculo_id', vehiculoId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
+export async function addHistorialEntry(vehiculoId, tipo, descripcion, datosExtra = {}, vendedorId = null) {
+  const { data, error } = await supabase
+    .from('vehiculos_historial')
+    .insert([{ vehiculo_id: vehiculoId, tipo, descripcion, datos_extra: datosExtra, vendedor_id: vendedorId }])
+    .select().single()
+  if (error) throw error
+  return data
+}
+
 // ── Documentación ─────────────────────────────────────────────
 export async function getDocumentacion(vehiculoId) {
   const { data } = await supabase
