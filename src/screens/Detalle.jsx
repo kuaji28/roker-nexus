@@ -40,6 +40,8 @@ export default function Detalle({ onLogout }) {
   const [aiModal, setAiModal]     = useState(null)
   const [aiResult, setAiResult]   = useState('')
   const [aiLoading, setAiLoading] = useState(false)
+  const [tasacion, setTasacion]   = useState(null)
+  const [tasLoading, setTasLoading] = useState(false)
 
   const [gastos, setGastos]             = useState([])
   const [gastoForm, setGastoForm]       = useState(EMPTY_GASTO)
@@ -169,6 +171,19 @@ export default function Detalle({ onLogout }) {
     finally { setAiLoading(false) }
   }
 
+  async function handleTasacion() {
+    if (!v.marca || !v.modelo) return
+    setTasLoading(true); setTasacion(null)
+    try {
+      const d = await callAI('/ai/tasacion', {
+        marca: v.marca, modelo: v.modelo, anio: v.anio || 0,
+        version: v.version || '', km: v.km_hs || 0, estado: 'bueno',
+      })
+      setTasacion(d)
+    } catch (e) { console.error(e) }
+    finally { setTasLoading(false) }
+  }
+
   const fg = (k) => (e) => setGastoForm(p => ({ ...p, [k]: e.target.value }))
 
   async function submitGasto() {
@@ -219,6 +234,9 @@ export default function Detalle({ onLogout }) {
           {aiConfigured() && <>
             <button className="btn secondary" onClick={() => runAI('descripcion')}><Icon name="doc" size={14} />Desc. ML</button>
             <button className="btn secondary" onClick={() => runAI('wsp')}><Icon name="share" size={14} />Msg WSP</button>
+            <button className="btn secondary" disabled={tasLoading} onClick={handleTasacion}>
+              <Icon name="tag" size={14} />{tasLoading ? 'Tasando…' : 'Tasación'}
+            </button>
           </>}
           <button className="btn primary" onClick={openEdit}><Icon name="edit" size={14} />Editar</button>
         </div>
@@ -249,6 +267,30 @@ export default function Detalle({ onLogout }) {
             </div>
           </div>
         </div>
+
+        {/* Panel tasación */}
+        {tasacion && (
+          <div className="card" style={{ marginBottom: 16, borderLeft: '3px solid #22c55e' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#22c55e' }}>Tasación de mercado — IA</div>
+              <button className="btn ghost" style={{ padding: '2px 6px' }} onClick={() => setTasacion(null)}><Icon name="x" size={14} /></button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10 }}>
+              {[['Mínimo', tasacion.precio_min], ['Sugerido', tasacion.precio_sugerido], ['Máximo', tasacion.precio_max]].map(([label, val]) => (
+                <div key={label} style={{ background: 'var(--c-bg-2)', borderRadius: 'var(--r)', padding: '8px 12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 11, color: 'var(--c-fg-3)' }}>{label}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700 }}>USD {val?.toLocaleString('es-AR')}</div>
+                </div>
+              ))}
+            </div>
+            {tasacion.argautos_precio_usd && (
+              <div style={{ fontSize: 12, color: 'var(--c-fg-2)', marginBottom: 6 }}>
+                ArgAutos: USD {tasacion.argautos_precio_usd?.toLocaleString('es-AR')} · confianza: {tasacion.confianza}
+              </div>
+            )}
+            {tasacion.razonamiento && <div style={{ fontSize: 12, color: 'var(--c-fg-2)' }}>{tasacion.razonamiento}</div>}
+          </div>
+        )}
 
         <div className="tabs">
           {[
