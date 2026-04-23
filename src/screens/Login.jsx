@@ -1,23 +1,26 @@
 import { useState } from 'react'
-import { getPin } from '../lib/supabase'
+import { loginUsuario } from '../lib/supabase'
 import Icon from '../components/Icon'
 
 export default function Login({ onLogin }) {
-  const [pin, setPin] = useState('')
-  const [error, setError] = useState('')
+  const [nombre, setNombre] = useState('')
+  const [pin, setPin]       = useState('')
+  const [error, setError]   = useState('')
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (!nombre.trim() || !pin.trim()) {
+      setError('Completá nombre y PIN')
+      return
+    }
     setLoading(true)
     setError('')
-    const stored = await getPin()
-    if (!stored) {
-      setError('PIN no configurado. Contactá al administrador.')
-    } else if (pin.trim() === stored.trim()) {
-      onLogin()
-    } else {
-      setError('PIN incorrecto')
+    try {
+      const user = await loginUsuario(nombre, pin)
+      onLogin(user)
+    } catch (err) {
+      setError(err.message || 'Error al iniciar sesión')
     }
     setLoading(false)
   }
@@ -41,6 +44,20 @@ export default function Login({ onLogin }) {
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--c-fg-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                Nombre de usuario
+              </label>
+              <input
+                className="input"
+                type="text"
+                placeholder="Roker, Gustavo, Juan…"
+                value={nombre}
+                onChange={e => setNombre(e.target.value)}
+                autoFocus
+                autoComplete="username"
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--c-fg-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                 PIN
               </label>
               <input
@@ -49,7 +66,7 @@ export default function Login({ onLogin }) {
                 placeholder="Ingresá tu PIN"
                 value={pin}
                 onChange={e => setPin(e.target.value)}
-                autoFocus
+                autoComplete="current-password"
               />
             </div>
             {error && (
@@ -61,7 +78,7 @@ export default function Login({ onLogin }) {
             <button
               className="btn primary"
               type="submit"
-              disabled={loading || !pin}
+              disabled={loading || !nombre || !pin}
               style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}
             >
               {loading ? 'Verificando…' : 'Acceder'}

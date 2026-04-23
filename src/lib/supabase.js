@@ -5,6 +5,33 @@ export const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 )
 
+async function sha256(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+export async function loginUsuario(nombre, pin) {
+  const hash = await sha256(pin)
+  const { data, error } = await supabase
+    .from('perfiles')
+    .select('id, nombre, email, rol, activo')
+    .ilike('nombre', nombre.trim())
+    .eq('pin_hash', hash)
+    .eq('activo', true)
+    .single()
+  if (error || !data) throw new Error('Usuario o PIN incorrecto')
+  return data
+}
+
+export async function updatePinUsuario(userId, nuevoPin) {
+  const hash = await sha256(nuevoPin)
+  const { error } = await supabase
+    .from('perfiles')
+    .update({ pin_hash: hash })
+    .eq('id', userId)
+  if (error) throw error
+}
+
 export async function getPin() {
   const { data } = await supabase
     .from('config')

@@ -49,9 +49,12 @@ function AppShell({ onLogout }) {
 }
 
 export default function App() {
-  const [auth, setAuth] = useState(() => sessionStorage.getItem('gh_auth') === '1')
-  function handleLogin()  { sessionStorage.setItem('gh_auth', '1'); setAuth(true) }
-  function handleLogout() { sessionStorage.removeItem('gh_auth'); setAuth(false) }
+  const [auth, setAuth] = useState(() => !!sessionStorage.getItem('gh_auth_user'))
+  function handleLogin(user)  {
+    sessionStorage.setItem('gh_auth_user', JSON.stringify(user))
+    setAuth(true)
+  }
+  function handleLogout() { sessionStorage.removeItem('gh_auth_user'); setAuth(false) }
 
   return (
     <BrowserRouter>
