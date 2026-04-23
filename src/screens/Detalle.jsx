@@ -95,13 +95,66 @@ const EMPTY_RESERVA = { cliente_nombre: '', cliente_telefono: '', monto_senia: '
 // ── Galería con miniaturas ────────────────────────────────────
 function Galeria({ fotos }) {
   const [idx, setIdx] = useState(0)
+  const [lightbox, setLightbox] = useState(false)
   const total = fotos.length
+
+  useEffect(() => {
+    if (!lightbox) return
+    function onKey(e) {
+      if (e.key === 'ArrowLeft')  setIdx(i => (i - 1 + total) % total)
+      if (e.key === 'ArrowRight') setIdx(i => (i + 1) % total)
+      if (e.key === 'Escape')     setLightbox(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightbox, total])
 
   return (
     <div style={{ marginBottom: 20 }}>
+      {lightbox && (
+        <div
+          onClick={() => setLightbox(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,.92)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'zoom-out',
+          }}
+        >
+          <button onClick={e => { e.stopPropagation(); setIdx(i => (i - 1 + total) % total) }}
+            style={{
+              position: 'absolute', left: 24, top: '50%', transform: 'translateY(-50%)',
+              background: 'rgba(255,255,255,.1)', border: 'none', borderRadius: '50%',
+              width: 48, height: 48, fontSize: 24, color: '#fff', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>‹</button>
+          <img src={fotos[idx].url} alt=""
+            style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain' }}
+            onClick={e => e.stopPropagation()} />
+          <button onClick={e => { e.stopPropagation(); setIdx(i => (i + 1) % total) }}
+            style={{
+              position: 'absolute', right: 24, top: '50%', transform: 'translateY(-50%)',
+              background: 'rgba(255,255,255,.1)', border: 'none', borderRadius: '50%',
+              width: 48, height: 48, fontSize: 24, color: '#fff', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>›</button>
+          <div style={{ position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)', color: '#fff', fontSize: 13 }}>
+            {idx + 1} / {total}
+          </div>
+          <button onClick={() => setLightbox(false)}
+            style={{
+              position: 'absolute', top: 16, right: 16,
+              background: 'rgba(255,255,255,.1)', border: 'none', borderRadius: '50%',
+              width: 40, height: 40, fontSize: 20, color: '#fff', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>✕</button>
+        </div>
+      )}
       <div style={{ position: 'relative', aspectRatio: '16/9', borderRadius: 'var(--r-lg)', overflow: 'hidden', background: 'var(--c-card)', marginBottom: 8 }}>
         {fotos[idx] ? (
-          <img src={fotos[idx].url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src={fotos[idx].url} alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'zoom-in' }}
+            onClick={() => setLightbox(true)} />
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--c-fg-3)' }}>
             Sin fotos
