@@ -123,6 +123,10 @@ function Step1({ form, set, vendedores }) {
       <FormField label="Precio base (USD)" required>
         <input className="input" type="number" placeholder="18000" value={form.precio_base} onChange={f('precio_base')} min={0} />
       </FormField>
+      <FormField label="Precio lista (USD)" hint="Precio visible para clientes">
+        <input className="input" type="number" placeholder={form.precio_base || "20000"}
+          value={form.precio_lista || ''} onChange={f('precio_lista')} min={0} />
+      </FormField>
       <FormField label="Costo compra (USD)">
         <input className="input" type="number" placeholder="15000" value={form.costo_compra} onChange={f('costo_compra')} min={0} />
       </FormField>
@@ -546,7 +550,7 @@ export default function Ingreso({ onLogout }) {
   const [vendedores, setVendedores] = useState([])
   const [form, setForm] = useState({
     tipo: 'auto', marca: '', modelo: '', anio: '', version: '',
-    patente: '', color: '', km_hs: '', precio_base: '', costo_compra: '',
+    patente: '', color: '', km_hs: '', precio_base: '', precio_lista: '', costo_compra: '',
     combustible: '', transmision: '', origen: 'compra_directa',
     responsable_id: '',
     nro_motor: '', nro_chasis: '', notas_internas: '', estado: 'disponible',
@@ -723,6 +727,7 @@ export default function Ingreso({ onLogout }) {
         anio: Number(form.anio),
         km_hs: form.km_hs ? Number(form.km_hs) : null,
         precio_base: Number(form.precio_base),
+        precio_lista: form.precio_lista ? Number(form.precio_lista) : null,
         costo_compra: form.costo_compra ? Number(form.costo_compra) : null,
         patente: form.patente ? form.patente.toUpperCase() : null,
         responsable_id: form.responsable_id || null,
