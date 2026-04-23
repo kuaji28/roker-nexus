@@ -458,3 +458,109 @@ export async function upsertDocumentacion(vehiculoId, data) {
     .upsert({ ...data, vehiculo_id: vehiculoId }, { onConflict: 'vehiculo_id' })
   if (error) throw error
 }
+
+// ─────────────────────────────────────────────────────────
+// SUPABASE STORAGE — Fotos y documentos de vehículos
+// Requiere bucket 'vehiculos' creado como PUBLIC en Supabase Dashboard
+// ─────────────────────────────────────────────────────────
+
+const STORAGE_BUCKET = 'vehiculos'
+
+/**
+ * Sube una foto de vehículo a Supabase Storage.
+ * Retorna { url, path, tipoShot }
+ */
+export async function uploadFotoVehiculo(vehiculoId, file, tipoShot = 'extra') {
+  const ext = file.name.split('.').pop().toLowerCase()
+  const filename = `${tipoShot}_${Date.now()}.${ext}`
+  const path = `vehiculos/${vehiculoId}/fotos/${filename}`
+
+  const { error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(path, file, { cacheControl: '3600', upsert: false })
+
+  if (error) throw error
+
+  const { data: { publicUrl } } = supabase.storage
+    .from(STORAGE_BUCKET)
+    .getPublicUrl(path)
+
+  return { url: publicUrl, path, tipoShot }
+}
+
+/**
+ * Sube un documento (PDF, imagen) de vehículo.
+ * Retorna { url, path, tipoDoc }
+ */
+export async function uploadDocVehiculo(vehiculoId, file, tipoDoc = 'otro') {
+  const ext = file.name.split('.').pop().toLowerCase()
+  const filename = `${tipoDoc}_${Date.now()}.${ext}`
+  const path = `vehiculos/${vehiculoId}/docs/${filename}`
+
+  const { error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(path, file, { cacheControl: '3600', upsert: false })
+
+  if (error) throw error
+
+  const { data: { publicUrl } } = supabase.storage
+    .from(STORAGE_BUCKET)
+    .getPublicUrl(path)
+
+  return { url: publicUrl, path, tipoDoc }
+}
+
+/**
+ * Guarda registro en la tabla 'media' vinculado al vehículo.
+ */
+export async function saveFotoRecord(vehiculoId, { url, path, tipoShot }, esPortada = false) {
+  const { data, error } = await supabase.from('media').insert([{
+    vehiculo_id: vehiculoId,
+    tipo: 'foto',
+    url,
+    storage_path: path,
+    storage_bucket: STORAGE_BUCKET,
+    tipo_shot: tipoShot,
+    es_portada: esPortada,
+  }]).select().single()
+  if (error) throw error
+  return data
+}
+
+/**
+ * Obtiene todas las fotos de un vehículo ordenadas (portada primero).
+ */
+export async function getFotosVehiculo(vehiculoId) {
+  const { data, error } = await supabase
+    .from('media')
+    .select('*')
+    .eq('vehiculo_id', vehiculoId)
+    .eq('tipo', 'foto')
+    .order('es_portada', { ascending: false })
+    .order('orden', { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
+/**
+ * Elimina una foto del Storage y de la tabla media.
+ */
+export async function deleteFotoVehiculo(mediaId, storagePath) {
+  if (storagePath) {
+    await supabase.storage.from(STORAGE_BUCKET).remove([storagePath])
+  }
+  await supabase.from('media').delete().eq('id', mediaId)
+}
+
+/**
+ * Marca una foto como portada (desmarca las demás del mismo vehículo).
+ */
+export async function setFotoPortada(vehiculoId, mediaId) {
+  await supabase.from('media')
+    .update({ es_portada: false })
+    .eq('vehiculo_id', vehiculoId)
+    .eq('tipo', 'foto')
+  await supabase.from('media')
+    .update({ es_portada: true })
+    .eq('id', mediaId)
+}
