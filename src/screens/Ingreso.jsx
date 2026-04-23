@@ -3,13 +3,29 @@ import { useNavigate } from 'react-router-dom'
 import TopBar from '../components/TopBar'
 import Icon from '../components/Icon'
 import FormField from '../components/FormField'
-import { createVehiculo, uploadFoto, getVendedores } from '../lib/supabase'
+import { createVehiculo, uploadFoto, uploadFotoVehiculo, saveFotoRecord, getVendedores } from '../lib/supabase'
 import { callAI, callAIFiles, aiConfigured } from '../lib/api'
 
-const TIPOS   = ['auto', 'moto', 'cuatriciclo', 'moto_de_agua']
-const ESTADOS = ['disponible', 'en_revision', 'en_preparacion']
-const COMB    = ['Nafta', 'Diésel', 'GNC', 'Híbrido', 'Eléctrico']
-const TRANS   = ['Manual', 'Automática', 'CVT', 'Semi-automática']
+const TIPOS      = ['auto', 'moto', 'cuatriciclo', 'moto_de_agua']
+const ESTADOS    = ['disponible', 'en_revision', 'en_preparacion']
+const COMB       = ['Nafta', 'Diésel', 'GNC', 'Híbrido', 'Eléctrico']
+const TRANS      = ['Manual', 'Automática', 'CVT', 'Semi-automática']
+const UBICACIONES = [
+  { value: 'showroom', label: 'Showroom'    },
+  { value: 'taller',   label: 'Taller'      },
+  { value: 'cochera',  label: 'Cochera'     },
+  { value: 'traslado', label: 'En traslado' },
+  { value: 'cliente',  label: 'En cliente'  },
+]
+const RECON_ESTADOS = [
+  { value: 'ingresado',        label: 'Ingresado'        },
+  { value: 'inspeccion',       label: 'En inspección'    },
+  { value: 'mecanica',         label: 'En mecánica'      },
+  { value: 'detailing',        label: 'En detailing'     },
+  { value: 'fotos_pendientes', label: 'Fotos pendientes' },
+  { value: 'listo',            label: 'Listo para venta' },
+  { value: 'publicado',        label: 'Publicado'        },
+]
 
 const CARROCERIA_TIPO_MAP = {
   sedan: 'auto', sedán: 'auto', hatchback: 'auto', suv: 'auto', pickup: 'auto',
@@ -71,6 +87,16 @@ function Step1({ form, set, vendedores }) {
       <FormField label="Estado">
         <select className="input" value={form.estado} onChange={f('estado')}>
           {ESTADOS.map(e => <option key={e} value={e}>{e.replace('_', ' ')}</option>)}
+        </select>
+      </FormField>
+      <FormField label="Ubicación">
+        <select className="input" value={form.ubicacion} onChange={f('ubicacion')}>
+          {UBICACIONES.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
+        </select>
+      </FormField>
+      <FormField label="Estado reacond.">
+        <select className="input" value={form.estado_recon} onChange={f('estado_recon')}>
+          {RECON_ESTADOS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
         </select>
       </FormField>
       <FormField label="Marca" required>
@@ -138,6 +164,192 @@ function Step1({ form, set, vendedores }) {
             style={{ resize: 'vertical' }} />
         </FormField>
       </div>
+    </div>
+  )
+}
+
+const SECCIONES_SPECS = [
+  {
+    titulo: '⚙️ Técnico',
+    campos: [
+      { key: 'potencia_hp', label: 'Potencia (HP)', tipo: 'number', placeholder: '150' },
+      { key: 'torque_nm', label: 'Torque (Nm)', tipo: 'number', placeholder: '200' },
+      { key: 'cilindros', label: 'Cilindros', tipo: 'number', placeholder: '4' },
+      { key: 'vel_max_kmh', label: 'Vel. máx (km/h)', tipo: 'number', placeholder: '200' },
+      { key: 'aceleracion_0_100', label: '0-100 km/h (s)', tipo: 'number', placeholder: '9.5', step: 0.1 },
+      { key: 'tanque_litros', label: 'Tanque (litros)', tipo: 'number', placeholder: '50' },
+      { key: 'consumo_mixto', label: 'Consumo mixto (L/100km)', tipo: 'number', placeholder: '7.5', step: 0.1 },
+      { key: 'peso_kg', label: 'Peso (kg)', tipo: 'number', placeholder: '1300' },
+    ],
+  },
+  {
+    titulo: '❄️ Climatización',
+    campos: [
+      {
+        key: 'climatizacion', label: 'Climatización', tipo: 'select',
+        opciones: [
+          { v: '', l: '— Sin datos —' },
+          { v: 'sin_ac', l: 'Sin aire acondicionado' },
+          { v: 'manual', l: 'Aire manual' },
+          { v: 'automatico', l: 'Aire automático' },
+          { v: 'bizona', l: 'Bizona' },
+        ],
+      },
+    ],
+  },
+  {
+    titulo: '📺 Multimedia',
+    campos: [
+      { key: 'pantalla_pulg', label: 'Pantalla (pulgadas)', tipo: 'number', placeholder: '10.1', step: 0.1 },
+      { key: 'apple_carplay', label: 'Apple CarPlay', tipo: 'bool' },
+      { key: 'android_auto', label: 'Android Auto', tipo: 'bool' },
+      { key: 'carga_inalambrica', label: 'Carga inalámbrica', tipo: 'bool' },
+      { key: 'bluetooth', label: 'Bluetooth', tipo: 'bool' },
+      { key: 'gps_integrado', label: 'GPS integrado', tipo: 'bool' },
+    ],
+  },
+  {
+    titulo: '🛋️ Confort',
+    campos: [
+      {
+        key: 'faros', label: 'Faros', tipo: 'select',
+        opciones: [
+          { v: '', l: '— Sin datos —' },
+          { v: 'halógenos', l: 'Halógenos' },
+          { v: 'full_led', l: 'Full LED' },
+          { v: 'bi_xenon', l: 'Bi-xenón' },
+          { v: 'laser', l: 'Láser' },
+        ],
+      },
+      {
+        key: 'tapizado', label: 'Tapizado', tipo: 'select',
+        opciones: [
+          { v: '', l: '— Sin datos —' },
+          { v: 'tela', l: 'Tela' },
+          { v: 'semicuero', l: 'Semicuero' },
+          { v: 'cuero', l: 'Cuero' },
+          { v: 'alcantara', l: 'Alcántara' },
+        ],
+      },
+      { key: 'asientos_calefaccionados', label: 'Asientos calefaccionados', tipo: 'bool' },
+      { key: 'asientos_electricos', label: 'Asientos eléctricos', tipo: 'bool' },
+      { key: 'vidrios_electricos', label: 'Vidrios eléctricos', tipo: 'bool' },
+      { key: 'cierre_centralizado', label: 'Cierre centralizado', tipo: 'bool' },
+      { key: 'techo_solar', label: 'Techo solar', tipo: 'bool' },
+      { key: 'techo_panoramico', label: 'Techo panorámico', tipo: 'bool' },
+      { key: 'llantas_aleacion', label: 'Llantas de aleación', tipo: 'bool' },
+      { key: 'alarma', label: 'Alarma', tipo: 'bool' },
+      { key: 'arranque_sin_llave', label: 'Arranque sin llave (keyless)', tipo: 'bool' },
+      { key: 'freno_mano_electrico', label: 'Freno de mano eléctrico', tipo: 'bool' },
+    ],
+  },
+  {
+    titulo: '🛡️ Seguridad',
+    campos: [
+      { key: 'airbags', label: 'Airbags', tipo: 'number', placeholder: '6' },
+      { key: 'camara_retroceso', label: 'Cámara de retroceso', tipo: 'bool' },
+      { key: 'sensores_estacionamiento', label: 'Sensores de estacionamiento', tipo: 'bool' },
+      { key: 'abs', label: 'ABS', tipo: 'bool' },
+      { key: 'esp', label: 'ESP / Control de estabilidad', tipo: 'bool' },
+      { key: 'control_crucero', label: 'Control crucero', tipo: 'bool' },
+      { key: 'crucero_adaptativo', label: 'Crucero adaptativo (ACC)', tipo: 'bool' },
+      { key: 'hud', label: 'HUD (head-up display)', tipo: 'bool' },
+      { key: 'frenado_autonomo', label: 'Frenado autónomo de emergencia', tipo: 'bool' },
+    ],
+  },
+]
+
+function Step3({ form, setForm }) {
+  const specs = form.specs || {}
+
+  function setSpec(key, value) {
+    setForm(p => ({ ...p, specs: { ...p.specs, [key]: value } }))
+  }
+
+  if (form.tipo !== 'auto') {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <FormField label="Cilindrada (cc)">
+          <input className="input" type="number" placeholder="1600"
+            value={specs.cilindrada || ''} onChange={e => setSpec('cilindrada', e.target.value === '' ? null : Number(e.target.value))} />
+        </FormField>
+        <FormField label="Potencia (HP)">
+          <input className="input" type="number" placeholder="150"
+            value={specs.potencia_hp || ''} onChange={e => setSpec('potencia_hp', e.target.value === '' ? null : Number(e.target.value))} />
+        </FormField>
+        <FormField label="Torque (Nm)">
+          <input className="input" type="number" placeholder="200"
+            value={specs.torque_nm || ''} onChange={e => setSpec('torque_nm', e.target.value === '' ? null : Number(e.target.value))} />
+        </FormField>
+        <FormField label="Cilindros">
+          <input className="input" type="number" placeholder="4"
+            value={specs.cilindros || ''} onChange={e => setSpec('cilindros', e.target.value === '' ? null : Number(e.target.value))} />
+        </FormField>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {SECCIONES_SPECS.map(seccion => (
+        <div key={seccion.titulo} style={{ marginBottom: 24 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 12,
+                        borderBottom: '1px solid var(--c-border)', paddingBottom: 8 }}>
+            {seccion.titulo}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {seccion.campos.map(campo => {
+              if (campo.tipo === 'bool') {
+                return (
+                  <FormField key={campo.key} label={campo.label}>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                      {[
+                        { v: true, l: 'Sí' },
+                        { v: false, l: 'No' },
+                        { v: null, l: 'N/D' },
+                      ].map(op => (
+                        <label key={String(op.v)} style={{
+                          display: 'flex', alignItems: 'center', gap: 4,
+                          cursor: 'pointer', fontSize: 13,
+                        }}>
+                          <input type="radio"
+                            checked={specs[campo.key] === op.v}
+                            onChange={() => setSpec(campo.key, op.v)}
+                          />
+                          {op.l}
+                        </label>
+                      ))}
+                    </div>
+                  </FormField>
+                )
+              }
+              if (campo.tipo === 'select') {
+                return (
+                  <FormField key={campo.key} label={campo.label}>
+                    <select className="input"
+                      value={specs[campo.key] || ''}
+                      onChange={e => setSpec(campo.key, e.target.value || null)}>
+                      {campo.opciones.map(op => (
+                        <option key={op.v} value={op.v}>{op.l}</option>
+                      ))}
+                    </select>
+                  </FormField>
+                )
+              }
+              return (
+                <FormField key={campo.key} label={campo.label}>
+                  <input className="input" type={campo.tipo}
+                    placeholder={campo.placeholder || ''}
+                    step={campo.step || undefined}
+                    value={specs[campo.key] ?? ''}
+                    onChange={e => setSpec(campo.key, e.target.value === '' ? null : (campo.tipo === 'number' ? Number(e.target.value) : e.target.value))}
+                  />
+                </FormField>
+              )
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -215,6 +427,8 @@ export default function Ingreso({ onLogout }) {
     combustible: '', transmision: '', origen: 'compra_directa',
     responsable_id: '',
     nro_motor: '', nro_chasis: '', notas_internas: '', estado: 'disponible',
+    ubicacion: 'showroom', estado_recon: 'ingresado',
+    specs: {},
   })
 
   useEffect(() => { getVendedores().then(setVendedores) }, [])
@@ -389,6 +603,7 @@ export default function Ingreso({ onLogout }) {
         costo_compra: form.costo_compra ? Number(form.costo_compra) : null,
         patente: form.patente ? form.patente.toUpperCase() : null,
         responsable_id: form.responsable_id || null,
+        specs: Object.keys(form.specs || {}).length > 0 ? form.specs : null,
       }
       const v = await createVehiculo(payload)
       for (const file of files) {
@@ -408,7 +623,7 @@ export default function Ingreso({ onLogout }) {
         <div className="page-head">
           <div>
             <h1 className="page-title">Ingresar vehículo</h1>
-            <p className="page-caption">Paso {step} de 2 — {step === 1 ? 'Datos del vehículo' : 'Fotos'}</p>
+            <p className="page-caption">Paso {step} de 3 — {step === 1 ? 'Datos del vehículo' : step === 2 ? 'Fotos' : 'Especificaciones'}</p>
           </div>
           <div style={{ flex: 1 }} />
           <div className="seg">
@@ -417,6 +632,9 @@ export default function Ingreso({ onLogout }) {
             </button>
             <button className={step === 2 ? 'on' : ''} onClick={() => setStep(2)}>
               <Icon name="image" size={13} /> Fotos
+            </button>
+            <button className={step === 3 ? 'on' : ''} onClick={() => setStep(3)}>
+              <Icon name="cog" size={13} /> Specs
             </button>
           </div>
         </div>
@@ -597,24 +815,23 @@ export default function Ingreso({ onLogout }) {
         )}
 
         <div className="card" style={{ marginBottom: 20 }}>
-          {step === 1
-            ? <Step1 form={form} set={setForm} vendedores={vendedores} />
-            : <Step2 files={files} setFiles={setFiles} previews={previews} setPreviews={setPreviews} />
-          }
+          {step === 1 && <Step1 form={form} set={setForm} vendedores={vendedores} />}
+          {step === 2 && <Step2 files={files} setFiles={setFiles} previews={previews} setPreviews={setPreviews} />}
+          {step === 3 && <Step3 form={form} setForm={setForm} />}
         </div>
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          {step === 2 && (
-            <button className="btn secondary" onClick={() => setStep(1)}>
+          {step > 1 && (
+            <button className="btn secondary" onClick={() => setStep(s => s - 1)}>
               <Icon name="arrow-l" size={14} /> Atrás
             </button>
           )}
-          {step === 1 && (
-            <button className="btn primary" onClick={() => setStep(2)}>
+          {step < 3 && (
+            <button className="btn primary" onClick={() => setStep(s => s + 1)}>
               Siguiente <Icon name="chev-r" size={14} />
             </button>
           )}
-          {step === 2 && (
+          {step === 3 && (
             <button className="btn primary" onClick={handleSubmit} disabled={saving}>
               {saving ? 'Guardando…' : <><Icon name="check" size={14} /> Guardar vehículo</>}
             </button>
