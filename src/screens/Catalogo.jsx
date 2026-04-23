@@ -5,12 +5,14 @@ import VehicleCard from '../components/VehicleCard'
 import StateBadge from '../components/StateBadge'
 import Icon from '../components/Icon'
 import { getVehiculos } from '../lib/supabase'
+import { useTc } from '../hooks/useTc'
 
 const ESTADOS = ['todos', 'disponible', 'señado', 'en_revision', 'en_preparacion', 'vendido']
 const TIPOS   = ['todos', 'auto', 'moto', 'cuatriciclo', 'moto_de_agua']
 
 export default function Catalogo({ onLogout }) {
   const navigate = useNavigate()
+  const TC = useTc()
   const [params] = useSearchParams()
   const [vehiculos, setVehiculos] = useState([])
   const [loading, setLoading]   = useState(true)
@@ -26,8 +28,6 @@ export default function Catalogo({ onLogout }) {
       setLoading(false)
     })
   }, [estado, tipo, search])
-
-  const TC = 1415
 
   return (
     <div>

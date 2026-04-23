@@ -5,7 +5,7 @@ import StateBadge from '../components/StateBadge'
 import Icon from '../components/Icon'
 import Modal from '../components/Modal'
 import FormField from '../components/FormField'
-import { getVehiculo, updateVehiculo, getGastosByVehiculo, createGasto, getReservasByVehiculo, createReserva } from '../lib/supabase'
+import { getVehiculo, updateVehiculo, getGastosByVehiculo, createGasto, getReservasByVehiculo, createReserva, getDocumentacion, upsertDocumentacion } from '../lib/supabase'
 import { callAI, callAIFiles, aiConfigured } from '../lib/api'
 import { useTc } from '../hooks/useTc'
 
@@ -51,13 +51,37 @@ export default function Detalle({ onLogout }) {
   const [savingReserva, setSavingReserva]     = useState(false)
   const [showReservaForm, setShowReservaForm] = useState(false)
 
+  const [docs, setDocs]         = useState(null)
+  const [docsForm, setDocsForm] = useState({})
+  const [savingDocs, setSavingDocs] = useState(false)
+  const [docsSaved, setDocsSaved]   = useState(false)
+
   useEffect(() => {
     Promise.all([
       getVehiculo(id),
       getGastosByVehiculo(id),
       getReservasByVehiculo(id),
-    ]).then(([d, g, r]) => { setData(d); setGastos(g); setReservas(r) })
+      getDocumentacion(id),
+    ]).then(([d, g, r, doc]) => {
+      setData(d); setGastos(g); setReservas(r)
+      const docData = doc || {}
+      setDocs(docData)
+      setDocsForm(docData)
+    })
   }, [id])
+
+  async function saveDocs() {
+    setSavingDocs(true); setDocsSaved(false)
+    try {
+      await upsertDocumentacion(id, docsForm)
+      setDocsSaved(true)
+      setTimeout(() => setDocsSaved(false), 3000)
+    } catch (e) {
+      console.error(e)
+    } finally { setSavingDocs(false) }
+  }
+  const df = (k) => (e) => setDocsForm(p => ({ ...p, [k]: e.target.value }))
+  const dc = (k) => (e) => setDocsForm(p => ({ ...p, [k]: e.target.checked }))
 
   // ── Loading state ─────────────────────────────────────────────
   if (!data) return (
@@ -474,9 +498,166 @@ export default function Detalle({ onLogout }) {
 
         {/* ── TAB: DOCS ── */}
         {tab === 'docs' && (
-          <div className="banner info" style={{ marginTop: 0 }}>
-            <Icon name="info" size={16} />
-            Módulo de documentación (VTV, verificación policial, dominio) — próximamente.
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+            {/* Verificación policial */}
+            <div className="card" style={{ padding: 18 }}>
+              <h4 style={{ margin: '0 0 14px', fontSize: 14 }}>🚔 Verificación policial</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px,1fr))', gap: 12 }}>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)' }}>
+                  Estado
+                  <select className="input" style={{ marginTop: 4 }} value={docsForm.verificacion_estado || 'pendiente'} onChange={df('verificacion_estado')}>
+                    {['pendiente','ok','con_observaciones','no_realizada'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </label>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)' }}>
+                  Fecha
+                  <input className="input" type="date" style={{ marginTop: 4 }} value={docsForm.verificacion_fecha || ''} onChange={df('verificacion_fecha')} />
+                </label>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)' }}>
+                  Vencimiento
+                  <input className="input" type="date" style={{ marginTop: 4 }} value={docsForm.verificacion_vencimiento || ''} onChange={df('verificacion_vencimiento')} />
+                </label>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)', gridColumn: '1 / -1' }}>
+                  Notas
+                  <input className="input" style={{ marginTop: 4 }} value={docsForm.verificacion_notas || ''} onChange={df('verificacion_notas')} />
+                </label>
+              </div>
+            </div>
+
+            {/* VTV */}
+            <div className="card" style={{ padding: 18 }}>
+              <h4 style={{ margin: '0 0 14px', fontSize: 14 }}>🔧 VTV</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px,1fr))', gap: 12 }}>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)' }}>
+                  Estado
+                  <select className="input" style={{ marginTop: 4 }} value={docsForm.vtv_estado || 'pendiente'} onChange={df('vtv_estado')}>
+                    {['pendiente','al_dia','vencida'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </label>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)' }}>
+                  Vencimiento
+                  <input className="input" type="date" style={{ marginTop: 4 }} value={docsForm.vtv_vencimiento || ''} onChange={df('vtv_vencimiento')} />
+                </label>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)' }}>
+                  Provincia
+                  <input className="input" style={{ marginTop: 4 }} value={docsForm.vtv_provincia || ''} onChange={df('vtv_provincia')} />
+                </label>
+              </div>
+            </div>
+
+            {/* Informe de dominio */}
+            <div className="card" style={{ padding: 18 }}>
+              <h4 style={{ margin: '0 0 14px', fontSize: 14 }}>📜 Informe de dominio</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px,1fr))', gap: 12 }}>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)' }}>
+                  Estado
+                  <select className="input" style={{ marginTop: 4 }} value={docsForm.dominio_estado || 'pendiente'} onChange={df('dominio_estado')}>
+                    {['pendiente','sin_gravamen','con_prenda','inhibido','sin_consultar'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </label>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)' }}>
+                  ¿Con prenda?
+                  <select className="input" style={{ marginTop: 4 }} value={docsForm.dominio_prenda ? 'si' : 'no'} onChange={e => setDocsForm(p => ({ ...p, dominio_prenda: e.target.value === 'si' }))}>
+                    <option value="no">No</option><option value="si">Sí</option>
+                  </select>
+                </label>
+                {docsForm.dominio_prenda && (
+                  <label style={{ fontSize: 12, color: 'var(--c-fg-2)' }}>
+                    Monto prenda
+                    <input className="input" type="number" style={{ marginTop: 4 }} value={docsForm.dominio_monto_prenda || ''} onChange={df('dominio_monto_prenda')} />
+                  </label>
+                )}
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)', gridColumn: '1 / -1' }}>
+                  Notas
+                  <input className="input" style={{ marginTop: 4 }} value={docsForm.dominio_notas || ''} onChange={df('dominio_notas')} />
+                </label>
+              </div>
+            </div>
+
+            {/* Documentos físicos */}
+            <div className="card" style={{ padding: 18 }}>
+              <h4 style={{ margin: '0 0 14px', fontSize: 14 }}>📁 Documentos físicos</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px,1fr))', gap: 12 }}>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)' }}>
+                  Título original
+                  <select className="input" style={{ marginTop: 4 }} value={docsForm.titulo_original || 'pendiente'} onChange={df('titulo_original')}>
+                    {['pendiente','en_poder','no_tiene','en_tramite'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </label>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span>Cédula verde</span>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input type="checkbox" checked={!!docsForm.cedula_verde} onChange={dc('cedula_verde')} />
+                    <span>{docsForm.cedula_verde ? 'Presente' : 'Ausente'}</span>
+                  </label>
+                </label>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span>Cédula azul</span>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input type="checkbox" checked={!!docsForm.cedula_azul} onChange={dc('cedula_azul')} />
+                    <span>{docsForm.cedula_azul ? 'Presente' : 'Ausente'}</span>
+                  </label>
+                </label>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span>Formulario 08</span>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input type="checkbox" checked={!!docsForm.form08} onChange={dc('form08')} />
+                    <span>{docsForm.form08 ? 'Presente' : 'Ausente'}</span>
+                  </label>
+                </label>
+              </div>
+            </div>
+
+            {/* Transferencia */}
+            <div className="card" style={{ padding: 18 }}>
+              <h4 style={{ margin: '0 0 14px', fontSize: 14 }}>📝 Transferencia</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px,1fr))', gap: 12 }}>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)' }}>
+                  Estado
+                  <select className="input" style={{ marginTop: 4 }} value={docsForm.transferencia_estado || 'pendiente'} onChange={df('transferencia_estado')}>
+                    {['pendiente','en_tramite','completada','no_aplica'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </label>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)' }}>
+                  Fecha límite
+                  <input className="input" type="date" style={{ marginTop: 4 }} value={docsForm.transferencia_fecha_limite || ''} onChange={df('transferencia_fecha_limite')} />
+                </label>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)' }}>
+                  Gestoría
+                  <input className="input" style={{ marginTop: 4 }} value={docsForm.transferencia_gestoria || ''} onChange={df('transferencia_gestoria')} />
+                </label>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)', gridColumn: '1 / -1' }}>
+                  Notas
+                  <input className="input" style={{ marginTop: 4 }} value={docsForm.transferencia_notas || ''} onChange={df('transferencia_notas')} />
+                </label>
+              </div>
+            </div>
+
+            {/* Multas */}
+            <div className="card" style={{ padding: 18 }}>
+              <h4 style={{ margin: '0 0 14px', fontSize: 14 }}>⚠️ Multas</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px,1fr))', gap: 12 }}>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)' }}>
+                  Estado
+                  <select className="input" style={{ marginTop: 4 }} value={docsForm.multas_estado || 'sin consultar'} onChange={df('multas_estado')}>
+                    {['sin consultar','sin_multas','con_multas','pendiente_consulta'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </label>
+                <label style={{ fontSize: 12, color: 'var(--c-fg-2)', gridColumn: '1 / -1' }}>
+                  Notas
+                  <input className="input" style={{ marginTop: 4 }} value={docsForm.multas_notas || ''} onChange={df('multas_notas')} />
+                </label>
+              </div>
+            </div>
+
+            {/* Guardar */}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <button className="btn primary" disabled={savingDocs} onClick={saveDocs}>
+                {savingDocs ? 'Guardando…' : <><Icon name="check" size={14} /> Guardar documentación</>}
+              </button>
+              {docsSaved && <span style={{ color: 'var(--c-success)', fontSize: 13 }}>✓ Guardado</span>}
+            </div>
           </div>
         )}
       </div>

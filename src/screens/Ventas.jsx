@@ -3,7 +3,7 @@ import TopBar from '../components/TopBar'
 import StateBadge from '../components/StateBadge'
 import Icon from '../components/Icon'
 import FormField from '../components/FormField'
-import { getVehiculos, getVendedores, createVenta, createFinanciamiento } from '../lib/supabase'
+import { getVehiculos, getVendedores, createVenta, createFinanciamiento, cancelarReservasVehiculo } from '../lib/supabase'
 import { useTc } from '../hooks/useTc'
 
 const FORMAS = ['Efectivo', 'Transferencia', 'Efectivo + Transferencia', 'Financiación', 'Parte de pago']
@@ -30,7 +30,10 @@ export default function Ventas({ onLogout }) {
   const [fin, setFin]           = useState(EMPTY_FIN)
 
   useEffect(() => {
-    getVehiculos({ estado: 'disponible' }).then(setVehiculos)
+    Promise.all([
+      getVehiculos({ estado: 'disponible' }),
+      getVehiculos({ estado: 'señado' }),
+    ]).then(([disp, senados]) => setVehiculos([...disp, ...senados]))
     getVendedores().then(setVendedores)
   }, [])
 
@@ -65,6 +68,7 @@ export default function Ventas({ onLogout }) {
         forma_pago:        buyer.forma_pago,
         notas:             buyer.notas || null,
       })
+      await cancelarReservasVehiculo(selected.id)
       if (esFinanciacion) {
         await createFinanciamiento({
           vehiculo_id:         selected.id,
@@ -88,7 +92,10 @@ export default function Ventas({ onLogout }) {
   function resetForm() {
     setStep(1); setSelected(null)
     setBuyer(EMPTY_BUYER); setFin(EMPTY_FIN); setDone(null)
-    getVehiculos({ estado: 'disponible' }).then(setVehiculos)
+    Promise.all([
+      getVehiculos({ estado: 'disponible' }),
+      getVehiculos({ estado: 'señado' }),
+    ]).then(([disp, senados]) => setVehiculos([...disp, ...senados]))
   }
 
   if (step === 3 && done) return (

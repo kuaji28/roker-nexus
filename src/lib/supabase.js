@@ -369,6 +369,16 @@ export async function getVehiculosEnStock() {
   return data || []
 }
 
+// ── Reservas — cancelar activas de un vehículo ───────────────
+export async function cancelarReservasVehiculo(vehiculoId) {
+  const { error } = await supabase
+    .from('reservas')
+    .update({ estado: 'cancelada' })
+    .eq('vehiculo_id', vehiculoId)
+    .eq('estado', 'activa')
+  if (error) console.error('cancelarReservasVehiculo:', error)
+}
+
 // ── Cobranza — marcar cuota pagada ────────────────────────────
 export async function pagarCuota(cuotaId) {
   const { error } = await supabase
@@ -376,6 +386,31 @@ export async function pagarCuota(cuotaId) {
     .update({ estado: 'pagada', fecha_pago: new Date().toISOString().split('T')[0] })
     .eq('id', cuotaId)
   if (error) throw error
+}
+
+export async function pagarCuotaConMetadata(cuotaId, { monto_pagado, forma_cobro, moneda_cobro, tc_cobro, notas_cobro } = {}) {
+  const hoy = new Date().toISOString().split('T')[0]
+  const upd = { estado: 'pagada', fecha_pago: hoy }
+  if (monto_pagado !== undefined) upd.monto_pagado = monto_pagado
+  if (forma_cobro)  upd.forma_cobro  = forma_cobro
+  if (moneda_cobro) upd.moneda_cobro = moneda_cobro
+  if (tc_cobro)     upd.tc_cobro     = tc_cobro
+  if (notas_cobro)  upd.notas_cobro  = notas_cobro
+  const { error } = await supabase.from('cuotas').update(upd).eq('id', cuotaId)
+  if (error) throw error
+}
+
+export async function getCuotasProximas(dias = 30) {
+  const hoy    = new Date().toISOString().split('T')[0]
+  const limite = new Date(Date.now() + dias * 86400000).toISOString().split('T')[0]
+  const { data } = await supabase
+    .from('cuotas')
+    .select('*, financiamientos(deudor_nombre, deudor_telefono, vehiculos(marca, modelo, anio))')
+    .gte('fecha_vencimiento', hoy)
+    .lte('fecha_vencimiento', limite)
+    .eq('estado', 'pendiente')
+    .order('fecha_vencimiento')
+  return data || []
 }
 
 // ── Financiamientos — crear con cuotas ───────────────────────
@@ -388,9 +423,18 @@ export async function createFinanciamiento({ vehiculo_id, deudor_nombre, deudor_
   if (error) throw error
   const montoPorCuota = Math.round(monto_total / cantidad_cuotas)
   const cuotas = []
-  let fecha = new Date(fecha_primera_cuota || new Date())
+  // Normalizar a medianoche local para evitar bug de zona horaria Argentina
+  let fecha
+  if (fecha_primera_cuota) {
+    const [y, m, d] = fecha_primera_cuota.split('-').map(Number)
+    fecha = new Date(y, m - 1, d)
+  } else {
+    const hoy = new Date()
+    fecha = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())
+  }
   for (let i = 0; i < cantidad_cuotas; i++) {
-    cuotas.push({ financiamiento_id: fin.id, numero_cuota: i + 1, monto: montoPorCuota, fecha_vencimiento: fecha.toISOString().split('T')[0], estado: 'pendiente' })
+    const iso = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}-${String(fecha.getDate()).padStart(2,'0')}`
+    cuotas.push({ financiamiento_id: fin.id, numero_cuota: i + 1, monto: montoPorCuota, fecha_vencimiento: iso, estado: 'pendiente' })
     fecha = new Date(fecha.getFullYear(), fecha.getMonth() + 1, fecha.getDate())
   }
   const { error: ce } = await supabase.from('cuotas').insert(cuotas)
