@@ -205,7 +205,7 @@ function LeadCard({ lead, stageKey, vendedores, onEdit, onMover, onReload }) {
       <div style={{ marginTop: 6 }}>
         {!lead.tomado_por ? (
           <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={handleTomarLead}>
-            🙋 Tomar lead
+            🙋 Tomar prospecto
           </button>
         ) : lead.tomado_por === user?.id ? (
           <span style={{ fontSize: 11, color: 'var(--c-accent)' }}>✓ Tuyo</span>
@@ -295,7 +295,7 @@ function KanbanCol({ stageKey, leads, vendedores, onEdit, onMover, onReload, onN
           style={{ width: '100%', fontSize: 11, marginTop: 4, padding: '6px 0', opacity: 0.7 }}
           onClick={() => onNuevoEnStage(stageKey)}
         >
-          + Agregar lead
+          + Agregar prospecto
         </button>
       </div>
     </div>
@@ -416,7 +416,7 @@ export default function Leads({ onLogout }) {
         {/* Page head */}
         <div className="page-head">
           <div>
-            <h1 className="page-title">Leads</h1>
+            <h1 className="page-title">Prospectos</h1>
             <p className="page-caption">{activos.length} activos · {leads.length} total</p>
           </div>
           <div style={{ flex: 1 }} />
@@ -436,7 +436,7 @@ export default function Leads({ onLogout }) {
           </div>
 
           <button className="btn primary" onClick={() => openNew()}>
-            <Icon name="plus" size={14} /> Nuevo lead
+            <Icon name="plus" size={14} /> Nuevo prospecto
           </button>
         </div>
 
@@ -502,7 +502,7 @@ export default function Leads({ onLogout }) {
 
             {listaShown.length === 0 ? (
               <div className="banner info">
-                <Icon name="info" size={16} />No hay leads con esos filtros.
+                <Icon name="info" size={16} />No hay prospectos con esos filtros.
               </div>
             ) : (
               <table className="rank">
@@ -567,7 +567,7 @@ export default function Leads({ onLogout }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))', gap: 14 }}>
               <div className="card" style={{ padding: 16, textAlign: 'center' }}>
                 <div style={{ fontSize: 28, fontWeight: 700 }}>{leads.length}</div>
-                <div style={{ fontSize: 12, color: 'var(--c-fg-2)' }}>Leads totales</div>
+                <div style={{ fontSize: 12, color: 'var(--c-fg-2)' }}>Prospectos totales</div>
               </div>
               <div className="card" style={{ padding: 16, textAlign: 'center' }}>
                 <div style={{ fontSize: 28, fontWeight: 700 }}>{activos.length}</div>
@@ -657,7 +657,7 @@ export default function Leads({ onLogout }) {
 
       {/* ══ MODAL ══════════════════════════════════════════════════════════════ */}
       {modal && (
-        <Modal title={modal === 'new' ? 'Nuevo lead' : 'Editar lead'} onClose={() => setModal(null)}>
+        <Modal title={modal === 'new' ? 'Nuevo prospecto' : 'Editar prospecto'} onClose={() => setModal(null)}>
           <div style={{ display: 'grid', gap: 12 }}>
             <FormField label="Nombre" required>
               <input className="input" value={form.nombre} onChange={f('nombre')} placeholder="Juan Pérez" />

@@ -20,6 +20,7 @@ import Buscar from './screens/Buscar'
 import Agenda from './screens/Agenda'
 import Placeholder from './screens/Placeholder'
 import CatalogoPublico from './screens/CatalogoPublico'
+import Mejoras from './screens/Mejoras'
 import { useTc, TcContext } from './hooks/useTc'
 import { UserContext } from './hooks/useUser'
 
@@ -53,6 +54,7 @@ function AppShell({ onLogout, user }) {
           <Route path="/vendedores"   element={<Vendedores  onLogout={onLogout} />} />
           <Route path="/cobranza"     element={<Cobranza    onLogout={onLogout} />} />
           <Route path="/config"       element={<Config      onLogout={onLogout} />} />
+          <Route path="/mejoras"      element={<Mejoras     onLogout={onLogout} />} />
           <Route path="*"             element={<Navigate to="/" replace />} />
         </Routes>
       </div>
