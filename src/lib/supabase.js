@@ -96,27 +96,50 @@ export async function updateVehiculo(id, data) {
   if (error) throw error
 }
 
-// ── Fotos ────────────────────────────────────────────────────────
+// ── Fotos (Cloudinary) ───────────────────────────────────────────
+const CLOUDINARY_CLOUD = 'dsfxme7uk'
+const CLOUDINARY_PRESET = 'ghcars_uploads'
+
 export async function uploadFoto(vehiculoId, file) {
-  const path = `${vehiculoId}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`
-  const { data, error } = await supabase.storage
-    .from('vehiculos-fotos')
-    .upload(path, file, { contentType: file.type, upsert: false })
-  if (error) throw error
-  const { data: { publicUrl } } = supabase.storage
-    .from('vehiculos-fotos')
-    .getPublicUrl(data.path)
+  // Obtener el próximo número de orden para este vehículo
+  const { data: existentes } = await supabase
+    .from('medias')
+    .select('orden')
+    .eq('vehiculo_id', vehiculoId)
+    .order('orden', { ascending: false })
+    .limit(1)
+  const nextOrden = existentes && existentes.length > 0 ? (existentes[0].orden || 0) + 1 : 1
+  const publicId = `ghcars/vehiculos/${vehiculoId}/${String(nextOrden).padStart(2, '0')}`
+
+  // Subir a Cloudinary via unsigned upload
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('upload_preset', CLOUDINARY_PRESET)
+  formData.append('public_id', publicId)
+
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
+    method: 'POST',
+    body: formData,
+  })
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(err.error?.message || 'Error al subir a Cloudinary')
+  }
+  const cld = await res.json()
+  const url = cld.secure_url
+
+  // Registrar en medias
   const { error: mediaErr } = await supabase.from('medias').insert([{
-    vehiculo_id: vehiculoId, tipo: 'foto', url: publicUrl, orden: 0
+    vehiculo_id: vehiculoId, tipo: 'foto', url, orden: nextOrden,
+    cloudinary_public_id: cld.public_id
   }])
   if (mediaErr) console.warn('uploadFoto: foto subida pero no registrada en medias', mediaErr)
-  return publicUrl
+  return url
 }
 
-export async function deleteFoto(mediaId, storagePath) {
-  if (storagePath) {
-    await supabase.storage.from('vehiculos-fotos').remove([storagePath])
-  }
+export async function deleteFoto(mediaId, cloudinaryPublicId) {
+  // La limpieza en Cloudinary se hace via Edge Function o manualmente
+  // No exponemos API secret en el frontend
   await supabase.from('medias').delete().eq('id', mediaId)
 }
 
